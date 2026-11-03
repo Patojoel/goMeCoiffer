@@ -1,0 +1,13 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad="0.2", nodesep="0.3"];
+node [shape=box, style="rounded,filled", fillcolor="#F0F4F5", color="#153F4C", fontname="DejaVu Sans", fontsize=11];
+edge [color="#537980",fontname="DejaVu Sans",fontsize=9];
+U [label="Client"]; S [label="Salon"]; ST [label="Collaborateur"]; SV [label="Prestation"];
+B [label="Rendez-vous"]; BI [label="Ligne de prestation"]; P [label="Paiement"]; R [label="Remboursement"];
+L [label="Écriture de fidélité"]; RE [label="Récompense"]; T [label="Reversement"]; SU [label="Abonnement"];
+U -> B [label="1 → N"]; S -> B [label="1 → N"]; S -> ST [label="1 → N"];
+S -> SV [label="1 → N"]; ST -> B [label="1 → N"]; B -> BI [label="1 → N"];
+B -> P [label="1 → N tentatives"]; P -> R [label="1 → N"];
+B -> L [label="1 → N"]; S -> RE [label="1 → N"]; U -> RE [label="1 → N"];
+S -> T [label="1 → N"]; S -> SU [label="1 → N historique"];
+}

@@ -1,0 +1,44 @@
+﻿ID;Priorité;Module;Fonctionnalité;Références;Dépendances BL;Critère de réception
+BL-01;P0;Identité;Créer un compte et vérifier son téléphone;EX-09;Aucune;"Session créée seulement après code valide ; limitation des tentatives"
+BL-02;P0;Sécurité;Isoler les salons et leurs rôles;EX-15,EX-21;01;Salon A ne lit ni ne modifie les objets du salon B
+BL-03;P0;Salon;Créer et vérifier un salon;EX-11,EX-21;02;Publication et habilitation paiement contrôlées séparément
+BL-04;P0;Catalogue;Configurer services, prix et durées;EX-12;03;Prix connu, durée positive et collaborateurs habilités
+BL-05;P0;Médias;Publier les photos du salon;EX-05;03;"Types et tailles contrôlés ; droits et retrait pris en compte"
+BL-06;P0;Marketplace;Rechercher par position ou quartier;EX-01,EX-02,EX-03;03,04;Recherche disponible sans GPS et filtres respectés
+BL-07;P0;Marketplace;Afficher la fiche salon;EX-04;04,05;Prix, durée, horaires, locaux et conditions visibles
+BL-08;P0;Agenda;Configurer horaires, pauses et congés;EX-13;04;Créneaux proposés respectent toutes les indisponibilités
+BL-09;P0;Agenda;Acquérir un créneau atomiquement;EX-07;08;50 tentatives simultanées ne produisent qu’une occupation
+BL-10;P0;Agenda;Accepter les demandes manuelles;EX-07;09;"Aucun débit avant acceptation ; expiration explicite"
+BL-11;P0;Agenda;Ajouter téléphone et passage sur place;EX-13;09;Même protection contre les conflits que la marketplace
+BL-12;P0;Paiement;Calculer le devis versionné;EX-08,PAY-02;04;Prix, remises, frais, devise et total exacts avant accord
+BL-13;P0;Paiement;Intégrer l’intention de paiement;PAY-03;09,12;Idempotence et contrôle du montant en sandbox
+BL-14;P0;Paiement;Traiter les webhooks signés;PAY-03;13;Signature vérifiée, événements dupliqués sans double effet
+BL-15;P0;Paiement;Traiter succès tardif et expiration;RM-02;14;Créneau indisponible entraîne remboursement intégral
+BL-16;P0;Agenda;Confirmer sans paiement en ligne;EX-07,RM-03;09;"Créneau protégé ; absence de fidélité liée aux espèces"
+BL-17;P0;Notifications;Envoyer confirmation et rappels;EX-09;14,16;"Messages dédupliqués ; état visible même si SMS échoue"
+BL-18;P0;Agenda;Reporter atomiquement;RM-06;09,12;Échec laisse l’ancien rendez-vous intact
+BL-19;P0;Annulation;Calculer pénalité et remboursement;RM-05,PAY-04;12,14;"Politique acceptée conservée ; seuil exact respecté"
+BL-20;P0;Paiement;Exécuter les remboursements;PAY-04;19;"Pas de double remboursement ; erreurs suivies"
+BL-21;P0;Présence;Enregistrer arrivée et réalisation;EX-14;11;"Code validé par salon ; historique des corrections"
+BL-22;P0;Présence;Gérer retard, absence et recours;RM-04,RM-08;19,21;"Le client suivant garde son créneau ; absence contestable"
+BL-23;P0;Finance;Construire le journal et rapprochement;PAY-05;14,20;Écritures équilibrées et écarts prestataire identifiés
+BL-24;P0;Finance;Différer et suivre le reversement;PAY-05;21,23;"Fonds en litige bloqués ; confirmation fournisseur exigée"
+BL-25;P0;Fidélité;Configurer un programme versionné;EX-17;03;Droits acquis préservés après modification
+BL-26;P0;Fidélité;Créditer une visite admissible;RM-07;14,21,25;"Paiement en ligne et réalisation requis ; crédit unique"
+BL-27;P0;Fidélité;Réserver et utiliser un avantage;RM-07;12,26;"Une seule consommation concurrente ; frais sur prix réduit"
+BL-28;P0;Fidélité;Corriger les droits après remboursement;RM-07;20,27;Journal compensatoire et avantage restitué si applicable
+BL-29;P0;Client;Afficher historique, reçus et avantages;EX-09;20,26;Le client ne voit que ses propres informations
+BL-30;P0;Avis;Publier un avis de visite vérifiée;EX-06;21;Un avis par rendez-vous réalisé, paiement non obligatoire
+BL-31;P0;Support;Traiter incidents et litiges;EX-10,EX-23;20,22,24;"Décision justifiée ; reversement concerné suspendu"
+BL-32;P0;Abonnement;Gérer essai, souscription et factures;EX-19;03,13;Tarif et consentement avant facturation
+BL-33;P0;Abonnement;Gérer grâce et suspension;RM-09;32;Les rendez-vous existants et remboursements restent accessibles
+BL-34;P0;Pilotage;Afficher les indicateurs essentiels;EX-20,EX-25;23,29,32;CA salon, encaissements et revenus plateforme séparés
+BL-35;P0;Exploitation;Sauvegarder, restaurer et alerter;EX-25;23;Restauration testée et délais mesurés
+BL-36;P0;Qualité;Exécuter recette sécurité et concurrence;REC-01 à REC-30;01-35;"Aucun défaut bloquant ; résultats et version conservés"
+BL-37;P1;Agenda;Automatiser la liste d’attente;EX-13;09,17;Créneau proposé sans double confirmation
+BL-38;P1;Marketing;Ajouter un parrainage contrôlé;RM-07;26;"Attribution après visite admissible ; auto-parrainage bloqué"
+BL-39;P1;Pilotage;Exporter et analyser les cohortes;EX-20;34;"Périodes et exclusions explicites ; export autorisé seulement"
+BL-40;P1;Organisation;Gérer plusieurs établissements;EX-15;02,34;Droits par établissement et consolidation autorisée
+BL-41;P1;Agenda;Gérer les ressources partagées;EX-13;09;Une ressource ne peut pas être occupée simultanément
+BL-42;P2;Mobile;Développer les applications natives;EX-09;36;Parité avec règles serveur et reprise de paiement
+BL-43;P2;Commerce;Ajouter stocks et vente de produits;EX-18;23;Ventes et stocks rapprochés avec règles dédiées

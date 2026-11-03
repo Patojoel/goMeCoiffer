@@ -1,0 +1,9 @@
+﻿Prix net FCFA;Taux plateforme;Taux agrégateur;Base agrégateur;Frais plateforme affichés;Frais paiement affichés;Total client;Coût agrégateur théorique;Marge transactionnelle théorique;Limite
+1000.00;5%;3%;prix prestation;50.00;30.00;1080.00;30.00;50.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+1000.00;5%;3%;total encaissé;50.00;30.00;1080.00;32.40;47.60;Théorique avant arrondi prestataire, fiscalité et autres coûts
+2500.00;5%;3%;prix prestation;125.00;75.00;2700.00;75.00;125.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+2500.00;5%;3%;total encaissé;125.00;75.00;2700.00;81.00;119.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+5000.00;5%;3%;prix prestation;250.00;150.00;5400.00;150.00;250.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+5000.00;5%;3%;total encaissé;250.00;150.00;5400.00;162.00;238.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+10000.00;5%;3%;prix prestation;500.00;300.00;10800.00;300.00;500.00;Théorique avant arrondi prestataire, fiscalité et autres coûts
+10000.00;5%;3%;total encaissé;500.00;300.00;10800.00;324.00;476.00;Théorique avant arrondi prestataire, fiscalité et autres coûts

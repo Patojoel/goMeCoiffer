@@ -1,0 +1,11 @@
+digraph G {
+graph [rankdir=LR, bgcolor="white", pad="0.2", nodesep="0.3"];
+node [shape=box, style="rounded,filled", fillcolor="#F0F4F5", color="#153F4C", fontname="DejaVu Sans", fontsize=11];
+edge [color="#537980"];
+C [label="Client PWA"]; S [label="Back-office salon"]; A [label="Administration"];
+API [label="API métier"]; DB [label="PostgreSQL / PostGIS",shape=cylinder];
+OBJ [label="Photos"]; PAY [label="Agrégateur"]; WH [label="Webhooks vérifiés"];
+W [label="Outbox et workers"]; MSG [label="Notifications"];
+C -> API; S -> API; A -> API; API -> DB; API -> OBJ; API -> PAY;
+PAY -> WH; WH -> API; DB -> W; W -> MSG; W -> PAY;
+}
