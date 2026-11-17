@@ -1,0 +1,38 @@
+# Dépendances et builds
+node_modules/
+dist/
+build/
+coverage/
+reports/
+.turbo/
+*.tsbuildinfo
+
+# Secrets : seuls les modèles *.example sont commités
+.env
+.env.*
+!.env.example
+!**/.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Données locales
+backend/var/
+*.log
+logs/
+
+# Tests
+.stryker-tmp/
+
+# Éditeurs et OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.worktrees/
+.claude/settings.local.json
+.claude/hooks/wt-last-input.json

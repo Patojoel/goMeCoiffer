@@ -1,0 +1,33 @@
+name: gomecoiffer
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: gomecoiffer-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gomecoiffer}
+      POSTGRES_USER: ${POSTGRES_USER:-gomecoiffer}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans infra/.env}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-10402}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: gomecoiffer-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-10403}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-10404}:1025"
+
+volumes:
+  pgdata:

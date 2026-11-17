@@ -1,0 +1,169 @@
+---
+name: nest-stack
+description: Idiomes du backend GoMeCoiffer (NestJS 12 + @nestjs/cqrs + nestjs-cls transactional + TypeORM + PostgreSQL 17 + Zod 4 + Vitest/Testcontainers). À charger avant d'écrire ou modifier du code dans backend/ — entité TypeORM, mapper, repository transactionnel, SqlReader et gabarit sql, TransactionalCommandBus, guards et décorateurs de sécurité, config validée, migrations TypeORM, setup de test. Complète hexagonal (où placer) et ddd (quoi modéliser) par le comment.
+---
+# Nest-stack — NestJS + TypeORM (GoMeCoiffer)
+
+> Réf : `CLAUDE.md` §Stack, §I, §III. Vérifier à l'init du socle la doc officielle des API récentes
+> (`@Body({ schema })` NestJS 12, `@nestjs-cls/transactional-adapter-typeorm`, CLI TypeORM sous ESM).
+
+## Écriture : entité, mapper, repository
+
+```ts
+// infrastructure/persistence/booking.orm-entity.ts — jamais importée hors de infrastructure/
+@Entity('bookings')
+export class BookingOrmEntity {
+  @PrimaryColumn('uuid') id!: string;
+  @Column('uuid') salonId!: string;
+  @Column('uuid') staffId!: string;
+  @Column('uuid') serviceId!: string;
+  @Column('timestamptz') startsAt!: Date;
+  @Column('timestamptz') endsAt!: Date;
+  @Column('text') status!: BookingStatus;
+  @Column('integer') priceXaf!: number;
+  @Column('integer') version!: number;
+}
+
+// infrastructure/persistence/booking.mapper.ts
+export const BookingMapper = {
+  toDomain: (e: BookingOrmEntity): Booking => Booking.restore({ ...e, price: Money.xaf(e.priceXaf) }),
+  toPersistence: (b: Booking): BookingOrmEntity => { /* snapshot → colonnes */ },
+};
+
+// infrastructure/persistence/typeorm-booking.repository.ts
+@Injectable()
+export class TypeOrmBookingRepository implements BookingRepository {
+  constructor(
+    private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>,
+    private readonly events: DomainEventDispatcher,
+  ) {}
+
+  private get repo() { return this.txHost.tx.getRepository(BookingOrmEntity); }
+
+  async getOfSalon(salonId: string, id: string): Promise<Booking> {
+    const row = await this.repo.findOneBy({ id, salonId });     // périmètre dans le WHERE
+    if (!row) throw new BookingNotFoundError(id);                // 404, même si l'id existe ailleurs
+    return BookingMapper.toDomain(row);
+  }
+
+  async save(booking: Booking): Promise<void> {
+    const row = BookingMapper.toPersistence(booking);
+    try {
+      if (booking.isNew) await this.repo.insert({ ...row, version: 1 });
+      else {
+        const { affected } = await this.repo.createQueryBuilder().update()
+          .set({ ...row, version: () => 'version + 1' })
+          .where('id = :id AND version = :version', { id: row.id, version: row.version })
+          .execute();
+        if (affected === 0) throw new ConcurrencyConflictError('Booking', row.id);
+      }
+    } catch (e) {
+      if (isPgError(e, '23P01')) throw new SlotNoLongerAvailableError();  // contrainte d'exclusion
+      throw e;
+    }
+    await this.events.dispatch(booking.pullEvents());          // DomainEvent sync + outbox, même tx
+  }
+}
+```
+
+- `this.txHost.tx` donne l'`EntityManager` de la transaction ouverte par le bus ; **jamais** `@InjectRepository()` ni `dataSource.manager` dans un repository d'écriture (ils sortent de la transaction).
+- Les `find*`/QueryBuilder TypeORM sont permis **dans les repositories d'écriture seulement** (charger un agrégat) ; jamais pour un écran.
+- Relations TypeORM (`@OneToMany`, `eager`, `cascade`) : à éviter. Les enfants d'un agrégat se chargent et s'écrivent explicitement par le repository de la racine ; pas de lazy loading.
+
+## Lecture : `SqlReader` et gabarit `sql`
+
+```ts
+// shared/application/sql.ts — pur TypeScript, aucune dépendance
+export interface SqlStatement { readonly text: string; readonly values: readonly unknown[] }
+export function sql(strings: TemplateStringsArray, ...values: unknown[]): SqlStatement; // ${v} → $n
+export namespace sql {
+  export function unsafe(constantFragment: string): SqlFragment;   // constantes du code UNIQUEMENT
+  export function join(parts: readonly SqlFragment[], sep: string): SqlFragment; // fragments imbriqués
+}
+
+// shared/application/sql-reader.ts
+export const READ_DB = Symbol('READ_DB');
+export interface SqlReader {
+  many<T>(q: SqlStatement): Promise<readonly T[]>;
+  one<T>(q: SqlStatement): Promise<T>;              // 0 ligne → NotFoundError
+  maybeOne<T>(q: SqlStatement): Promise<T | null>;
+}
+
+// shared/infrastructure/database/typeorm-sql-reader.ts
+@Injectable()
+export class TypeOrmSqlReader implements SqlReader {
+  constructor(@InjectDataSource('read') private readonly ds: DataSource) {}   // réplica possible
+  many<T>(q: SqlStatement) { return this.ds.query(q.text, [...q.values]) as Promise<T[]>; }
+  // …
+}
+```
+
+- Tri ou colonne dynamique : `const ORDER = { date: sql.unsafe('b.starts_at'), staff: sql.unsafe('s.display_name') } as const` puis `ORDER[q.sortBy]` après validation du contrat. Jamais `sql.unsafe(entréeUtilisateur)`.
+- Listes : `= ANY(${ids}::uuid[])` ; dates : passer des `Date` ou des chaînes ISO, caster côté SQL (`::timestamptz`).
+- `bigint`/`numeric` reviennent en chaîne avec node-postgres : caster en SQL (`::int`) quand la valeur tient, ou convertir explicitement.
+
+## `TransactionalCommandBus`
+
+```ts
+@Injectable()
+export class TransactionalCommandBus {
+  constructor(
+    private readonly bus: CommandBus,
+    private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>,
+    private readonly afterCommit: AfterCommitQueue,          // outbox relay + SSE
+  ) {}
+
+  async execute<R>(cmd: Command<R>): Promise<R> {
+    const result = await this.txHost.withTransaction(() => this.bus.execute(cmd));
+    await this.afterCommit.flush();                          // seulement après commit réussi
+    return result;
+  }
+}
+```
+
+Isolation par défaut `READ COMMITTED` ; les invariants de concurrence reposent sur les contraintes de base (exclusion, unicité) et le verrou optimiste, pas sur un niveau d'isolation plus fort.
+
+## Sécurité HTTP (socle)
+
+- `AuthGuard` global **deny-by-default** ; `@Public()` pour l'exception. Session `express-session` stockée en PostgreSQL (table `sessions`), cookie `HttpOnly`, `SameSite=Lax`, `Secure` hors local, nom `__Host-gmc.sid` en prod ; régénération de l'id de session à la connexion et au changement de privilèges.
+- CSRF : double-submit (`csrf-csrf`) sur toutes les méthodes d'écriture, y compris les routes publiques de réservation ; exception unique : `/api/webhooks/*` (signature HMAC à la place).
+- `PermissionsGuard` + `@RequiresPermission('bookings:manage')` : évalué sur le **salon actif de la session** ; `@RequiresSystemRole('SUPER_ADMIN')` pour `/api/admin/*`. Les deux mondes ne se mélangent pas.
+- `@CurrentActor()` lit le contexte CLS (`userId`, `activeSalonId`, `permissions`, `systemRoles`) posé par les guards, jamais la requête brute.
+- `helmet`, CORS en **allowlist** (`WEB_ORIGIN`), `@nestjs/throttler` sur connexion, OTP, création de réservation publique, webhooks.
+
+## Configuration
+
+```ts
+// shared/infrastructure/config/env.schema.ts
+export const EnvSchema = z.object({
+  APP_ENV: z.enum(['local', 'test', 'preprod', 'prod']),
+  DB_PASSWORD: z.string().min(16),
+  SESSION_SECRET: z.string().min(64),
+  APP_ENCRYPTION_KEY: z.string().regex(/^[A-Za-z0-9+/]{43}=$/),   // 32 octets en base64
+  // … une entrée par variable de backend/.env.example
+}).strict();
+```
+
+Validation au démarrage (`ConfigModule.forRoot({ validate: (env) => EnvSchema.parse(env) })`) : une variable manquante ou faible arrête l'app. Les secrets ne sont jamais loggés (redaction `nestjs-pino` : `req.headers.cookie`, `*.password`, `*.otp`, `*.token`, `*.phone`).
+
+## Migrations TypeORM
+
+- `backend/src/database/data-source.ts` : même config que l'app, `migrations: ['src/database/migrations/*.ts']`, `synchronize: false`.
+- Scripts `package.json` : `migration:generate`, `migration:create`, `migration:run`, `migration:revert`, `migration:show` (via la CLI TypeORM sur `data-source.ts`).
+- Générer, **relire** chaque instruction, compléter à la main ce que TypeORM ne sait pas faire (`CREATE EXTENSION btree_gist`, `EXCLUDE USING gist`, index partiels `WHERE deleted_at IS NULL`, index d'expression). `down()` réel.
+- Jamais `schema:sync`, `schema:drop`, `synchronize: true`, `dropSchema: true` (hook de garde).
+
+## Tests
+
+- `vitest.config.ts` avec `projects` : `unit` (`tests/unit/**/*.test.ts`), `integration` (`*.int.test.ts`), `e2e` (`*.e2e.test.ts`) ; plugin `unplugin-swc` (décorateurs + metadata).
+- Intégration/E2E : `@testcontainers/postgresql` (image `postgres:17`), migrations appliquées une fois sur une base modèle puis `CREATE DATABASE … TEMPLATE …` par worker ; app Nest complète pour l'E2E (`Test.createTestingModule({ imports: [AppModule] })` autorisé **en E2E seulement**), `supertest` avec un agent qui garde le cookie de session et le jeton CSRF.
+- Adapters externes en test : `FakePaymentGateway`, `FakeSmsSender`, `InMemoryRealtimePublisher` qui **enregistrent** ce qui sort ; `FixedClock`, `SequentialIdGenerator`.
+
+## Checklist avant de valider
+
+- [X] Repository via `txHost.tx`, verrou optimiste explicite, `23P01` traduit, événements dispatchés dans `save()` ?
+- [X] Aucune entité TypeORM hors `infrastructure/persistence/` ; aucun `typeorm` dans `application/` ?
+- [X] Lecture = `sql\`…\``+`SqlReader`, aucun `sql.unsafe` sur une entrée ?
+- [X] Écriture via `TransactionalCommandBus` ; route protégée par défaut ; `@Public()` justifié ?
+- [X] Nouvelle variable d'env : schéma Zod + `backend/.env.example` (placeholder) ?
+- [X] Migration générée **relue**, `down()` réel, `docs/migrations-history.md` à jour ?
