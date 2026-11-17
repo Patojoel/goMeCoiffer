@@ -1,0 +1,4 @@
+import { Socle1795000000000 } from './migrations/1795000000000-Socle.js';
+
+/** Registre des migrations, dans l'ordre. `pnpm --filter api migration:create <Nom>` y ajoute la nouvelle. */
+export const MIGRATIONS: Function[] = [Socle1795000000000];
