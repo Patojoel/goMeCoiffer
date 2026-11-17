@@ -19,9 +19,6 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 
 - **Agrégateur Mobile Money** (Orange Money, MTN MoMo) et conditions de règlement des fonds par salon. Bloque le
   lot Paiement en ligne ; un adaptateur `fake` permet d'avancer.
-- **Mode d'authentification** : propriétaires et collaborateurs (téléphone + mot de passe ? OTP SMS ?), clients
-  (OTP SMS, lien sécurisé, ou les deux). Hypothèse : mot de passe `argon2id` pour le personnel, OTP SMS + lien
-  sécurisé pour les clients. Bloque le lot Comptes.
 - **Fournisseur SMS** (OTP, lien de réservation). Hypothèse : adaptateur `fake` jusqu'au choix.
 - **Prix des abonnements** : 5 000 FCFA/mois ou 50 000 FCFA/an par salon (hypothèse PRD §10), essai gratuit
   oui/non et durée.
