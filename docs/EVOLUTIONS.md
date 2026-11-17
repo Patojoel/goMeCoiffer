@@ -19,6 +19,45 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-17 — Socle technique (lot 0) : monorepo, API NestJS + TypeORM, front React
+
+- **Quoi** : l'application démarre de bout en bout. Le monorepo pnpm contient l'API (`backend/`), le front
+  (`frontend/`) et des contrats partagés (`packages/contracts`). Le front affiche l'état de l'API via le proxy
+  Vite, et les trois espaces (marketplace, salon, administration) sont routés.
+- **Pourquoi** : lot 0 du backlog. Tous les lots MVP s'appuient sur ces fondations : transactions, événements,
+  sécurité, lectures en SQL pur (D-001), temps réel SSE (D-002).
+- **Périmètre** :
+  - **API** :
+    - config validée au démarrage (secrets forts et distincts, règles de prod) ;
+    - TypeORM 1.x sans `synchronize`, registres d'entités et de migrations (D-012), CLI de migration ;
+    - gabarit `sql` + `SqlReader`, et `TransactionalCommandBus` avec actions post-commit ;
+    - outbox relayée sur un bus local, avec des consommateurs idempotents ;
+    - session PostgreSQL et CSRF double-submit ;
+    - `AuthGuard` qui refuse par défaut, avec une durée absolue de session et une revalidation du salon actif ;
+    - permissions par salon et rôles système séparés ;
+    - contrôle au démarrage des protections de route ;
+    - `ApiResponse`, erreurs normalisées, validation Standard Schema, SSE privé ;
+    - logs sans données personnelles (`safeError`) et OpenAPI hors prod.
+  - **Migration** : `1795000000000-Socle` (`btree_gist`, `outbox`, `processed_events`, `sessions`, `audit_log`).
+  - **Front** :
+    - Vite 8, React 19.3 et React Compiler ;
+    - Redux Toolkit avec RTK Query et gateways injectés ;
+    - `HttpClient` (CSRF, 401/403) et gestionnaire SSE ;
+    - i18n fr, RBAC, formats FCFA et fuseau du salon ;
+    - module de démonstration `health` qui sert de référence de style.
+  - **Contrats** : `ApiResponse`, `ErrorCode`, jeton CSRF, santé, événement temps réel.
+  - **Décisions** : D-009 à D-016.
+- **Vérification** : mode **light**.
+  - Backend : 60 tests (32 unitaires, 8 d'intégration Testcontainers, 20 E2E). Les règles critiques (idempotence,
+    envoi post-commit, CSRF, permissions, durée de session, salon quitté, protection des routes) ont été
+    vérifiées par mutation volontaire.
+  - Frontend : 36 tests.
+  - Typecheck, oxlint, `pnpm arch` et build des deux applications : verts.
+  - API démarrée réellement contre PostgreSQL local, avec le front servi par Vite.
+  - Revue `security-reviewer` : aucune faille critique. Les 5 points « à corriger » ont été corrigés dans le lot
+    (logs, oubli de décorateur, salon actif, durée absolue, config). Les durcissements restants sont dans le backlog.
+- **Suites** : lot 1 (connexion et droits réels, voir `docs/BACKLOG.md`), rendu 390 px à vérifier.
+
 ### 2026-11-17 — Initialisation de la configuration Claude Code, de la documentation et de l'environnement
 
 - **Quoi** : mise en place de `CLAUDE.md`, de la configuration `.claude/` (8 agents, 9 skills, hooks), du

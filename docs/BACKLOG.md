@@ -10,10 +10,7 @@ fusionnée ; elle laisse alors sa trace dans `docs/EVOLUTIONS.md`. Chaque entré
 Cette section passe avant toute autre tâche, à chaque reprise de travail (elle est injectée en début de session
 par le hook `session-context`).
 
-- **Initialiser le dépôt git (17/11).** Le projet n'est pas encore un dépôt git : le garde-fou des migrations
-  commitées et la protection des secrets par `.gitignore` en dépendent. `git init`, vérifier avec
-  `git status --ignored` que `backend/.env` et `infra/.env` sont ignorés, puis premier commit
-  (`CLAUDE.md`, `.claude/`, `docs/`, `infra/compose.yml`, fichiers `*.env.example`).
+_Rien d'urgent._
 
 ## Décisions attendues du user (PRD §16 et hypothèses des fichiers de config)
 
@@ -39,20 +36,34 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Politique de conservation et de protection des données** des clients (PRD §12).
 - **Stockage des photos de salon** en prod (disque du serveur ou stockage objet).
 
-## Lot 0 — Socle technique (premier chantier de code)
+## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
 
-Checklist détaillée : `docs/checklists.md` § Socle.
-- Monorepo pnpm : `backend/` (`api`), `frontend/` (`web`), `packages/contracts` ; `.nvmrc` Node 24.
-- Backend : NestJS 12, config validée par Zod (variables de `backend/.env.example`), TypeORM + `data-source.ts` +
-  scripts de migration, `TransactionHost` (adaptateur TypeORM), `TransactionalCommandBus`, `SqlReader` + gabarit
-  `sql`, outbox + relais local + `processed_events`, `DomainExceptionFilter`, `ApiResponse<T>`, session PostgreSQL,
-  CSRF, `AuthGuard` deny-by-default, `PermissionsGuard`, `@CurrentActor()`, SSE, pino avec redaction, terminus.
-- Vérifier à l'init (et noter dans `docs/DECISIONS.md`) : `@Body({ schema })` de NestJS 12, adaptateur TypeORM de
-  `@nestjs-cls/transactional`, CLI TypeORM sous ESM.
-- Qualité : Vitest (projects unit/integration/e2e, SWC), Testcontainers PostgreSQL 17, oxlint + ESLint, Prettier,
-  dependency-cruiser (`pnpm arch`) avec les règles de dépendance de `CLAUDE.md` §I.1.
-- Frontend : Vite 8 + React 19.2 + React Compiler, Redux Toolkit + RTK Query, `HttpClient`, i18n, shadcn/ui,
-  trois layouts (marketplace, salon, admin).
+- Connexion : `session.regenerate()` + `authenticatedAt` + nouveau jeton CSRF ; déconnexion qui détruit la session
+  et efface les cookies de session et CSRF ; tests « l'id de session change », « un jeton CSRF d'avant la connexion
+  est refusé ». Côté front : remettre le jeton CSRF de `HttpClient` à zéro à la connexion et à la déconnexion.
+- Remplacer `NoRightsYet` par la vraie résolution des droits (`isMember`, permissions du salon actif, rôles
+  système) ; durée absolue plus courte pour les rôles système (aujourd'hui 72 h pour tous).
+- Front : route `/connexion` (le 401 y redirige déjà, elle tombe en 404) ; poser `<RequirePermission>` sur
+  `/salon/*` et `<RequireSystemRole>` sur `/admin/*` ; brancher le flux SSE (`/api/salon/realtime/stream`) dans
+  `main.tsx`, le relancer au changement de salon actif et le couper à la déconnexion ; relecture de secours
+  (20-30 s) tant que le flux est coupé.
+- Vérifier le rendu à 390 px des écrans du socle (non vérifié : pas d'outil de capture pendant le lot 0).
+
+## Durcissements relevés au socle (17/11, revue sécurité), à traiter quand le besoin arrive
+
+- SSE : limiter le nombre de flux simultanés par session ; supprimer les canaux sans abonné ; ne diffuser sur
+  `salon:` que des signaux d'invalidation (jamais de montant) ; vérifier l'origine à l'ouverture du flux.
+- Throttler : limites par route (OTP : numéro + IP ; connectés : session) et stockage partagé avant toute
+  deuxième instance ; attention au CGNAT des opérateurs camerounais (une IP pour beaucoup de clients).
+- `TRUST_PROXY` : régler le nombre exact de proxys au déploiement (CDN + répartiteur).
+- `/api/public/health` : réserver l'état de la base à une sonde interne une fois la supervision en place.
+- Logs : masquer les champs sensibles en profondeur (pas seulement `*.phone`) ; ne jamais placer un jeton de lien
+  dans l'URL loggée (POST, ou masquage de `req.url` sur ces routes).
+- Outbox : identifiant de consommateur explicite et stable (aujourd'hui le nom de classe du subscriber) ; purge des
+  lignes traitées et de `last_error` ; événements d'intégration avec des identifiants seulement.
+- `sql.unsafe` : proposer `sql.identifier(whitelist, key)` typé par `keyof` et réserver `unsafe` aux littéraux.
+- Config : `WEB_ORIGIN` validé comme URL (https hors local) ; OpenAPI protégé en preprod.
+- React Compiler par l'option native expérimentale de `@vitejs/plugin-react` (D-014) : surveiller, repli Babel documenté.
 
 ## Lots MVP (ordre proposé, cycle Disponibilité → Réservation → Paiement → Prestation terminée)
 

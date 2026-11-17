@@ -92,8 +92,8 @@ export interface SqlReader {
 // shared/infrastructure/database/typeorm-sql-reader.ts
 @Injectable()
 export class TypeOrmSqlReader implements SqlReader {
-  constructor(@InjectDataSource('read') private readonly ds: DataSource) {}   // réplica possible
-  many<T>(q: SqlStatement) { return this.ds.query(q.text, [...q.values]) as Promise<T[]>; }
+  constructor(@InjectDataSource() private readonly ds: DataSource) {}   // réplica : DataSource nommée plus tard
+  async many<T>(q: SqlStatement) { return (await this.ds.query(q.text, [...q.values])) as T[]; }
   // …
 }
 ```
@@ -105,21 +105,18 @@ export class TypeOrmSqlReader implements SqlReader {
 ## `TransactionalCommandBus`
 
 ```ts
-@Injectable()
-export class TransactionalCommandBus {
-  constructor(
-    private readonly bus: CommandBus,
-    private readonly txHost: TransactionHost<TransactionalAdapterTypeOrm>,
-    private readonly afterCommit: AfterCommitQueue,          // outbox relay + SSE
-  ) {}
-
-  async execute<R>(cmd: Command<R>): Promise<R> {
-    const result = await this.txHost.withTransaction(() => this.bus.execute(cmd));
-    await this.afterCommit.flush();                          // seulement après commit réussi
-    return result;
-  }
+// shared/application/transactional-command-bus.ts (code réel du socle)
+execute<R>(command: Command<R>): Promise<R> {
+  return this.inTransaction(() => this.bus.execute(command));
+}
+inTransaction<R>(work: () => Promise<R>): Promise<R> {
+  // AfterCommit ouvre une file dans le contexte CLS, la vide seulement si le commit a réussi
+  return this.afterCommit.runInScope(() => this.txHost.withTransaction(work));
 }
 ```
+
+- Une action à faire **après** le commit (SSE, réveil du relais d'outbox) passe par `AfterCommit.register(fn)` ; hors transaction du bus, elle part tout de suite.
+- `DomainEventDispatcher.dispatch(aggregate.pullEvents())` dans `save()` : `DomainEvent` → subscribers synchrones ; `IntegrationEvent` (classe avec `static type` et `integration = true`) → ligne d'outbox. Le relais livre chaque ligne dans sa propre transaction, `processed_events` rend chaque consommateur idempotent.
 
 Isolation par défaut `READ COMMITTED` ; les invariants de concurrence reposent sur les contraintes de base (exclusion, unicité) et le verrou optimiste, pas sur un niveau d'isolation plus fort.
 
@@ -133,30 +130,21 @@ Isolation par défaut `READ COMMITTED` ; les invariants de concurrence reposent 
 
 ## Configuration
 
-```ts
-// shared/infrastructure/config/env.schema.ts
-export const EnvSchema = z.object({
-  APP_ENV: z.enum(['local', 'test', 'preprod', 'prod']),
-  DB_PASSWORD: z.string().min(16),
-  SESSION_SECRET: z.string().min(64),
-  APP_ENCRYPTION_KEY: z.string().regex(/^[A-Za-z0-9+/]{43}=$/),   // 32 octets en base64
-  // … une entrée par variable de backend/.env.example
-}).strict();
-```
-
-Validation au démarrage (`ConfigModule.forRoot({ validate: (env) => EnvSchema.parse(env) })`) : une variable manquante ou faible arrête l'app. Les secrets ne sont jamais loggés (redaction `nestjs-pino` : `req.headers.cookie`, `*.password`, `*.otp`, `*.token`, `*.phone`).
+- `shared/infrastructure/config/env.schema.ts` : une entrée Zod par variable de `backend/.env.example` (secrets mesurés en octets base64, placeholders `<…>` refusés, règles prod dans `superRefine`). Nouvelle variable → schéma + `.env.example` dans le même commit.
+- `main.ts` : `loadLocalEnvFile()` puis `AppModule.forRoot(loadConfig())` ; la config est injectée par `@Inject(APP_CONFIG) config: AppConfig`. Pas de `@nestjs/config` (D-011). Une variable manquante ou faible arrête l'app ; le message ne cite que le nom des variables. Les secrets ne sont jamais loggés (redaction `nestjs-pino` : `req.headers.cookie`, `*.password`, `*.otp`, `*.token`, `*.phone`).
 
 ## Migrations TypeORM
 
-- `backend/src/database/data-source.ts` : même config que l'app, `migrations: ['src/database/migrations/*.ts']`, `synchronize: false`.
-- Scripts `package.json` : `migration:generate`, `migration:create`, `migration:run`, `migration:revert`, `migration:show` (via la CLI TypeORM sur `data-source.ts`).
+- Pas de glob (ESM, tests sous Vitest) : **registres** `src/database/entities.ts` et `src/database/migrations.ts`, lus par `dataSourceOptions(config)` (app, CLI, tests).
+- `migration:create <Nom>` écrit la migration et l'ajoute au registre ; `migration:generate src/database/migrations/<Nom>` compile puis diffe les entités (ajouter ensuite la migration au registre) ; `migration:run|revert|show` passent par `dist/database/cli.js`.
 - Générer, **relire** chaque instruction, compléter à la main ce que TypeORM ne sait pas faire (`CREATE EXTENSION btree_gist`, `EXCLUDE USING gist`, index partiels `WHERE deleted_at IS NULL`, index d'expression). `down()` réel.
 - Jamais `schema:sync`, `schema:drop`, `synchronize: true`, `dropSchema: true` (hook de garde).
 
 ## Tests
 
 - `vitest.config.ts` avec `projects` : `unit` (`tests/unit/**/*.test.ts`), `integration` (`*.int.test.ts`), `e2e` (`*.e2e.test.ts`) ; plugin `unplugin-swc` (décorateurs + metadata).
-- Intégration/E2E : `@testcontainers/postgresql` (image `postgres:17`), migrations appliquées une fois sur une base modèle puis `CREATE DATABASE … TEMPLATE …` par worker ; app Nest complète pour l'E2E (`Test.createTestingModule({ imports: [AppModule] })` autorisé **en E2E seulement**), `supertest` avec un agent qui garde le cookie de session et le jeton CSRF.
+- Intégration/E2E : `src/test-support/postgres.global-setup.ts` démarre `postgres:17` (Testcontainers) et migre une base modèle ; `startTestApp({ controllers?, providers?, overrides? })` clone une base par fichier et monte l'app complète (gardes, session, CSRF réels) ; `t.browser()` est un agent supertest qui garde les cookies et envoie le jeton CSRF sur `post()`. Droits fixés par le test : `overrides: [[ACTOR_RIGHTS, new GrantedRights({...})]]`. `Test.createTestingModule` n'apparaît que dans `test-support/`.
+- Un test d'intégration qui passe du premier coup se vérifie par une mutation volontaire (casser la règle, voir rouge, rétablir).
 - Adapters externes en test : `FakePaymentGateway`, `FakeSmsSender`, `InMemoryRealtimePublisher` qui **enregistrent** ce qui sort ; `FixedClock`, `SequentialIdGenerator`.
 
 ## Checklist avant de valider

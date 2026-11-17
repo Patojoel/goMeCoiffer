@@ -1,0 +1,18 @@
+packages:
+  - backend
+  - frontend
+  - packages/*
+allowBuilds:
+  '@scarf/scarf': false
+  '@swc/core': true
+  cpu-features: false
+  protobufjs: false
+  ssh2: false
+minimumReleaseAgeExclude:
+  - dependency-cruiser@18.8.0
+  - '@nestjs/common@12.5.1'
+  - '@nestjs/core@12.5.1'
+  - '@nestjs/platform-express@12.5.1'
+  - '@nestjs/terminus@12.2.0'
+  - '@nestjs/testing@12.5.1'
+  - nestjs-pino@5.3.2
