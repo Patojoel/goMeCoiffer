@@ -26,6 +26,9 @@ let raw=""; process.stdin.on("data",d=>raw+=d); process.stdin.on("end",()=>{
 ')"
 
 [ -z "$WT_ROOT" ] && WT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+# Chemin canonique de git (lettre de lecteur en majuscule sous Windows) : le harness compare
+# le chemin rendu à celui que git résout dans le worktree.
+[ -n "$WT_ROOT" ] && WT_ROOT="$(git -C "$WT_ROOT" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$WT_ROOT")"
 
 if [[ -z "$WT_NAME" || -z "$WT_ROOT" ]]; then
   echo "create-worktree: name/root introuvables dans l'entrée du hook — voir $dir/wt-last-input.json" >&2
