@@ -14,6 +14,7 @@ import { PublicController } from './http/public.controller.js';
 import { RealtimeController } from './realtime/realtime.controller.js';
 import { SseRealtimePublisher } from './realtime/sse-realtime.publisher.js';
 import { NoRightsYet } from './security/guards.js';
+import { RouteProtectionCheck } from './security/route-protection.check.js';
 import { CSRF_PROTECTION, csrfProtection } from './security/http-security.js';
 
 /** Socle transverse injectable partout : ports techniques, bus transactionnel, événements, temps réel. */
@@ -28,6 +29,7 @@ import { CSRF_PROTECTION, csrfProtection } from './security/http-security.js';
     DomainEventDispatcher,
     OutboxRelay,
     PendingMigrationsCheck,
+    RouteProtectionCheck,
     SseRealtimePublisher,
     { provide: REALTIME_PUBLISHER, useExisting: SseRealtimePublisher },
     { provide: CLOCK, useClass: SystemClock },

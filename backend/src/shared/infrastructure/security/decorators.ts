@@ -17,8 +17,12 @@ export const RequiresPermission = (code: string) => SetMetadata(REQUIRED_PERMISS
 /** Rôle système GoMeCoiffer (SUPER_ADMIN, OPERATIONS_ADMIN, FINANCE_ADMIN), pour /api/admin/*. */
 export const RequiresSystemRole = (role: string) => SetMetadata(REQUIRED_SYSTEM_ROLE, role);
 
-/** Webhooks signés uniquement : la signature remplace le CSRF. */
+/** Webhooks signés uniquement (/api/webhooks/*) : la signature remplace le CSRF. */
 export const SkipCsrf = () => SetMetadata(SKIP_CSRF, true);
+
+export const AUTHENTICATED_ONLY = 'gmc:authenticated-only';
+/** Déclare qu'une route de /api/salon/* n'exige qu'une session (ex. flux SSE) : sans marqueur, l'API refuse de démarrer. */
+export const AuthenticatedOnly = () => SetMetadata(AUTHENTICATED_ONLY, true);
 
 export type ActorRequest = Request & { actor?: Actor };
 

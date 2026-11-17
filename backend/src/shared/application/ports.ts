@@ -41,10 +41,13 @@ export interface Actor {
 }
 
 export const ACTOR_RIGHTS = Symbol('ACTOR_RIGHTS');
-/** Droits d'un utilisateur : permissions dans le salon actif et rôles système. Fourni par le module des comptes. */
+/**
+ * Droits d'un utilisateur, relus à chaque requête : appartenance au salon actif, permissions dans ce salon,
+ * rôles système. Fourni par le module des comptes (lot 1).
+ */
 export interface ActorRights {
   resolve(
     userId: string,
     activeSalonId: string | null,
-  ): Promise<{ permissions: readonly string[]; systemRoles: readonly string[] }>;
+  ): Promise<{ isMember: boolean; permissions: readonly string[]; systemRoles: readonly string[] }>;
 }

@@ -1,7 +1,8 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClsService } from 'nestjs-cls';
-import { ACTOR_RIGHTS, type Actor, type ActorRights } from '../../application/ports.js';
+import { ACTOR_RIGHTS, type Actor, type ActorRights, CLOCK, type Clock } from '../../application/ports.js';
+import { APP_CONFIG, type AppConfig } from '../config/app-config.module.js';
 import { CSRF_PROTECTION, type CsrfProtection } from './http-security.js';
 import {
   type ActorRequest,
@@ -41,6 +42,8 @@ export class AuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly cls: ClsService,
     @Inject(ACTOR_RIGHTS) private readonly rights: ActorRights,
+    @Inject(CLOCK) private readonly clock: Clock,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async canActivate(ctx: ExecutionContext): Promise<boolean> {
@@ -48,8 +51,20 @@ export class AuthGuard implements CanActivate {
     const req = ctx.switchToHttp().getRequest<ActorRequest>();
     const userId = req.session?.userId;
     if (!userId) throw new UnauthenticatedError();
-    const activeSalonId = req.session.activeSalonId ?? null;
-    const { permissions, systemRoles } = await this.rights.resolve(userId, activeSalonId);
+
+    // Durée absolue depuis la connexion : l'expiration glissante seule laisserait vivre un cookie volé.
+    const authenticatedAt = req.session.authenticatedAt ?? 0;
+    if (this.clock.now().getTime() - authenticatedAt > this.config.SESSION_MAX_AGE_HOURS * 3_600_000) {
+      await new Promise<void>((done) => req.session.destroy(() => done()));
+      throw new UnauthenticatedError();
+    }
+
+    let activeSalonId = req.session.activeSalonId ?? null;
+    const { isMember, permissions, systemRoles } = await this.rights.resolve(userId, activeSalonId);
+    if (activeSalonId && !isMember) {
+      req.session.activeSalonId = null;
+      activeSalonId = null;
+    }
     const actor: Actor = {
       userId,
       activeSalonId,
@@ -90,6 +105,6 @@ export class PermissionsGuard implements CanActivate {
 @Injectable()
 export class NoRightsYet implements ActorRights {
   async resolve() {
-    return { permissions: [], systemRoles: [] };
+    return { isMember: false, permissions: [], systemRoles: [] };
   }
 }

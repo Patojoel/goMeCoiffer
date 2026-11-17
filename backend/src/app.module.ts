@@ -13,6 +13,7 @@ import { dataSourceOptions } from './shared/infrastructure/database/typeorm-opti
 import { ApiResponseInterceptor } from './shared/infrastructure/http/api-response.interceptor.js';
 import { DomainExceptionFilter } from './shared/infrastructure/http/domain-exception.filter.js';
 import { contractValidationPipe } from './shared/infrastructure/http/validation.pipe.js';
+import { safeError } from './shared/infrastructure/logging/safe-error.js';
 import { AuthGuard, CsrfGuard, PermissionsGuard } from './shared/infrastructure/security/guards.js';
 import { SharedModule } from './shared/infrastructure/shared.module.js';
 
@@ -39,6 +40,7 @@ export class AppModule {
           pinoHttp: {
             level: config.LOG_LEVEL,
             redact: { paths: REDACTED, censor: '[masqué]' },
+            serializers: { err: safeError },
             transport:
               config.APP_ENV === 'local'
                 ? { target: 'pino-pretty', options: { singleLine: true } }

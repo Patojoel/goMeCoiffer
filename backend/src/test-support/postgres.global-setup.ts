@@ -23,7 +23,7 @@ const TEMPLATE = 'gmc_template';
 /** Un PostgreSQL 17 par projet de tests ; base modèle posée par les vraies migrations, clonée par fichier. */
 export default async function setup(project: TestProject) {
   const container = await new PostgreSqlContainer('postgres:17')
-    .withPassword('gomecoiffer-test-only')
+    .withPassword('gomecoiffer-test-only-password')
     .start();
   const server: PgTestServer = {
     host: container.getHost(),

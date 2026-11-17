@@ -22,6 +22,7 @@ export function dataSourceOptions(config: AppConfig): DataSourceOptions {
     synchronize: false,
     dropSchema: false,
     namingStrategy: new SnakeNamingStrategy(),
-    logging: config.DB_LOGGING ? ['query', 'error'] : ['error'],
+    // Jamais ['error'] : TypeORM écrirait la requête en échec et ses paramètres (données clients) hors de pino.
+    logging: config.DB_LOGGING ? ['query', 'error'] : false,
   };
 }

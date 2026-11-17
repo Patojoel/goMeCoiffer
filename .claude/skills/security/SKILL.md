@@ -81,6 +81,14 @@ description: Invariants de sécurité de GoMeCoiffer (SaaS multi-salons + market
 - Flux privés : session authentifiée et origine vérifiées ; destinataires choisis par le serveur ; un client ne choisit jamais le salon ou l'utilisateur écouté.
 - Flux public de disponibilités : identifiants d'intervenant et signal de changement seulement.
 
+## Acquis du socle (revue du 17/11) — à respecter par chaque module
+
+- Une route se range dans son espace (`public`, `salon`, `admin`, `webhooks`) avec sa protection : sinon l'API ne démarre pas (`RouteProtectionCheck`). Une route salon sans permission précise porte `@AuthenticatedOnly()` explicitement.
+- Connexion (lot 1) : `req.session.regenerate()`, puis `userId`, `authenticatedAt`, `save()` ; nouveau jeton CSRF renvoyé (`generateCsrfToken(req, res, { overwrite: true })`) ; à la déconnexion `session.destroy()` + effacement des cookies de session et CSRF. Tests : l'id de session change à la connexion, un jeton CSRF d'avant la connexion est refusé après.
+- `ActorRights.resolve` renvoie l'appartenance au salon actif : un salon quitté n'est plus jamais écouté ni lu.
+- Lien sécurisé (réservation, proposition) : le GET ouvre une page, l'action passe par un POST protégé par CSRF (les aperçus WhatsApp suivent les liens).
+- Logs : ne jamais logger une erreur SQL brute ni un objet client ; `safeError` est le sérialiseur `err`.
+
 ## Checklist avant de valider
 
 - [ ] Ressource chargée filtrée par le salon actif (pas d'IDOR, 404 hors périmètre) ?

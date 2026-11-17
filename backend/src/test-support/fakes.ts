@@ -26,8 +26,10 @@ export class GrantedRights implements ActorRights {
   ) {}
 
   async resolve(userId: string, activeSalonId: string | null) {
+    const inSalon = activeSalonId ? this.rights[userId]?.[activeSalonId] : undefined;
     return {
-      permissions: activeSalonId ? (this.rights[userId]?.[activeSalonId] ?? []) : [],
+      isMember: inSalon !== undefined,
+      permissions: inSalon ?? [],
       systemRoles: this.systemRoles[userId] ?? [],
     };
   }

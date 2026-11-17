@@ -5,6 +5,10 @@ d'une évolution. Les règles de fond sont dans `CLAUDE.md` et les skills ; ici,
 
 ## Socle (lot 0, une seule fois)
 
+> **Fait le 17/11/2026** (voir `docs/EVOLUTIONS.md`). Écarts assumés : config par `AppConfigModule` (D-011), pas de
+> `terminus` (D-013), pas d'ESLint (oxlint seul pour l'instant), shadcn écrit à la main (button, card, skeleton).
+> Restes : voir `docs/BACKLOG.md` § lot 1 et durcissements.
+
 **Monorepo**
 - [ ] `pnpm-workspace.yaml` (`backend`, `frontend`, `packages/*`), `.nvmrc` (24), `package.json` racine avec `dev`, `test`, `lint`, `typecheck`, `arch`, `mutation`.
 - [ ] `packages/contracts` : Zod 4, export ESM, `ApiResponse<T>` et codes d'erreur partagés.

@@ -11,7 +11,7 @@ const validLocal = {
   DB_HOST: '127.0.0.1',
   DB_NAME: 'gomecoiffer',
   DB_USER: 'gomecoiffer',
-  DB_PASSWORD: 'a-long-enough-password',
+  DB_PASSWORD: 'a-long-enough-database-password',
   SESSION_SECRET: b64(64),
   CSRF_SECRET: b64(48),
   TOKEN_HASH_PEPPER: b64(48),
@@ -38,6 +38,38 @@ describe('Starting the API with its configuration', () => {
     expect(run).toThrow(/COOKIE_SECURE/);
     expect(run).toThrow(/DB_SSL/);
     expect(run).toThrow(/PAYMENT_PROVIDER/);
+  });
+
+  it.each([
+    ['a long but repetitive secret', 'a'.repeat(88)],
+    ['a readable word repeated', 'gomecoiffer-'.repeat(8)],
+    ['a value that is not strict base64', 'Password123!'.repeat(8)],
+  ])('refuses %s as session secret', (_why, value) => {
+    expect(() => parseEnv({ ...validLocal, SESSION_SECRET: value })).toThrow(/SESSION_SECRET/);
+  });
+
+  it('refuses the same secret reused for two purposes', () => {
+    expect(() => parseEnv({ ...validLocal, CSRF_SECRET: validLocal.TOKEN_HASH_PEPPER })).toThrow(
+      /CSRF_SECRET/,
+    );
+  });
+
+  it('refuses to start in production with fake SMS, SQL logging or a development NODE_ENV', () => {
+    const run = () =>
+      parseEnv({
+        ...validLocal,
+        APP_ENV: 'prod',
+        SMS_PROVIDER: 'fake',
+        DB_LOGGING: 'true',
+        NODE_ENV: 'development',
+      });
+    expect(run).toThrow(/SMS_PROVIDER/);
+    expect(run).toThrow(/DB_LOGGING/);
+    expect(run).toThrow(/NODE_ENV/);
+  });
+
+  it('refuses a real payment provider without its API address and key', () => {
+    expect(() => parseEnv({ ...validLocal, PAYMENT_PROVIDER: 'campay' })).toThrow(/PAYMENT_API_KEY/);
   });
 
   it('never repeats the value of a secret in its error message', () => {

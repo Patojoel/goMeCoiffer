@@ -115,7 +115,8 @@ Le contenu et le parcours validés ne changent pas sans accord : une refonte tou
 
 | Couche | Choix | Notes |
 |---|---|---|
-| Runtime | **Node.js 24 LTS** | `.nvmrc` / `engines`, `node --env-file` en local |
+| Runtime | **Node.js 24 LTS**, **pnpm 11** | `.nvmrc` / `engines` ; pnpm 11 applique une politique d'âge des versions (`minimumReleaseAgeExclude`) et n'exécute que les scripts d'install listés dans `allowBuilds` (`pnpm-workspace.yaml`) |
+| Langage | **TypeScript 6.0** (pas 7 : `@nestjs/swagger` 12 ne l'accepte pas), ESM partout | côté API, build et tests par **SWC** (décorateurs + metadata) |
 | Monorepo | **pnpm workspaces** | `backend/` (paquet `api`), `frontend/` (paquet `web`), `packages/contracts` (`@gomecoiffer/contracts`) |
 | Backend | **NestJS 12**, `@nestjs/cqrs`, `nestjs-cls` + `@nestjs-cls/transactional` + `@nestjs-cls/transactional-adapter-typeorm` | validation **Standard Schema** native (`@Body({ schema })`) |
 | Persistance | **PostgreSQL 17** + **TypeORM** (migrations TypeORM) | écriture : entités et repositories TypeORM ; **lecture : SQL pur écrit dans `application/`**, exécuté par le port `SqlReader` (paramètres liés) |
@@ -128,9 +129,9 @@ Le contenu et le parcours validés ne changent pas sans accord : une refonte tou
 | UI | Tailwind CSS v4 + shadcn/ui (Radix) + lucide-react | formulaires `react-hook-form` + `zod` |
 | Tests | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation) | pas de Jest, pas de `vi.mock` de module |
 | Qualité | oxlint + ESLint, Prettier, **dependency-cruiser** (`pnpm arch`) | les règles d'architecture sont vérifiées par outil |
-| Observabilité | `nestjs-pino` (JSON, redaction PII), `@nestjs/terminus` | |
+| Observabilité | `nestjs-pino` (JSON, redaction PII), `GET /api/public/health` (ping de la base) | |
 
-> À l'initialisation du socle, vérifier dans la doc officielle les API récentes citées ici (`@Body({ schema })` de NestJS 12, adaptateur TypeORM de `@nestjs-cls/transactional`, CLI TypeORM sous ESM). Toute brique remplacée met à jour cette table **et** les skills concernés dans le même commit, avec une ligne dans `docs/DECISIONS.md`.
+> Versions vérifiées au socle (17/11/2026) : NestJS 12.5, TypeORM 1.1, nestjs-cls 7 / transactional 4, Zod 4.6, Vite 8.3, React 19.3, Vitest 5.1. `@Body({ schema })` + `StandardSchemaValidationPipe` confirmés dans `@nestjs/common` 12. Toute brique remplacée met à jour cette table **et** les skills concernés dans le même commit, avec une ligne dans `docs/DECISIONS.md`.
 
 ---
 
@@ -154,11 +155,12 @@ pnpm test                                   # suite complète (une fois, avant l
 pnpm lint && pnpm typecheck && pnpm arch    # qualité + règles d'architecture
 pnpm mutation --filter <app>                # Stryker, sur les règles sensibles
 
-# Base de données (TypeORM)
-pnpm --filter api migration:generate src/database/migrations/<NomDeLaMigration>   # puis RELIRE le SQL
-pnpm --filter api migration:create   src/database/migrations/<NomDeLaMigration>   # migration écrite à la main (index, contrainte d'exclusion…)
+# Base de données (TypeORM) — les scripts compilent d'abord (nest build) puis lisent backend/.env
+pnpm --filter api migration:create <NomEnPascalCase>   # migration écrite à la main, ajoutée au registre automatiquement
+pnpm --filter api migration:generate src/database/migrations/<NomEnPascalCase>   # diff des entités : RELIRE, puis l'ajouter à src/database/migrations.ts
 pnpm --filter api migration:run
 pnpm --filter api migration:show            # migrations en attente
+pnpm --filter api migration:revert
 pnpm --filter api db:seed                   # données de démo
 ```
 
@@ -174,10 +176,14 @@ Ports locaux (bloc **10400-10409**, publiés sur `127.0.0.1`, surchargeables dan
 backend/src/
   main.ts                      # bootstrap : pino, helmet, CORS allowlist, session, CSRF, shutdown hooks, OpenAPI hors prod
   app.module.ts
+  app.setup.ts                 # middlewares HTTP communs à main.ts et aux tests E2E
   database/
-    data-source.ts             # DataSource TypeORM pour la CLI (même config que l'app)
+    data-source.ts  cli.ts     # DataSource de la CLI TypeORM (même config que l'app) ; run/revert/show
+    entities.ts                # REGISTRE des entités TypeORM (aucun glob : ESM + tests)
+    migrations.ts              # REGISTRE des migrations, dans l'ordre
     migrations/                # migrations TypeORM versionnées (<timestamp>-<Nom>.ts)
-    seed/                      # données de démo
+    seed/                      # données de démo (un seeder idempotent par module)
+  test-support/                # Testcontainers (base modèle migrée, clone par fichier), startTestApp, Browser (session + CSRF), fakes
   shared/                      # socle transverse (voir I.5)
   modules/<module>/
     domain/                    # agrégats, VO, événements, erreurs, ports (interfaces de repository, de passerelles)
@@ -354,7 +360,9 @@ Tableau des événements et de leurs subscribers : `docs/events.md`.
 ### I.4. Couche HTTP
 
 - Préfixe global `/api`. OpenAPI : `@nestjs/swagger` (plugin CLI), servi sur `/api/docs` **hors prod**.
-- Espaces de routes : `/api/public/*` (marketplace, réservation client, liens de reprogrammation — `@Public()`), `/api/salon/*` (back-office, salon actif de la session), `/api/admin/*` (administration GoMeCoiffer, `@RequiresSystemRole`), `/api/webhooks/*` (agrégateur de paiement, `@Public()` + signature).
+- Espaces de routes : `/api/public/*` (marketplace, réservation client, liens de reprogrammation — `@Public()`), `/api/salon/*` (back-office, salon actif de la session, `@RequiresPermission` ou `@AuthenticatedOnly()`), `/api/admin/*` (administration GoMeCoiffer, `@RequiresSystemRole`), `/api/webhooks/*` (agrégateur de paiement, `@Public()` + `@SkipCsrf()` + signature). **`RouteProtectionCheck` refuse de démarrer l'API** si une route sort de ces espaces ou oublie la protection de son espace.
+- Session : expiration glissante (`SESSION_TTL_HOURS`) **et** durée absolue depuis la connexion (`SESSION_MAX_AGE_HOURS`, `session.authenticatedAt`) ; l'appartenance au salon actif est relue à chaque requête (`ActorRights.resolve` → `isMember`), un salon quitté est oublié. Un flux SSE se referme au bout de 30 min.
+- Logs : sérialiseur `safeError` (jamais requête SQL, paramètres ni `detail` PostgreSQL) ; journalisation SQL de TypeORM seulement avec `DB_LOGGING=true`, interdit hors local.
 - Contrôleur mince : extrait les entrées validées et l'acteur, construit la commande/query, appelle `TransactionalCommandBus` / `QueryBus`. Aucune logique métier.
 - **Validation** : schémas Zod de `packages/contracts` passés aux décorateurs (`@Body({ schema: CreateBookingSchema })`, `@Query({ schema })`), mode strict (clé inconnue = refus). Les ids de route passent par `ParseUUIDPipe`.
 - **Réponse standard** : `ApiResponse<T>` (`shared/infrastructure/http`) — `{ status: 'OK', data }` ou `{ status: 'ERROR', message, code, errors? }`, posé par un intercepteur global.
@@ -466,7 +474,7 @@ frontend/src/
 
 ## III. ENVIRONNEMENT
 
-- **API** : `@nestjs/config` + schéma Zod de toutes les variables, validé au démarrage (fail-fast : variable manquante, secret trop court, `synchronize` demandé → refus de démarrer). `backend/.env.example` liste chaque variable avec un placeholder et est commité ; `backend/.env` contient les vraies valeurs locales, **n'est jamais commité ni lu par un agent** (hook de garde), et n'est jamais recopié dans un rapport. Secrets de prod/preprod : variables d'environnement du serveur, jamais un fichier du dépôt.
+- **API** : `AppConfigModule.forRoot(loadConfig())` + schéma Zod de toutes les variables (`shared/infrastructure/config/env.schema.ts`), validé avant la construction de l'app et injecté par le token `APP_CONFIG` (fail-fast : variable manquante, secret trop court ou recopié du modèle, cookie non sécurisé / base sans TLS / OpenAPI ou paiement `fake` en prod → refus de démarrer). En local, `backend/.env` est chargé par `process.loadEnvFile` sans écraser les variables déjà posées. `backend/.env.example` liste chaque variable avec un placeholder et est commité ; `backend/.env` contient les vraies valeurs locales, **n'est jamais commité ni lu par un agent** (hook de garde), et n'est jamais recopié dans un rapport. Secrets de prod/preprod : variables d'environnement du serveur, jamais un fichier du dépôt.
 - **Web** : `VITE_API_BASE_URL` (défaut `http://localhost:10400`), `VITE_APP_NAME`. Toute variable `VITE_*` est **publique** (figée dans le bundle) : jamais de secret.
 - Profils : `local`, `test`, `preprod`, `prod` (`NODE_ENV` + `APP_ENV`).
 
@@ -491,5 +499,6 @@ Checklists complètes (backend, frontend, socle) : `docs/checklists.md`.
 - **Gateways injectés** côté front : jamais importés dans un thunk, un slice ou un composant.
 - **Redux Persist** : seuls les slices explicitement listés en `whitelist` sont persistés ; le cache RTK Query ne l'est jamais.
 - **Contrats partagés** : un changement de schéma dans `packages/contracts` se répercute sur l'API, le web et l'OpenAPI dans le même commit.
-- **ESM** : imports relatifs avec extension `.js` côté API, `import.meta.dirname` au lieu de `__dirname` (à confirmer à l'init du socle avec la CLI TypeORM, voir `docs/DECISIONS.md`).
+- **ESM** : imports relatifs avec extension `.js` côté API, `import.meta.dirname` au lieu de `__dirname` (confirmé, D-009).
+- **Nouvelle entité ou migration** : l'ajouter au registre (`src/database/entities.ts`, `src/database/migrations.ts`) ; sans cela, ni l'app ni les tests ne la voient.
 - **Journal** : chaque évolution livrée a son entrée dans `docs/EVOLUTIONS.md` ; tout point relevé et non traité va dans `docs/BACKLOG.md`.
