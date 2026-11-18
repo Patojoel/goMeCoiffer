@@ -14,6 +14,7 @@ import {
   fakeSecretHasher,
   InMemoryAuditTrail,
   InMemoryOtpChallengeRepository,
+  InMemoryOtpSendHistory,
   InMemorySmsSender,
   InMemoryUserRepository,
 } from '../fakes/identity-fakes.js';
@@ -49,6 +50,7 @@ describe('Signing up as a salon owner', () => {
     requestCode = new RequestSignUpCodeHandler(
       users,
       challenges,
+      new InMemoryOtpSendHistory(challenges),
       new FixedOtpCodes(codes),
       fakeSecretHasher,
       sms,

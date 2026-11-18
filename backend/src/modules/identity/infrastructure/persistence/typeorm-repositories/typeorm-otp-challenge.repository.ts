@@ -8,7 +8,6 @@ import { OtpChallenge } from '../../../domain/aggregates/otp-challenge.js';
 import type { OtpPurpose } from '../../../domain/enums/otp-purpose.enum.js';
 import { OtpStatus } from '../../../domain/enums/otp-status.enum.js';
 import type { OtpChallengeRepository } from '../../../domain/repositories/write/otp-challenge.repository.js';
-import type { CodeSend } from '../../../domain/value-objects/code-send.js';
 import { OtpChallengeOrmEntity } from '../orm-entities/otp-challenge.orm-entity.js';
 
 @Injectable()
@@ -27,20 +26,6 @@ export class TypeOrmOtpChallengeRepository implements OtpChallengeRepository {
   /** Verrou consultatif PostgreSQL libéré au commit ou à l'annulation de la transaction en cours. */
   async lockSendingFor(phone: PhoneNumber): Promise<void> {
     await this.txHost.tx.query(`SELECT pg_advisory_xact_lock(hashtext('otp:' || $1))`, [phone.value]);
-  }
-
-  async recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date): Promise<readonly CodeSend[]> {
-    const rows = await this.repo
-      .createQueryBuilder('c')
-      .select('c.sent_at', 'sentAt')
-      .addSelect(`CASE WHEN c.status = 'CONSUMED' THEN c.attempts - 1 ELSE c.attempts END`, 'failedAttempts')
-      .where('c.phone = :phone AND c.purpose = :purpose AND c.sent_at > :since', {
-        phone: phone.value,
-        purpose,
-        since,
-      })
-      .getRawMany<{ sentAt: Date; failedAttempts: number }>();
-    return rows.map((r) => ({ sentAt: r.sentAt, failedAttempts: Number(r.failedAttempts) }));
   }
 
   async save(challenge: OtpChallenge): Promise<void> {

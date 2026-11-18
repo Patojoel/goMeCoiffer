@@ -14,6 +14,10 @@ import { OTP_CODE_GENERATOR, type OtpCodeGenerator } from '../../../domain/ports
 import { SECRET_HASHER, type SecretHasher } from '../../../domain/ports/secret-hasher.port.js';
 import { SMS_SENDER, type SmsSender } from '../../../domain/ports/sms-sender.port.js';
 import {
+  OTP_SEND_HISTORY,
+  type OtpSendHistory,
+} from '../../../domain/repositories/read/otp-send-history.read-repository.js';
+import {
   OTP_CHALLENGE_REPOSITORY,
   type OtpChallengeRepository,
 } from '../../../domain/repositories/write/otp-challenge.repository.js';
@@ -31,6 +35,7 @@ export class RequestSignUpCodeHandler implements ICommandHandler<RequestSignUpCo
   constructor(
     @Inject(USER_REPOSITORY) private readonly users: UserRepository,
     @Inject(OTP_CHALLENGE_REPOSITORY) private readonly challenges: OtpChallengeRepository,
+    @Inject(OTP_SEND_HISTORY) private readonly sendHistory: OtpSendHistory,
     @Inject(OTP_CODE_GENERATOR) private readonly codes: OtpCodeGenerator,
     @Inject(SECRET_HASHER) private readonly hasher: SecretHasher,
     @Inject(SMS_SENDER) private readonly sms: SmsSender,
@@ -48,7 +53,7 @@ export class RequestSignUpCodeHandler implements ICommandHandler<RequestSignUpCo
     await this.challenges.lockSendingFor(phone);
     const now = this.clock.now();
     assertCanSendCode(
-      await this.challenges.recentSends(phone, OtpPurpose.SIGN_UP, sendingWindowStart(now)),
+      await this.sendHistory.recentSends(phone, OtpPurpose.SIGN_UP, sendingWindowStart(now)),
       now,
     );
 

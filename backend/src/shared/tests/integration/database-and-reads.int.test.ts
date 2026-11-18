@@ -1,3 +1,5 @@
+import { TransactionHost } from '@nestjs-cls/transactional';
+import type { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -30,6 +32,20 @@ describe('Reading the database with pure SQL', () => {
     expect(await db.many(sql`SELECT action FROM audit_log WHERE action = ${'BOOKING_CANCELLED'}`)).toEqual([
       { action: 'BOOKING_CANCELLED' },
     ]);
+  });
+
+  it('lets a command read what it has already written, inside its own transaction', async () => {
+    const txHost = t.moduleRef.get<TransactionHost<TransactionalAdapterTypeOrm>>(TransactionHost);
+
+    const seen = await txHost.withTransaction(async () => {
+      await txHost.tx.query(
+        `INSERT INTO audit_log (id, action, subject_type, occurred_at)
+         VALUES ('0195f000-0000-7000-8000-000000000002', 'READ_IN_SAME_TRANSACTION', 'probe', now())`,
+      );
+      return db.many(sql`SELECT action FROM audit_log WHERE action = ${'READ_IN_SAME_TRANSACTION'}`);
+    });
+
+    expect(seen).toEqual([{ action: 'READ_IN_SAME_TRANSACTION' }]);
   });
 
   it('reports a missing row as not found when exactly one is expected', async () => {

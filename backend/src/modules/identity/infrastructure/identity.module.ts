@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../../../shared/infrastructure/config/app-config.module.js';
 import { ConfirmSignUpHandler } from '../application/commands/confirm-sign-up/confirm-sign-up.handler.js';
 import { RequestSignUpCodeHandler } from '../application/commands/request-sign-up-code/request-sign-up-code.handler.js';
+import { SqlOtpSendHistory } from '../application/read-repositories/sql-otp-send-history.js';
 import { COMMON_PASSWORDS } from '../domain/ports/common-passwords.port.js';
 import { OTP_CODE_GENERATOR } from '../domain/ports/otp-code-generator.port.js';
 import { PASSWORD_HASHER } from '../domain/ports/password-hasher.port.js';
 import { SECRET_HASHER } from '../domain/ports/secret-hasher.port.js';
 import { SMS_SENDER } from '../domain/ports/sms-sender.port.js';
+import { OTP_SEND_HISTORY } from '../domain/repositories/read/otp-send-history.read-repository.js';
 import { OTP_CHALLENGE_REPOSITORY } from '../domain/repositories/write/otp-challenge.repository.js';
 import { USER_REPOSITORY } from '../domain/repositories/write/user.repository.js';
 import { CommonPasswordList } from './crypto/common-passwords.js';
@@ -24,6 +26,7 @@ import { LoggingSmsSender } from './sms/logging-sms-sender.js';
     ConfirmSignUpHandler,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: OTP_CHALLENGE_REPOSITORY, useClass: TypeOrmOtpChallengeRepository },
+    { provide: OTP_SEND_HISTORY, useClass: SqlOtpSendHistory },
     { provide: SECRET_HASHER, useClass: HmacSecretHasher },
     { provide: OTP_CODE_GENERATOR, useClass: CryptoOtpCodeGenerator },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },

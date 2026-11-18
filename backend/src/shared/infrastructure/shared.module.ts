@@ -1,7 +1,14 @@
 import { Global, Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
 import { AfterCommit } from '../application/after-commit.js';
-import { ACTOR_RIGHTS, AUDIT_TRAIL, CLOCK, ID_GENERATOR, READ_DB, REALTIME_PUBLISHER } from '../application/ports.js';
+import {
+  ACTOR_RIGHTS,
+  AUDIT_TRAIL,
+  CLOCK,
+  ID_GENERATOR,
+  READ_DB,
+  REALTIME_PUBLISHER,
+} from '../application/ports.js';
 import { TransactionalCommandBus } from '../application/transactional-command-bus.js';
 import { APP_CONFIG, type AppConfig } from './config/app-config.module.js';
 import { PendingMigrationsCheck } from './database/pending-migrations.guard.js';

@@ -12,7 +12,10 @@ export interface IdGenerator {
 }
 
 export const READ_DB = Symbol('READ_DB');
-/** Exécute le SQL pur des QueryHandlers ; les valeurs sont toujours des paramètres liés. */
+/**
+ * Exécute le SQL pur des lectures (QueryHandlers et repositories de lecture) ; les valeurs sont toujours des
+ * paramètres liés. Appelé dans une commande, il lit dans la transaction de la commande.
+ */
 export interface SqlReader {
   many<T>(query: SqlStatement): Promise<readonly T[]>;
   /** 0 ligne → NotFoundError. */

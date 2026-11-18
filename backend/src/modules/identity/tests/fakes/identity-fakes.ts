@@ -10,6 +10,7 @@ import type { OtpCodeGenerator } from '../../domain/ports/otp-code-generator.por
 import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js';
 import type { SecretHasher } from '../../domain/ports/secret-hasher.port.js';
 import type { SmsSender } from '../../domain/ports/sms-sender.port.js';
+import type { OtpSendHistory } from '../../domain/repositories/read/otp-send-history.read-repository.js';
 import type { OtpChallengeRepository } from '../../domain/repositories/write/otp-challenge.repository.js';
 import type { UserRepository } from '../../domain/repositories/write/user.repository.js';
 import type { NewPassword } from '../../domain/value-objects/new-password.js';
@@ -69,12 +70,6 @@ export class InMemoryOtpChallengeRepository implements OtpChallengeRepository {
   /** Les tests unitaires sont séquentiels ; la sérialisation réelle est prouvée en E2E. */
   async lockSendingFor() {}
 
-  async recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date) {
-    return [...this.rows.values()]
-      .filter((r) => r.phone === phone.value && r.purpose === purpose && r.sentAt > since)
-      .map((r) => ({ sentAt: r.sentAt, failedAttempts: OtpChallenge.restore(r).failedAttempts }));
-  }
-
   async save(challenge: OtpChallenge) {
     const next = challenge.snapshot();
     const current = this.rows.get(next.id);
@@ -84,6 +79,18 @@ export class InMemoryOtpChallengeRepository implements OtpChallengeRepository {
 
   all() {
     return [...this.rows.values()];
+  }
+}
+
+/** Lit les défis du faux repository d'écriture, comme la requête SQL lit la table `otp_challenges`. */
+export class InMemoryOtpSendHistory implements OtpSendHistory {
+  constructor(private readonly challenges: InMemoryOtpChallengeRepository) {}
+
+  async recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date) {
+    return this.challenges
+      .all()
+      .filter((r) => r.phone === phone.value && r.purpose === purpose && r.sentAt > since)
+      .map((r) => ({ sentAt: r.sentAt, failedAttempts: OtpChallenge.restore(r).failedAttempts }));
   }
 }
 

@@ -14,6 +14,10 @@ import {
   type OtpChallengeRepository,
 } from '../../domain/repositories/write/otp-challenge.repository.js';
 import { USER_REPOSITORY, type UserRepository } from '../../domain/repositories/write/user.repository.js';
+import {
+  OTP_SEND_HISTORY,
+  type OtpSendHistory,
+} from '../../domain/repositories/read/otp-send-history.read-repository.js';
 import { NewPassword } from '../../domain/value-objects/new-password.js';
 
 const MIREILLE = PhoneNumber.parse('6 77 12 34 56');
@@ -33,6 +37,7 @@ describe('Storing accounts and SMS codes in PostgreSQL', () => {
   let db: DataSource;
   let users: UserRepository;
   let challenges: OtpChallengeRepository;
+  let sendHistory: OtpSendHistory;
   let hasher: SecretHasher;
 
   beforeAll(async () => {
@@ -40,6 +45,7 @@ describe('Storing accounts and SMS codes in PostgreSQL', () => {
     db = t.moduleRef.get(getDataSourceToken());
     users = t.moduleRef.get(USER_REPOSITORY);
     challenges = t.moduleRef.get(OTP_CHALLENGE_REPOSITORY);
+    sendHistory = t.moduleRef.get(OTP_SEND_HISTORY);
     hasher = t.moduleRef.get(SECRET_HASHER);
   });
   afterAll(() => t.close());
@@ -140,10 +146,10 @@ describe('Storing accounts and SMS codes in PostgreSQL', () => {
       }),
     );
 
-    expect(await challenges.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:00:00Z'))).toEqual([
+    expect(await sendHistory.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:00:00Z'))).toEqual([
       { sentAt, failedAttempts: 1 },
     ]);
-    expect(await challenges.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:45:00Z'))).toEqual([]);
+    expect(await sendHistory.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:45:00Z'))).toEqual([]);
   });
 
   it('hashes passwords with argon2id, never in clear', async () => {
