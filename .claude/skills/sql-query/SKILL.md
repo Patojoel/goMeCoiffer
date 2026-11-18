@@ -69,7 +69,7 @@ this.db.many(sql`… WHERE b.salon_id = ${salonId} AND b.starts_at >= ${from}`);
 
 ## Checklist avant de valider
 
-- [ ] SQL pur dans `application/queries`, gabarit `sql`, `SqlReader`, aucune concaténation ni ORM ?
+- [ ] SQL pur dans `application/queries` (ou `application/read-repositories` pour une lecture utile à une commande), gabarit `sql`, `SqlReader`, aucune concaténation ni ORM ?
 - [ ] CTE filtrées à l'entrée par salon, projection minimale, pas d'O(n²) JS ?
 - [ ] Read models `readonly`, alias camelCase ?
 - [ ] Test E2E écrit d'abord et vert, avec un cas d'isolation entre salons ?

@@ -35,7 +35,8 @@ Charge `CLAUDE.md`, `docs/domains.md`, `docs/events.md`, `docs/checklists.md` et
 - Contrainte d'exclusion de non-chevauchement et index uniques partiels (proposition active unique) présents quand le module les exige ?
 
 **QueryHandlers**
-- SQL pur dans `application/queries`, gabarit `sql`, `SqlReader` ; aucun ORM ; aucun `sql.unsafe` sur une entrée ; CTE filtrées à l'entrée ; read models `readonly` ?
+- Structure du module conforme à `CLAUDE.md` §I.1 (D-024) : un fichier par concept, `repositories/write` (TypeORM, agrégats seulement) et `repositories/read` (SQL pur en `application/read-repositories`), commande en 3 fichiers avec sa `.response.ts` ?
+- SQL pur dans `application/queries` et `application/read-repositories`, gabarit `sql`, `SqlReader` ; aucun ORM ; aucun `sql.unsafe` sur une entrée ; CTE filtrées à l'entrée ; read models `readonly` ?
 - Testé en **E2E uniquement**, avec un cas d'isolation ; rapport d'index fourni (fondé sur `pg_indexes`/`EXPLAIN`, pas estimé) ?
 
 **Tests**

@@ -25,10 +25,15 @@ Référence des modules de `backend/src/modules/`, de leurs commandes et de leur
 | Module | Commande | Route | Permission | UC |
 |---|---|---|---|---|
 | `identity` | `RequestSignUpCode` — demander un code d'inscription (réponse identique quel que soit le numéro) | `POST /api/public/sign-up/code` | publique, CSRF, 30/h par IP | UC-001 |
-| `identity` | `ConfirmSignUp` — confirmer le code et créer ou compléter le compte propriétaire ; refus de code renvoyé (`SignUpResult`), levé après commit | `POST /api/public/sign-up` | publique, CSRF, 60/h par IP | UC-001 |
+| `identity` | `ConfirmSignUp` — confirmer le code et créer ou compléter le compte propriétaire ; refus de code renvoyé (`ConfirmSignUpResponse`), levé après commit | `POST /api/public/sign-up` | publique, CSRF, 60/h par IP | UC-001 |
 
-**Module modèle provisoire** : `identity` (domaine pur, ports par token, repositories TypeORM à verrou optimiste,
-fakes in-memory, tests unit / intégration / E2E). À reproduire pour les modules suivants.
+**Module modèle provisoire** : `identity`, à reproduire pour les modules suivants :
+- domaine pur, un fichier par concept (D-024) ;
+- ports par token ;
+- repositories d'écriture TypeORM à verrou optimiste ;
+- repository de lecture en SQL pur (`OtpSendHistory` → `application/read-repositories/sql-otp-send-history.ts`) ;
+- commandes en 3 fichiers (commande, handler, réponse) ;
+- fakes in-memory et tests unit / intégration / E2E.
 
 ## Queries par module
 

@@ -19,6 +19,35 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-18 — Refactoring de structure du module `identity` (D-024)
+
+- **Quoi** : chaque concept a son fichier, rangé par rôle. Le changement porte sur la structure, sans changer le
+  comportement : contrat HTTP, codes d'erreur et schéma de base restent identiques.
+  - **Domaine** : `aggregates/`, `value-objects/`, `enums/`, `exceptions/` (9 erreurs, un fichier chacune),
+    `ports/` (6 ports), `repositories/write/` et `repositories/read/`, `services/` (politique d'envoi), `messages/`
+    (textes des SMS, sortis de `application/`).
+  - **Application** : chaque commande a son fichier `.response.ts`. L'étape suivante après l'inscription est
+    décidée par l'application ; le contrôleur n'ajoute que le jeton CSRF.
+  - **Infrastructure** : `persistence/orm-entities/` et `persistence/typeorm-repositories/`.
+- **Pourquoi** : demande du user, pour des fichiers courts, faciles à trouver, et une séparation nette entre
+  écriture (TypeORM) et lecture (SQL pur), jusque dans les repositories.
+- **Périmètre** :
+  - l'historique des codes envoyés (limites D-021/D-023) devient un repository de lecture `OtpSendHistory`,
+    implémenté en SQL pur dans `application/read-repositories/` ; le repository TypeORM ne charge et ne sauve plus
+    que des agrégats ;
+  - `SqlReader` (socle) lit désormais dans la transaction en cours quand il y en a une ;
+  - règles du projet mises à jour : `CLAUDE.md` §I.1, skills `hexagonal`, `ddd`, `sql-query`, agent `archi-reviewer`,
+    checklist « nouveau module ».
+- **Vérification** : mode **light**.
+  - Backend : 128 tests verts (78 unitaires, 22 intégration, 28 E2E). Les tests existants n'ont changé que par
+    leurs imports.
+  - Nouveau test d'intégration (lecture dans la transaction de la commande), vu rouge puis vert.
+  - Requête de l'historique cassée volontairement : détectée par l'intégration et par l'E2E « rafale = un seul SMS ».
+  - Typecheck, oxlint et `pnpm arch` verts.
+  - Revue `security-reviewer` : rien à corriger. Un durcissement noté dans le code et le backlog : la limite d'envoi
+    suppose l'isolation READ COMMITTED.
+- **Suites** : appliquer la même structure à `shared/domain` si le user le souhaite (backlog).
+
 ### 2026-11-18 — UC-001 Créer son compte propriétaire (backend)
 
 - **Quoi** : un responsable de salon crée son compte avec son numéro, prouvé par un code SMS, et un mot de

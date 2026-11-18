@@ -69,6 +69,16 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Liste des mots de passe courants : charger une liste issue des fuites publiques (top 10k à 100k, ≥ 10 caractères)
   en plus de la liste locale (D3).
 - Alerte d'exploitation sur le volume de codes faux et de SMS envoyés (détection d'attaque et de facture SMS).
+- Limite d'envoi et niveau d'isolation (revue sécurité du refactoring D-024, 18/11) :
+  - la lecture de l'historique après le verrou par numéro suppose READ COMMITTED (défaut PostgreSQL) ;
+  - si l'isolation par défaut change un jour (`defaultTxOptions` du plugin transactionnel), figer READ COMMITTED
+    sur `RequestSignUpCode` ;
+  - garder l'E2E « rafale = un seul SMS » avec la configuration de prod.
+
+## Structure (refactoring D-024, 18/11)
+
+- Le socle `shared/domain` (erreurs, VO transverses) garde l'ancienne organisation (`errors.ts` regroupe les erreurs
+  de base). À aligner sur D-024 si le user le souhaite.
 
 ## Durcissements relevés au socle (17/11, revue sécurité), à traiter quand le besoin arrive
 
