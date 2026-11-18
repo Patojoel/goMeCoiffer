@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../../../shared/infrastructure/config/app-config.module.js';
 import { ConfirmSignUpHandler } from '../application/commands/confirm-sign-up/confirm-sign-up.handler.js';
 import { RequestSignUpCodeHandler } from '../application/commands/request-sign-up-code/request-sign-up-code.handler.js';
+import { GetMySessionHandler } from '../application/queries/get-my-session/get-my-session.handler.js';
 import { SqlOtpSendHistory } from '../application/read-repositories/sql-otp-send-history.js';
 import { COMMON_PASSWORDS } from '../domain/ports/common-passwords.port.js';
 import { OTP_CODE_GENERATOR } from '../domain/ports/otp-code-generator.port.js';
@@ -13,6 +14,7 @@ import { OTP_CHALLENGE_REPOSITORY } from '../domain/repositories/write/otp-chall
 import { USER_REPOSITORY } from '../domain/repositories/write/user.repository.js';
 import { CommonPasswordList } from './crypto/common-passwords.js';
 import { Argon2PasswordHasher, CryptoOtpCodeGenerator, HmacSecretHasher } from './crypto/secrets.js';
+import { SessionController } from './http/session.controller.js';
 import { SignUpController } from './http/sign-up.controller.js';
 import { TypeOrmOtpChallengeRepository } from './persistence/typeorm-repositories/typeorm-otp-challenge.repository.js';
 import { TypeOrmUserRepository } from './persistence/typeorm-repositories/typeorm-user.repository.js';
@@ -20,10 +22,11 @@ import { LoggingSmsSender } from './sms/logging-sms-sender.js';
 
 /** Comptes, connexion et défis SMS. */
 @Module({
-  controllers: [SignUpController],
+  controllers: [SignUpController, SessionController],
   providers: [
     RequestSignUpCodeHandler,
     ConfirmSignUpHandler,
+    GetMySessionHandler,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: OTP_CHALLENGE_REPOSITORY, useClass: TypeOrmOtpChallengeRepository },
     { provide: OTP_SEND_HISTORY, useClass: SqlOtpSendHistory },
