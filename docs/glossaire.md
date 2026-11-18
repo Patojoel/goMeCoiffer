@@ -27,4 +27,8 @@ Vocabulaire du PRD, à employer **mot pour mot** dans les use cases et les écra
 | Incident de paiement | Paiement arrivé après expiration alors que le créneau n'est plus disponible ; à résoudre ou rembourser. | PRD BR-06 |
 | Publication | Mise en ligne d'un salon dans la marketplace (au moins une prestation, un professionnel éligible, des horaires valides). | PRD §7 étape 7 |
 | Abonnement | Forfait SaaS mensuel ou annuel facturé par salon. | PRD §10, F08 |
+| Compte client léger | Compte d'un client sans mot de passe, identifié par son numéro vérifié par code SMS ; il retrouve ses réservations à chaque vérification. | D-018 |
+| Compte propriétaire | Compte d'un responsable de salon : numéro vérifié, mot de passe, sans rôle tant qu'il n'a pas créé son organisation. | UC-001 |
+| Code de vérification (défi SMS) | Code à 6 chiffres envoyé par SMS pour prouver la possession d'un numéro ; valable 5 minutes, 5 essais, un seul actif par numéro et par motif (inscription, mot de passe oublié, invitation, vérification client). | D-017, UC-001 |
+| Numéro vérifié | Numéro dont la possession a été prouvée par un code de vérification, avec la date de la preuve. | UC-001 |
 | Période de grâce | Délai après expiration de l'abonnement avant la suspension des nouvelles réservations publiques. | PRD F08 |
