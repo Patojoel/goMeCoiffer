@@ -2,6 +2,7 @@ import { DomainError } from '../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../shared/domain/phone-number.js';
 import type { NewPassword } from './new-password.js';
 import type { OtpChallenge, OtpPurpose, SecretVerifier } from './otp-challenge.js';
+import type { CodeSend } from './otp-sending-policy.js';
 import type { User } from './user.js';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
@@ -12,9 +13,14 @@ export interface UserRepository {
 
 export const OTP_CHALLENGE_REPOSITORY = Symbol('OTP_CHALLENGE_REPOSITORY');
 export interface OtpChallengeRepository {
+  /**
+   * Sérialise jusqu'à la fin de la transaction les demandes de code d'un même numéro : sans cela, des demandes
+   * simultanées lisent toutes un historique vide et envoient chacune un SMS.
+   */
+  lockSendingFor(phone: PhoneNumber): Promise<void>;
   findActive(phone: PhoneNumber, purpose: OtpPurpose): Promise<OtpChallenge | null>;
-  /** Heures d'envoi des défis de ce numéro (tous motifs) depuis `since`. */
-  sendTimesSince(phone: PhoneNumber, since: Date): Promise<readonly Date[]>;
+  /** Envois de ce numéro pour ce motif depuis `since`, avec le nombre de codes faux saisis pour chacun. */
+  recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date): Promise<readonly CodeSend[]>;
   save(challenge: OtpChallenge): Promise<void>;
 }
 

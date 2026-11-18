@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InvalidValueError } from '../../../../shared/domain/errors.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
+import { OtpChallenge } from '../../domain/otp-challenge.js';
 import { FixedClock, SequentialIdGenerator } from '../../../../test-support/fakes.js';
 import { ConfirmSignUp } from '../../application/commands/confirm-sign-up/confirm-sign-up.command.js';
 import { ConfirmSignUpHandler } from '../../application/commands/confirm-sign-up/confirm-sign-up.handler.js';
@@ -104,6 +105,36 @@ describe('Signing up as a salon owner', () => {
       });
       sms.outage = false;
       advance(30);
+
+      await expect(requestCode.execute(new RequestSignUpCode(MIREILLE))).resolves.toBeDefined();
+    });
+
+    it('stops sending sign-up codes after 10 wrong codes on this number within 24 hours', async () => {
+      for (let round = 0; round < 2; round++) {
+        await requestCode.execute(new RequestSignUpCode(MIREILLE));
+        for (const wrong of ['000001', '000002', '000003', '000004', '000005'])
+          await confirm.execute(owner(wrong));
+        advance(60);
+      }
+
+      await expect(requestCode.execute(new RequestSignUpCode(MIREILLE))).rejects.toMatchObject({
+        code: 'OTP_TOO_MANY_REQUESTS',
+      });
+    });
+
+    it('does not let codes sent for another purpose use up the sign-up quota', async () => {
+      const phone = PhoneNumber.parse(MIREILLE);
+      for (let i = 0; i < 5; i++) {
+        const reset = OtpChallenge.issue({
+          id: `reset-${i}`,
+          phone,
+          purpose: 'PASSWORD_RESET',
+          codeHash: 'x',
+          now: clock.now(),
+        });
+        reset.supersede();
+        await challenges.save(reset);
+      }
 
       await expect(requestCode.execute(new RequestSignUpCode(MIREILLE))).resolves.toBeDefined();
     });
@@ -242,6 +273,10 @@ describe('Signing up as a salon owner', () => {
       expect(users.all()).toHaveLength(1);
       expect(audit.entries[0]?.action).toBe('CLIENT_ACCOUNT_COMPLETED_AS_OWNER');
     });
+  });
+
+  it('never reveals the password nor the code if the command is logged or serialised', () => {
+    expect(JSON.stringify(owner('482913'))).not.toMatch(/482913|Akwa-Tresses-27/);
   });
 
   it('never signs up again a number that already has a password, even with a valid code', async () => {

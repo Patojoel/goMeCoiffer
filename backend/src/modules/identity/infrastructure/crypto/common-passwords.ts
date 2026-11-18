@@ -94,22 +94,48 @@ const COMMON = [
   'zzzzzzzzzz',
   'xxxxxxxxxx',
   'abc',
-  'azerty123',
+  // suites de clavier (une fois les chiffres retirés : « 1q2w3e4r5t » → « qwert »)
+  'qwert',
+  'qwertz',
+  'azert',
+  'asdf',
+  'asdfgh',
+  'asdfghjkl',
+  'zxcvbn',
+  'qazwsx',
+  'wxcvbn',
+  'aqwzsx',
 ];
 const LIST = new Set(COMMON);
 
-const base = (candidate: string) =>
+/** Seules les lettres comptent : chiffres et symboles ajoutés avant, au milieu ou après ne rendent pas un mot rare. */
+const lettersOf = (candidate: string) =>
   candidate
     .toLowerCase()
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
-    .replace(/[\d\W_]+$/u, '')
-    .replace(/[\s'_-]+/g, '');
+    .replace(/[^a-z]/g, '');
 
+/** « azertyazerty » : un mot courant répété reste courant. */
+const isRepetitionOfCommonWord = (letters: string) => {
+  for (let size = 1; size <= letters.length / 2; size++) {
+    const word = letters.slice(0, size);
+    if (letters.length % size === 0 && LIST.has(word) && word.repeat(letters.length / size) === letters)
+      return true;
+  }
+  return false;
+};
+
+/**
+ * Liste locale (mots camerounais, métier du salon, suites de clavier) et règles de motifs. À compléter par une
+ * liste issue des fuites publiques (backlog).
+ */
 @Injectable()
 export class CommonPasswordList implements CommonPasswords {
   includes(candidate: string): boolean {
-    const b = base(candidate);
-    return b.length === 0 || LIST.has(b) || /^(.)\1+$/.test(b) || /^\d+$/.test(candidate);
+    const letters = lettersOf(candidate);
+    return (
+      letters.length < 3 || /^(.)\1+$/.test(letters) || LIST.has(letters) || isRepetitionOfCommonWord(letters)
+    );
   }
 }

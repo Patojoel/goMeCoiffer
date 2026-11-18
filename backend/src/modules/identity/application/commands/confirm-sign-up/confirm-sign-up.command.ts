@@ -25,4 +25,9 @@ export class ConfirmSignUp extends Command<SignUpResult> {
     this.email = input.email;
     this.password = input.password;
   }
+
+  /** Une commande journalisée ou sérialisée ne montre jamais le mot de passe ni le code. */
+  toJSON() {
+    return { phone: this.phone, name: this.name, email: this.email, code: '***', password: '***' };
+  }
 }

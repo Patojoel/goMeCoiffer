@@ -34,6 +34,11 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Textes des conditions d'utilisation et de la politique de confidentialité** à rédiger (acceptation obligatoire
   à l'inscription, D-022) ; d'ici là, l'écran pointe vers des pages provisoires. À fournir avant la production.
 - **Stockage des photos de salon** en prod (disque du serveur ou stockage objet).
+- **Numéros recyclés par les opérateurs (avant UC-009)** — revue sécurité UC-001 (C3), 18/11 : MTN et Orange
+  réattribuent les numéros inactifs ; le nouveau titulaire qui vérifie le numéro par SMS hériterait de l'historique
+  client de l'ancien (salons, dates, prestations), et l'inscription (RG-001-10) le figerait sous son mot de passe.
+  Options : détacher l'historique si le numéro n'a pas été vérifié depuis N mois, ou ne montrer que les
+  réservations postérieures à la dernière vérification. À trancher avant d'ouvrir les comptes clients légers.
 
 ## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
 
@@ -47,6 +52,23 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   `main.tsx`, le relancer au changement de salon actif et le couper à la déconnexion ; relecture de secours
   (20-30 s) tant que le flux est coupé.
 - Vérifier le rendu à 390 px des écrans du socle (non vérifié : pas d'outil de capture pendant le lot 0).
+- **Écran d'inscription (front de UC-001)** : non fait, à la demande du user (back seul, 18/11). Le contrat
+  `@gomecoiffer/contracts` (`RequestSignUpCodeSchema`, `ConfirmSignUpSchema`, `SignedUpSchema`) est prêt ; après
+  l'inscription, le front doit prendre le `csrfToken` renvoyé (la session est régénérée).
+
+## Avant de brancher un vrai fournisseur SMS (revue sécurité UC-001, 18/11)
+
+- L'appel au fournisseur se fait aujourd'hui dans la transaction de la commande (sérialisée par numéro) : avec un
+  fournisseur lent, ~10 demandes simultanées occupent tout le pool (`DB_POOL_MAX=10`). Avant le branchement :
+  délai d'expiration court (≤ 3 s) sur l'appel, et passage à un envoi après commit (défi enregistré « en cours »,
+  puis `ACTIVE` ou `FAILED` exclu des quotas) si la latence réelle le justifie.
+- Préprod : bac à sable du fournisseur ou liste blanche de numéros de test (le faux fournisseur masque désormais
+  le code hors local et test : on ne peut plus s'inscrire en préprod en lisant les logs).
+- Limite par IP et CGNAT des opérateurs (D2) : stockage partagé du limiteur avant une 2e instance ; défi
+  anti-robot plutôt que limite par IP plus stricte en cas d'abus.
+- Liste des mots de passe courants : charger une liste issue des fuites publiques (top 10k à 100k, ≥ 10 caractères)
+  en plus de la liste locale (D3).
+- Alerte d'exploitation sur le volume de codes faux et de SMS envoyés (détection d'attaque et de facture SMS).
 
 ## Durcissements relevés au socle (17/11, revue sécurité), à traiter quand le besoin arrive
 

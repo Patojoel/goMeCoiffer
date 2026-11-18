@@ -87,6 +87,11 @@ export class OtpChallenge extends AggregateRoot {
     return { accepted: true };
   }
 
+  /** Codes faux saisis : l'essai qui a consommé le code n'en est pas un. */
+  get failedAttempts(): number {
+    return this.state.status === 'CONSUMED' ? this.state.attempts - 1 : this.state.attempts;
+  }
+
   supersede(): void {
     if (this.state.status === 'ACTIVE') this.state.status = 'SUPERSEDED';
   }

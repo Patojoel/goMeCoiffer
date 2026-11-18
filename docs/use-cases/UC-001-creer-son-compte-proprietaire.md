@@ -70,7 +70,7 @@ Le visiteur choisit « Créer mon compte salon » depuis la marketplace ou la pa
 | RG-001-02 | Le numéro doit être camerounais : +237 suivi de 9 chiffres commençant par 6 (mobile) ou 2 (fixe). | « 6 77 12 34 56 » → +237677123456 accepté ; « 6 77 12 34 5 » (8 chiffres) refusé ; « +33 6 12 34 56 78 » refusé. | EX-018, [HYPOTHÈSE] Q7 |
 | RG-001-03 | Le compte n'est créé qu'**après** la saisie du bon code SMS envoyé au numéro. | Sans code, rien n'est créé, même si le formulaire est complet. | D-017 |
 | RG-001-04 | Un code d'inscription compte **6 chiffres**, est valable **5 minutes**, accepte **5 essais** et ne sert **qu'une fois**. | Code envoyé à 10 h 00 → refusé à 10 h 05 et 1 seconde ; 6e essai refusé même avec le bon code. | skill security |
-| RG-001-05 | Un nouveau code ne peut être demandé **qu'après 60 secondes**, et au plus **5 codes par numéro et par heure**. | Demande à 10 h 00 puis à 10 h 00 min 40 s → refusée (« patientez 20 secondes ») ; 6e demande dans l'heure → refusée. | skill security, D-021 |
+| RG-001-05 | Pour un même numéro et un même motif : un nouveau code **après 60 secondes** seulement, au plus **5 codes par heure et 10 par 24 h**, et **plus aucun code après 10 codes faux en 24 h**. Les envois des autres motifs (mot de passe oublié…) ne comptent pas. | Demande à 10 h 00 puis à 10 h 00 min 40 s → refusée (« patientez 20 secondes ») ; 6e demande dans l'heure → refusée. | D-021, D-023 |
 | RG-001-06 | Un seul code est actif par numéro pour l'inscription : un nouveau code **annule** le précédent. | Codes 482913 puis 105377 : seul 105377 est accepté. | skill security |
 | RG-001-07 | Le mot de passe compte **10 à 128 caractères**, ne figure pas dans la liste des mots de passe courants et ne reprend pas le numéro. | « salon2026 » (9) refusé ; « 677123456ab » refusé (contient le numéro) ; « motdepasse123 » refusé (courant) ; « Akwa-Tresses-27 » accepté. | D-017, D-020 |
 | RG-001-08 | Le nom du responsable est obligatoire, de 2 à 80 caractères. | « Mireille Ndongo » accepté ; « M » refusé. | EX-018 |
@@ -234,6 +234,13 @@ Fonctionnalité: Créer son compte propriétaire
   @erreur @RG-001-05
   Scénario: Plus de 5 codes en une heure pour le même numéro sont refusés
     Étant donné que 5 codes ont été envoyés au 6 77 12 34 56 depuis 9 h 10
+    Quand Mireille demande un nouveau code à 10 h 00
+    Alors la demande est refusée
+    Et le motif indiqué est "Trop de codes demandés pour ce numéro. Réessayez dans une heure ou contactez l'assistance."
+
+  @erreur @RG-001-05 @securite
+  Scénario: Après 10 codes faux en 24 heures, plus aucun code n'est envoyé au numéro
+    Étant donné que 10 codes faux ont été saisis pour le 6 77 12 34 56 depuis hier 11 h 00
     Quand Mireille demande un nouveau code à 10 h 00
     Alors la demande est refusée
     Et le motif indiqué est "Trop de codes demandés pour ce numéro. Réessayez dans une heure ou contactez l'assistance."
@@ -437,7 +444,7 @@ client). Seul le **motif** change. Il se conçoit une fois, dans UC-001, et chaq
 | un numéro = une identité ; client léger complété plutôt que dupliqué | contrainte d'unicité du numéro en base (garantie contre deux requêtes simultanées) |
 | longueur du mot de passe, interdiction du numéro dans le mot de passe | hachage argon2id ; liste des mots de passe courants (fichier de données) |
 | aucun rôle à la création | session, cookie, régénération de l'identifiant |
-| la panne d'envoi ne compte pas dans le quota | appel au fournisseur SMS, envoi **après** l'enregistrement du code (sinon un code peut arriver sans exister) |
+| la panne d'envoi ne compte pas dans le quota | appel au fournisseur SMS **avant** l'enregistrement du code, dans la même transaction : une panne n'enregistre rien (RG-001-15) ; une base en échec après l'envoi laisse un code inutilisable, que l'utilisateur redemande (cas rare, sans risque) — choix fait à l'implémentation |
 | | limitation par adresse IP |
 
 ### Incréments livrables, dans l'ordre

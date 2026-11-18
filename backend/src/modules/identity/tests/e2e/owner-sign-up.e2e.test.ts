@@ -157,6 +157,30 @@ describe('A salon owner signs up with a phone number proved by SMS', () => {
     expect(await accountsFor('+237652000002')).toBe(1);
   });
 
+  it('sends a single SMS when many code requests for the same number arrive at once', async () => {
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => requestCode(t.browser(), '6 54 00 00 04')),
+    );
+
+    expect(results.filter((r) => r.status === 202)).toHaveLength(1);
+    expect(sms.sent.filter((s) => s.to === '+237654000004')).toHaveLength(1);
+  });
+
+  it('destroys the visitor session once the account is created', async () => {
+    const browser = t.browser();
+    const visitorCookie = sessionCookie(await browser.get('/api/public/session/csrf'));
+    const visitorSid = decodeURIComponent(visitorCookie!.split(';')[0]!.split('=')[1]!)
+      .replace(/^s:/, '')
+      .replace(/\.[^.]+$/, '');
+    await requestCode(browser, '6 56 00 00 06');
+
+    await confirm(browser, '6 56 00 00 06', codeIn(sms.lastTo('+237656000006')));
+
+    expect(
+      Number((await db.query(`SELECT count(*) AS n FROM sessions WHERE sid = $1`, [visitorSid]))[0].n),
+    ).toBe(0);
+  });
+
   it('lists the fields to correct when the form breaks the contract', async () => {
     const res = await t
       .browser()

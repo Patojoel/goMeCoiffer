@@ -66,8 +66,6 @@ export const EnvSchema = z
     CSRF_SECRET: secret(32),
 
     TOKEN_HASH_PEPPER: secret(32),
-    OTP_TTL_SECONDS: int.positive().default(300),
-    OTP_MAX_ATTEMPTS: int.positive().default(5),
 
     BOOKING_PAYMENT_HOLD_MINUTES: int.positive().default(10),
     RESCHEDULE_PROPOSAL_TTL_HOURS: int.positive().default(24),

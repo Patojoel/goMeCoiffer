@@ -5,6 +5,7 @@ import { ConcurrencyConflictError, ConflictError } from '../../../../shared/doma
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { isPgError } from '../../../../shared/infrastructure/database/pg-error.js';
 import { OtpChallenge, type OtpPurpose } from '../../domain/otp-challenge.js';
+import type { CodeSend } from '../../domain/otp-sending-policy.js';
 import type { OtpChallengeRepository } from '../../domain/ports.js';
 import { OtpChallengeOrmEntity } from './otp-challenge.orm-entity.js';
 
@@ -21,13 +22,23 @@ export class TypeOrmOtpChallengeRepository implements OtpChallengeRepository {
     return row ? OtpChallenge.restore(row) : null;
   }
 
-  async sendTimesSince(phone: PhoneNumber, since: Date): Promise<readonly Date[]> {
+  /** Verrou consultatif PostgreSQL libéré au commit ou à l'annulation de la transaction en cours. */
+  async lockSendingFor(phone: PhoneNumber): Promise<void> {
+    await this.txHost.tx.query(`SELECT pg_advisory_xact_lock(hashtext('otp:' || $1))`, [phone.value]);
+  }
+
+  async recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date): Promise<readonly CodeSend[]> {
     const rows = await this.repo
       .createQueryBuilder('c')
       .select('c.sent_at', 'sentAt')
-      .where('c.phone = :phone AND c.sent_at > :since', { phone: phone.value, since })
-      .getRawMany<{ sentAt: Date }>();
-    return rows.map((r) => r.sentAt);
+      .addSelect(`CASE WHEN c.status = 'CONSUMED' THEN c.attempts - 1 ELSE c.attempts END`, 'failedAttempts')
+      .where('c.phone = :phone AND c.purpose = :purpose AND c.sent_at > :since', {
+        phone: phone.value,
+        purpose,
+        since,
+      })
+      .getRawMany<{ sentAt: Date; failedAttempts: number }>();
+    return rows.map((r) => ({ sentAt: r.sentAt, failedAttempts: Number(r.failedAttempts) }));
   }
 
   async save(challenge: OtpChallenge): Promise<void> {

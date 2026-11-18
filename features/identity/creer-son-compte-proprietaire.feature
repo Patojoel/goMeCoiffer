@@ -81,6 +81,13 @@ Fonctionnalité: Créer son compte propriétaire
     Alors la demande est refusée
     Et le motif indiqué est "Trop de codes demandés pour ce numéro. Réessayez dans une heure ou contactez l'assistance."
 
+  @erreur @RG-001-05 @securite
+  Scénario: Après 10 codes faux en 24 heures, plus aucun code n'est envoyé au numéro
+    Étant donné que 10 codes faux ont été saisis pour le 6 77 12 34 56 depuis hier 11 h 00
+    Quand Mireille demande un nouveau code à 10 h 00
+    Alors la demande est refusée
+    Et le motif indiqué est "Trop de codes demandés pour ce numéro. Réessayez dans une heure ou contactez l'assistance."
+
   @erreur @RG-001-04
   Plan du scénario: Un code n'est valable que 5 minutes
     Étant donné que Mireille a reçu le code "482913" à 10 h 00 min 00 s

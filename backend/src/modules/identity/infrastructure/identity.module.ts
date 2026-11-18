@@ -34,7 +34,7 @@ import { LoggingSmsSender } from './sms/logging-sms-sender.js';
       provide: SMS_SENDER,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) => {
-        if (config.SMS_PROVIDER === 'fake') return new LoggingSmsSender();
+        if (config.SMS_PROVIDER === 'fake') return new LoggingSmsSender(['local', 'test'].includes(config.APP_ENV));
         throw new Error(
           `Fournisseur SMS « ${config.SMS_PROVIDER} » non encore branché : voir docs/BACKLOG.md.`,
         );

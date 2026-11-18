@@ -43,12 +43,14 @@ export class RequestSignUpCodeHandler implements ICommandHandler<RequestSignUpCo
 
   /**
    * Un défi est créé dans tous les cas, même pour un numéro déjà inscrit (D-019) : la réponse et le quota
-   * sont les mêmes, seul le SMS diffère. Le SMS part avant l'enregistrement : s'il échoue, rien n'est compté.
+   * sont les mêmes, seul le SMS diffère. Les demandes d'un même numéro passent une à une (verrou), et le SMS
+   * part avant l'enregistrement : s'il échoue, rien n'est compté.
    */
   async execute({ phone: rawPhone }: RequestSignUpCode): Promise<SignUpCodeSent> {
     const phone = PhoneNumber.parse(rawPhone);
+    await this.challenges.lockSendingFor(phone);
     const now = this.clock.now();
-    assertCanSendCode(await this.challenges.sendTimesSince(phone, sendingWindowStart(now)), now);
+    assertCanSendCode(await this.challenges.recentSends(phone, 'SIGN_UP', sendingWindowStart(now)), now);
 
     const existing = await this.users.findByPhone(phone);
     const code = this.codes.next();

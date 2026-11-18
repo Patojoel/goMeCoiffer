@@ -120,21 +120,33 @@ describe('Storing accounts and SMS codes in PostgreSQL', () => {
     );
   });
 
-  it('lists when codes were sent to a number, for the sending limits', async () => {
+  it('lists the codes sent to a number for one purpose, with their wrong attempts, for the sending limits', async () => {
     const phone = PhoneNumber.parse('6 53 00 00 03');
     const sentAt = new Date('2026-11-18T08:30:00Z');
+    const signUp = OtpChallenge.issue({
+      id: '0195f000-0000-7000-8000-000000000601',
+      phone,
+      purpose: 'SIGN_UP',
+      codeHash: hasher.hash('482913'),
+      now: sentAt,
+    });
+    signUp.verify('000000', sentAt, hasher);
+    signUp.verify('482913', sentAt, hasher);
+    await challenges.save(signUp);
     await challenges.save(
       OtpChallenge.issue({
-        id: '0195f000-0000-7000-8000-000000000601',
+        id: '0195f000-0000-7000-8000-000000000602',
         phone,
-        purpose: 'SIGN_UP',
+        purpose: 'PASSWORD_RESET',
         codeHash: 'x',
         now: sentAt,
       }),
     );
 
-    expect(await challenges.sendTimesSince(phone, new Date('2026-11-18T08:00:00Z'))).toEqual([sentAt]);
-    expect(await challenges.sendTimesSince(phone, new Date('2026-11-18T08:45:00Z'))).toEqual([]);
+    expect(await challenges.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:00:00Z'))).toEqual([
+      { sentAt, failedAttempts: 1 },
+    ]);
+    expect(await challenges.recentSends(phone, 'SIGN_UP', new Date('2026-11-18T08:45:00Z'))).toEqual([]);
   });
 
   it('hashes passwords with argon2id, never in clear', async () => {
@@ -146,9 +158,14 @@ describe('Storing accounts and SMS codes in PostgreSQL', () => {
     expect(hash).not.toContain('Akwa-Tresses-27');
   });
 
-  it('knows the common passwords, whatever the case or the digits added at the end', () => {
-    const common = t.moduleRef.get(COMMON_PASSWORDS);
-    expect(common.includes('MotDePasse2026!')).toBe(true);
-    expect(common.includes('Akwa-Tresses-27')).toBe(false);
+  it.each([['MotDePasse2026!'], ['2026motdepasse'], ['1q2w3e4r5t'], ['abcd1234efgh'], ['Azerty-Azerty']])(
+    'recognises "%s" as a common password, whatever the case, digits or repetitions around it',
+    (candidate) => {
+      expect(t.moduleRef.get(COMMON_PASSWORDS).includes(candidate)).toBe(true);
+    },
+  );
+
+  it('accepts a personal passphrase', () => {
+    expect(t.moduleRef.get(COMMON_PASSWORDS).includes('Akwa-Tresses-27')).toBe(false);
   });
 });

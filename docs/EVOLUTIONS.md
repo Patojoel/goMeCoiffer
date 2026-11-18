@@ -19,6 +19,38 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-18 — UC-001 Créer son compte propriétaire (backend)
+
+- **Quoi** : un responsable de salon crée son compte avec son numéro, prouvé par un code SMS, et un mot de
+  passe. Un compte client léger déjà existant est complété plutôt que dupliqué. La session s'ouvre, sans aucun
+  rôle, et la suite indiquée est la création de l'organisation. Le frontend n'est pas fait, à la demande du user.
+- **Pourquoi** : premier use case du lot 1 (PRD §7 étape 1), décisions D-017 à D-023.
+- **Périmètre** :
+  - **Module `identity`** :
+    - domaine : `OtpChallenge` (défi SMS réutilisable par UC-003, UC-007 et UC-009), politique d'envoi,
+      `NewPassword`, `User` ;
+    - commandes `RequestSignUpCode` et `ConfirmSignUp`. Un code refusé est **renvoyé**, pas levé, pour que l'essai
+      raté soit enregistré ;
+    - repositories TypeORM avec verrou optimiste, HMAC des codes, argon2id, liste de mots de passe courants,
+      faux fournisseur SMS, journal d'audit.
+  - **Routes** : `POST /api/public/sign-up/code` et `POST /api/public/sign-up`.
+  - **Migration** : `IdentityAccounts` (`users`, `otp_challenges`, index unique partiel du code actif).
+  - **Contrat** : `identity.ts` dans `@gomecoiffer/contracts`.
+  - **Docs** : UC-001 (17 scénarios Gherkin et `.feature`), inventaire des exigences du lot 1.
+- **Vérification** : mode **light**.
+  - Backend : 127 tests, dont 73 pour le module (unitaires, intégration Testcontainers, E2E).
+  - Mutations volontaires vues rouges : essai raté non enregistré, refus levé dans la transaction, verrou par
+    numéro retiré.
+  - Inscription jouée contre l'API réelle et la base locale.
+  - Revue `security-reviewer` : rien de critique. Les 4 points « à corriger » sont traités :
+    - C1 (rafale de SMS) : verrou PostgreSQL par numéro ;
+    - C2 (force brute dans la durée) et C4 (quota partagé) : plafonds sur 24 h par numéro et par motif, D-023 ;
+    - C3 (numéros recyclés) : décision du user ajoutée au backlog ;
+    - durcissements : code masqué dans les logs hors local, liste de mots de passe renforcée, commande qui masque
+      ses secrets, config inutile retirée, test de destruction de la session visiteur.
+- **Suites** : écran d'inscription (front), prérequis avant un vrai fournisseur SMS, décision sur les numéros
+  recyclés (voir `docs/BACKLOG.md`). Prochain use case du lot : UC-002 Se connecter.
+
 ### 2026-11-17 — Socle technique (lot 0) : monorepo, API NestJS + TypeORM, front React
 
 - **Quoi** : l'application démarre de bout en bout. Le monorepo pnpm contient l'API (`backend/`), le front

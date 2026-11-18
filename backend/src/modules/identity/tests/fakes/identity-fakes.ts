@@ -66,10 +66,13 @@ export class InMemoryOtpChallengeRepository implements OtpChallengeRepository {
     return row ? OtpChallenge.restore(row) : null;
   }
 
-  async sendTimesSince(phone: PhoneNumber, since: Date) {
+  /** Les tests unitaires sont séquentiels ; la sérialisation réelle est prouvée en E2E. */
+  async lockSendingFor() {}
+
+  async recentSends(phone: PhoneNumber, purpose: OtpPurpose, since: Date) {
     return [...this.rows.values()]
-      .filter((r) => r.phone === phone.value && r.sentAt > since)
-      .map((r) => r.sentAt);
+      .filter((r) => r.phone === phone.value && r.purpose === purpose && r.sentAt > since)
+      .map((r) => ({ sentAt: r.sentAt, failedAttempts: OtpChallenge.restore(r).failedAttempts }));
   }
 
   async save(challenge: OtpChallenge) {
