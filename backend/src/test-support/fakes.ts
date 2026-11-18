@@ -5,6 +5,9 @@ export class FixedClock implements Clock {
   now(): Date {
     return this.current;
   }
+  set(instant: Date): void {
+    this.current = instant;
+  }
   advanceMinutes(minutes: number): void {
     this.current = new Date(this.current.getTime() + minutes * 60_000);
   }

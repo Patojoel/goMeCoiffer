@@ -40,7 +40,12 @@ export const EnvSchema = z
     WEB_PUBLIC_URL: z.url(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     DEFAULT_SALON_TIME_ZONE: z.string().default('Africa/Douala'),
-    TRUST_PROXY: bool.default(false),
+    /** Nombre de reverse proxys de confiance devant l'API (0 : aucun) ; `true` (1) et `false` (0) restent acceptés. */
+    TRUST_PROXY: z
+      .string()
+      .regex(/^(true|false|[0-5])$/, 'nombre de proxys de confiance de 0 à 5')
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true' ? 1 : v === 'false' ? 0 : Number(v))),
     OPENAPI_ENABLED: bool.default(false),
 
     DB_HOST: z.string().min(1),
@@ -59,15 +64,17 @@ export const EnvSchema = z
 
     SESSION_SECRET: secret(64),
     SESSION_COOKIE_NAME: z.string().default('gmc.sid'),
-    SESSION_TTL_HOURS: int.positive().default(12),
+    /** Inactivité tolérée d'une session du personnel (D-026). */
+    SESSION_TTL_HOURS: int.positive().default(24),
     /** Durée absolue depuis la connexion, même pour une session utilisée sans interruption. */
-    SESSION_MAX_AGE_HOURS: int.positive().default(72),
+    SESSION_MAX_AGE_HOURS: int.positive().default(168),
+    /** Sessions portant un rôle système : plus courtes (D-026). */
+    SYSTEM_SESSION_TTL_HOURS: int.positive().default(2),
+    SYSTEM_SESSION_MAX_AGE_HOURS: int.positive().default(12),
     COOKIE_SECURE: bool.default(false),
     CSRF_SECRET: secret(32),
 
     TOKEN_HASH_PEPPER: secret(32),
-    OTP_TTL_SECONDS: int.positive().default(300),
-    OTP_MAX_ATTEMPTS: int.positive().default(5),
 
     BOOKING_PAYMENT_HOLD_MINUTES: int.positive().default(10),
     RESCHEDULE_PROPOSAL_TTL_HOURS: int.positive().default(24),
@@ -101,6 +108,10 @@ export const EnvSchema = z
 
     THROTTLE_TTL_SECONDS: int.positive().default(60),
     THROTTLE_LIMIT: int.positive().default(120),
+    /** Connexion (UC-002) : requêtes par heure et par appareil (ou par adresse sans cookie d'appareil). */
+    SIGN_IN_RATE_LIMIT_PER_HOUR: int.positive().default(100),
+    /** Connexion (UC-002) : requêtes par heure et par adresse réseau (/64 en IPv6), toujours appliqué. */
+    SIGN_IN_ADDRESS_RATE_LIMIT_PER_HOUR: int.positive().default(600),
   })
   .superRefine((env, ctx) => {
     const fail = (path: string, message: string) => ctx.addIssue({ code: 'custom', path: [path], message });
@@ -112,6 +123,11 @@ export const EnvSchema = z
       if (twin) fail(name, `doit différer de ${twin} (un secret par usage)`);
     });
     if (deployed && env.NODE_ENV !== 'production') fail('NODE_ENV', 'doit valoir production hors local');
+    if (deployed && env.TRUST_PROXY === undefined)
+      fail(
+        'TRUST_PROXY',
+        "obligatoire hors local : un mauvais réglage fausse l'adresse réseau des essais de connexion",
+      );
     if (deployed && !env.COOKIE_SECURE) fail('COOKIE_SECURE', 'obligatoire hors local');
     if (deployed && !env.DB_SSL) fail('DB_SSL', 'obligatoire hors local');
     if (deployed && env.DB_LOGGING)
@@ -126,7 +142,8 @@ export const EnvSchema = z
       );
     if (env.SMS_PROVIDER !== 'fake' && !env.SMS_API_KEY)
       fail('SMS_API_KEY', 'obligatoire pour un vrai fournisseur');
-  });
+  })
+  .transform((env) => ({ ...env, TRUST_PROXY: env.TRUST_PROXY ?? 0 }));
 
 export type Env = z.infer<typeof EnvSchema>;
 

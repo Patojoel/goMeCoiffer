@@ -6,7 +6,13 @@ import pg from 'pg';
 import type { AppConfig } from '../config/app-config.module.js';
 import './session-types.js';
 
-const cookieName = (config: AppConfig, base: string) => (config.COOKIE_SECURE ? `__Host-${base}` : base);
+export const cookieName = (config: AppConfig, base: string) =>
+  config.COOKIE_SECURE ? `__Host-${base}` : base;
+export const CSRF_COOKIE_BASE = 'gmc.x-csrf';
+
+/** Options communes des cookies de sécurité ; `clearCookie` doit les reprendre à l'identique pour effacer. */
+export const securityCookieOptions = (config: AppConfig) =>
+  ({ httpOnly: true, sameSite: 'lax', secure: config.COOKIE_SECURE, path: '/' }) as const;
 
 /** Session serveur stockée en PostgreSQL (table `sessions`) ; cookie HttpOnly, SameSite=Lax. */
 export function sessionMiddleware(config: AppConfig): {
@@ -35,7 +41,7 @@ export function sessionMiddleware(config: AppConfig): {
     resave: false,
     saveUninitialized: false,
     rolling: true,
-    proxy: config.TRUST_PROXY,
+    proxy: config.TRUST_PROXY > 0,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
@@ -52,8 +58,8 @@ export function csrfProtection(config: AppConfig) {
   const { generateCsrfToken, validateRequest } = doubleCsrf({
     getSecret: () => config.CSRF_SECRET,
     getSessionIdentifier: (req: Request) => req.session.id,
-    cookieName: cookieName(config, 'gmc.x-csrf'),
-    cookieOptions: { httpOnly: true, sameSite: 'lax', secure: config.COOKIE_SECURE, path: '/' },
+    cookieName: cookieName(config, CSRF_COOKIE_BASE),
+    cookieOptions: securityCookieOptions(config),
     getCsrfTokenFromRequest: (req: Request) => req.get('x-csrf-token'),
   });
   return { generateCsrfToken, validateRequest };

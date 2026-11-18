@@ -98,11 +98,18 @@ Hors de ce cas, la cohérence entre agrégats, et toujours entre modules, est **
 
 ## 8. Repositories
 
-Un repository **par racine d'agrégat** qui en a besoin : interface (port) + token dans `domain/`, implémentation `TypeOrm<X>Repository` dans `infrastructure/persistence/`, fake in-memory dans `tests/fakes/`. Méthodes nommées dans le langage métier (`getOfSalon(salonId, id)`, `findActiveProposalOf(bookingId)`), objets de domaine en entrée et en sortie. Toute méthode de chargement prend le `salonId` (périmètre, §11).
+Deux familles, séparées dans `domain/repositories/` (D-024) :
+
+- **Écriture** (`repositories/write/<x>.repository.ts`) : un repository **par racine d'agrégat** qui en a besoin, interface (port) + token ; implémentation `TypeOrm<X>Repository` dans `infrastructure/persistence/typeorm-repositories/`. Il **charge et sauve** des agrégats (et pose un verrou si la règle l'exige), rien d'autre.
+- **Lecture** (`repositories/read/<x>.read-repository.ts`) : une lecture dont une commande a besoin **sans charger d'agrégat** (historique d'envois, compteurs, existence), interface + token ; implémentation en **SQL pur** dans `application/read-repositories/sql-<x>.ts` via `SqlReader`. Les lectures d'écran ne sont pas des repositories : ce sont des QueryHandlers (skill [sql-query]).
+
+Les deux ont leur fake in-memory dans `tests/fakes/` (le fake de lecture lit les données du fake d'écriture). Méthodes nommées dans le langage métier (`getOfSalon(salonId, id)`, `findActiveProposalOf(bookingId)`, `recentSends(phone, purpose, since)`), objets de domaine en entrée et en sortie. Toute méthode de chargement prend le `salonId` (périmètre, §11).
+
+Les autres dépendances externes (SMS, paiement, hachage, générateur de code) sont des **ports** : `domain/ports/<x>.port.ts`, un port et son token par fichier.
 
 ## 9. Erreurs métier
 
-Une règle du domaine a son erreur **nommée par l'intention** dans `domain/errors/` (`SlotNoLongerAvailableError`, `BookingAlreadyStartedError`, `ProposalExpiredError`, `OwnerRightsCannotBeRevokedError`), sous-classe de `BusinessRuleViolation` avec un `code` stable (`BOOKING_ALREADY_STARTED`). Jamais `new Error('...')` pour une règle, jamais d'héritage de `HttpException`. Une panne système n'est **jamais catchée** dans un handler.
+Une règle du domaine a son erreur **nommée par l'intention**, **une par fichier** dans `domain/exceptions/<intention>.error.ts` (`SlotNoLongerAvailableError`, `BookingAlreadyStartedError`, `ProposalExpiredError`, `OwnerRightsCannotBeRevokedError`), sous-classe de `BusinessRuleViolation` avec un `code` stable (`BOOKING_ALREADY_STARTED`). Jamais `new Error('...')` pour une règle, jamais d'héritage de `HttpException`. Une panne système n'est **jamais catchée** dans un handler.
 
 ## 10. Événements
 

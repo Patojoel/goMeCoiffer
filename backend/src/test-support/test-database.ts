@@ -11,7 +11,7 @@ export interface TestDatabase {
 const b64 = (n: number) => randomBytes(n).toString('base64');
 
 /** Base neuve clonée depuis la base modèle migrée : chaque fichier de test a la sienne. */
-export async function createTestDatabase(): Promise<TestDatabase> {
+export async function createTestDatabase(env: Readonly<Record<string, string>> = {}): Promise<TestDatabase> {
   const server = inject('pg');
   const name = `t_${randomUUID().replaceAll('-', '')}`;
   const admin = () => new pg.Client({ ...server, database: 'postgres' });
@@ -42,6 +42,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     SMTP_PORT: '1025',
     MAIL_FROM: 'GoMeCoiffer <test@gomecoiffer.local>',
     THROTTLE_LIMIT: '10000',
+    ...env,
   });
 
   return {

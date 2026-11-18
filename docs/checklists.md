@@ -40,16 +40,21 @@ d'une évolution. Les règles de fond sont dans `CLAUDE.md` et les skills ; ici,
 ## Nouveau module backend
 
 1. [ ] Use cases rédigés (`use-case-writer`) et contrat d'API figé dans `packages/contracts`.
-2. [ ] Dossiers `domain/`, `application/{commands,queries,subscribers}/`, `infrastructure/{persistence,http}/`, `tests/{unit,integration,e2e,builders,fakes}/`.
+2. [ ] Dossiers selon `CLAUDE.md` §I.1 (D-024) : seulement ceux qui ont un fichier, jamais de dossier vide.
+   - `domain/{aggregates,value-objects,enums,exceptions,events,repositories/{write,read},ports,services,messages}/` ;
+   - `application/{commands,queries,read-repositories,subscribers}/` ;
+   - `infrastructure/{persistence/{orm-entities,typeorm-repositories},http}/` ;
+   - `tests/{unit,integration,e2e,builders,fakes}/`.
 3. [ ] Liste des règles en phrases métier ; tests unitaires un par un (rouge vu, puis vert).
-4. [ ] Agrégat, VO, erreurs nommées, port de repository + token, événements au passé.
-5. [ ] Entité `*.orm-entity.ts`, mapper, `TypeOrm<X>Repository` (via `txHost.tx`, périmètre `salonId`, verrou optimiste) ; fake in-memory équivalent.
-6. [ ] Migration TypeORM générée **relue** (+ parties écrites à la main) ; ligne dans `docs/migrations-history.md`.
-7. [ ] Tests d'intégration du repository (Testcontainers, vraies migrations).
-8. [ ] Contrôleur mince + `@RequiresPermission` + `TransactionalCommandBus` ; câblage `<module>.module.ts` ; import dans `app.module.ts`.
-9. [ ] Test E2E du parcours, avec cas « autre salon → 404 » et refus de droit en table de cas.
-10. [ ] Seed de démo et droits des rôles prédéfinis pour les nouvelles permissions.
-11. [ ] `docs/domains.md`, `docs/events.md` à jour ; revue selon le mode (`archi-reviewer` en full ; `security-reviewer` si périmètre critique).
+4. [ ] Agrégat, VO, enums, une erreur nommée par fichier, ports + tokens (un par fichier), événements au passé.
+5. [ ] Commande en 3 fichiers : `.command.ts`, `.handler.ts`, `.response.ts` (la réponse est définie en application, pas dans le contrôleur).
+6. [ ] Entité dans `orm-entities/`, `TypeOrm<X>Repository` dans `typeorm-repositories/` (via `txHost.tx`, périmètre `salonId`, verrou optimiste) ; lecture utile à une commande en SQL pur dans `application/read-repositories/` ; fakes in-memory équivalents.
+7. [ ] Migration TypeORM générée **relue** (+ parties écrites à la main) ; ligne dans `docs/migrations-history.md`.
+8. [ ] Tests d'intégration des repositories d'écriture et de lecture (Testcontainers, vraies migrations).
+9. [ ] Contrôleur mince + `@RequiresPermission` + `TransactionalCommandBus` ; câblage `<module>.module.ts` ; import dans `app.module.ts`.
+10. [ ] Test E2E du parcours, avec cas « autre salon → 404 » et refus de droit en table de cas.
+11. [ ] Seed de démo et droits des rôles prédéfinis pour les nouvelles permissions.
+12. [ ] `docs/domains.md`, `docs/events.md` à jour ; revue selon le mode (`archi-reviewer` en full ; `security-reviewer` si périmètre critique).
 
 ## Nouvelle query (lecture)
 

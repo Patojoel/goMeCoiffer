@@ -13,6 +13,7 @@ import {
 } from './decorators.js';
 import { CsrfInvalidError, ForbiddenError, UnauthenticatedError } from './security-errors.js';
 
+const HOUR_MS = 3_600_000;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export const ACTOR_KEY = 'actor';
 
@@ -53,14 +54,13 @@ export class AuthGuard implements CanActivate {
     if (!userId) throw new UnauthenticatedError();
 
     // Durée absolue depuis la connexion : l'expiration glissante seule laisserait vivre un cookie volé.
+    const now = this.clock.now().getTime();
     const authenticatedAt = req.session.authenticatedAt ?? 0;
-    if (this.clock.now().getTime() - authenticatedAt > this.config.SESSION_MAX_AGE_HOURS * 3_600_000) {
-      await new Promise<void>((done) => req.session.destroy(() => done()));
-      throw new UnauthenticatedError();
-    }
+    if (now - authenticatedAt > this.config.SESSION_MAX_AGE_HOURS * HOUR_MS) await this.endSession(req);
 
     let activeSalonId = req.session.activeSalonId ?? null;
     const { isMember, permissions, systemRoles } = await this.rights.resolve(userId, activeSalonId);
+    if (systemRoles.length > 0) await this.enforceSystemRoleDurations(req, now, authenticatedAt);
     if (activeSalonId && !isMember) {
       req.session.activeSalonId = null;
       activeSalonId = null;
@@ -74,6 +74,26 @@ export class AuthGuard implements CanActivate {
     req.actor = actor;
     this.cls.set(ACTOR_KEY, actor);
     return true;
+  }
+
+  /** Session d'un utilisateur portant un rôle système : 2 h sans activité et 12 h après la connexion (D-026). */
+  private async enforceSystemRoleDurations(
+    req: ActorRequest,
+    now: number,
+    authenticatedAt: number,
+  ): Promise<void> {
+    const lastActivityAt = req.session.lastActivityAt ?? authenticatedAt;
+    if (
+      now - authenticatedAt > this.config.SYSTEM_SESSION_MAX_AGE_HOURS * HOUR_MS ||
+      now - lastActivityAt > this.config.SYSTEM_SESSION_TTL_HOURS * HOUR_MS
+    )
+      await this.endSession(req);
+    req.session.lastActivityAt = now;
+  }
+
+  private async endSession(req: ActorRequest): Promise<never> {
+    await new Promise<void>((done) => req.session.destroy(() => done()));
+    throw new UnauthenticatedError();
   }
 }
 

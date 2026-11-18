@@ -19,6 +19,115 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-18 — UC-002 Se connecter et se déconnecter (backend)
+
+- **Quoi** : un membre du personnel se connecte avec son numéro et son mot de passe, puis se déconnecte.
+  - La connexion ouvre une session neuve (nouvel identifiant, nouveau jeton CSRF, aucun salon actif) et renvoie le
+    résumé de session avec l'étape suivante.
+  - `GET /api/salon/session` redonne ce résumé à la réouverture de l'application.
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-002 (lot 1). Décisions du user D-025 à D-028 :
+  - les blocages ne visent que les appareils non reconnus ;
+  - sessions de 24 h / 7 j pour le personnel, 2 h / 12 h pour les rôles système ;
+  - étape suivante selon les accès ;
+  - audit, purge à 48 h et rehachage.
+- **Périmètre** :
+  - **Module `identity`** :
+    - domaine : politique d'essais (fonction pure), agrégat `KnownDevice`, normalisation des adresses (/64 en IPv6,
+      port retiré), règle de l'étape suivante ;
+    - commandes `SignIn`, `SignOut`, `PurgeSignInAttempts` (tâche horaire) ; query `GetMySession` en SQL pur ;
+      historique des essais en repository de lecture SQL ;
+    - une seule vérification argon2id par refus (empreinte factice), verrou PostgreSQL par numéro, refus levé après
+      le commit ;
+    - appareils reconnus : jetons générés par le serveur, hachés, renouvelés à chaque connexion, un par compte
+      (5 au plus par navigateur).
+  - **Socle** :
+    - `AuthGuard` applique les durées des rôles système ;
+    - deux limiteurs de connexion configurables (`SIGN_IN_RATE_LIMIT_PER_HOUR` = 100 par appareil,
+      `SIGN_IN_ADDRESS_RATE_LIMIT_PER_HOUR` = 600 par adresse) ;
+    - `TRUST_PROXY` devient un nombre de proxys, obligatoire hors local ;
+    - `SqlReader` lit dans la transaction en cours.
+  - **Migration** : `IdentitySignIn` (`sign_in_attempts`, `known_devices`).
+  - **Contrat** : `SignIn`, `SignedIn`, `SignedOut`, `SessionSummary`, `NextStep`.
+- **Vérification** : mode **light**, agents `use-case-writer`, `query-perf`, `backend-builder`, `security-reviewer`.
+  - Suite complète verte : 200 tests unitaires, 36 d'intégration et 50 E2E côté backend, 36 côté frontend.
+    Lint, typecheck et `pnpm arch` verts.
+  - Mutations volontaires vues rouges : seuils et fenêtres de la politique, exemption de l'appareil reconnu, verrou
+    par numéro, plafond de jetons, /64, renouvellement du jeton, filet par adresse.
+  - Revue `security-reviewer` : rien de critique. Les 3 points « à corriger » ont été corrigés :
+    - un tiers pouvait bloquer un appareil reconnu par le filet IP ;
+    - un jeton venu du client était repris ;
+    - un écart de temps révélait les comptes existants.
+  - Contre-revue : 1 point corrigé (cookies forgés sans plafond par adresse).
+  - Rapport d'index de `GetMySession` : Index Scan sur `users_pkey`.
+- **Suites** (`docs/BACKLOG.md`) :
+  - écran de connexion (front) ;
+  - numéro mal formé : 422 plutôt que 400, à confirmer ;
+  - compteur IPv6 au /48 ;
+  - plantage natif intermittent des tests sous Windows ;
+  - UC-003 doit lever les blocages et fermer les sessions.
+
+### 2026-11-18 — Refactoring de structure du module `identity` (D-024)
+
+- **Quoi** : chaque concept a son fichier, rangé par rôle. Le changement porte sur la structure, sans changer le
+  comportement : contrat HTTP, codes d'erreur et schéma de base restent identiques.
+  - **Domaine** : `aggregates/`, `value-objects/`, `enums/`, `exceptions/` (9 erreurs, un fichier chacune),
+    `ports/` (6 ports), `repositories/write/` et `repositories/read/`, `services/` (politique d'envoi), `messages/`
+    (textes des SMS, sortis de `application/`).
+  - **Application** : chaque commande a son fichier `.response.ts`. L'étape suivante après l'inscription est
+    décidée par l'application ; le contrôleur n'ajoute que le jeton CSRF.
+  - **Infrastructure** : `persistence/orm-entities/` et `persistence/typeorm-repositories/`.
+- **Pourquoi** : demande du user, pour des fichiers courts, faciles à trouver, et une séparation nette entre
+  écriture (TypeORM) et lecture (SQL pur), jusque dans les repositories.
+- **Périmètre** :
+  - l'historique des codes envoyés (limites D-021/D-023) devient un repository de lecture `OtpSendHistory`,
+    implémenté en SQL pur dans `application/read-repositories/` ; le repository TypeORM ne charge et ne sauve plus
+    que des agrégats ;
+  - `SqlReader` (socle) lit désormais dans la transaction en cours quand il y en a une ;
+  - règles du projet mises à jour : `CLAUDE.md` §I.1, skills `hexagonal`, `ddd`, `sql-query`, agent `archi-reviewer`,
+    checklist « nouveau module ».
+- **Vérification** : mode **light**.
+  - Backend : 128 tests verts (78 unitaires, 22 intégration, 28 E2E). Les tests existants n'ont changé que par
+    leurs imports.
+  - Nouveau test d'intégration (lecture dans la transaction de la commande), vu rouge puis vert.
+  - Requête de l'historique cassée volontairement : détectée par l'intégration et par l'E2E « rafale = un seul SMS ».
+  - Typecheck, oxlint et `pnpm arch` verts.
+  - Revue `security-reviewer` : rien à corriger. Un durcissement noté dans le code et le backlog : la limite d'envoi
+    suppose l'isolation READ COMMITTED.
+- **Suites** : appliquer la même structure à `shared/domain` si le user le souhaite (backlog).
+
+### 2026-11-18 — UC-001 Créer son compte propriétaire (backend)
+
+- **Quoi** : un responsable de salon crée son compte avec son numéro, prouvé par un code SMS, et un mot de
+  passe. Un compte client léger déjà existant est complété plutôt que dupliqué. La session s'ouvre, sans aucun
+  rôle, et la suite indiquée est la création de l'organisation. Le frontend n'est pas fait, à la demande du user.
+- **Pourquoi** : premier use case du lot 1 (PRD §7 étape 1), décisions D-017 à D-023.
+- **Périmètre** :
+  - **Module `identity`** :
+    - domaine : `OtpChallenge` (défi SMS réutilisable par UC-003, UC-007 et UC-009), politique d'envoi,
+      `NewPassword`, `User` ;
+    - commandes `RequestSignUpCode` et `ConfirmSignUp`. Un code refusé est **renvoyé**, pas levé, pour que l'essai
+      raté soit enregistré ;
+    - repositories TypeORM avec verrou optimiste, HMAC des codes, argon2id, liste de mots de passe courants,
+      faux fournisseur SMS, journal d'audit.
+  - **Routes** : `POST /api/public/sign-up/code` et `POST /api/public/sign-up`.
+  - **Migration** : `IdentityAccounts` (`users`, `otp_challenges`, index unique partiel du code actif).
+  - **Contrat** : `identity.ts` dans `@gomecoiffer/contracts`.
+  - **Docs** : UC-001 (17 scénarios Gherkin et `.feature`), inventaire des exigences du lot 1.
+- **Vérification** : mode **light**.
+  - Backend : 127 tests, dont 73 pour le module (unitaires, intégration Testcontainers, E2E).
+  - Mutations volontaires vues rouges : essai raté non enregistré, refus levé dans la transaction, verrou par
+    numéro retiré.
+  - Inscription jouée contre l'API réelle et la base locale.
+  - Revue `security-reviewer` : rien de critique. Les 4 points « à corriger » sont traités :
+    - C1 (rafale de SMS) : verrou PostgreSQL par numéro ;
+    - C2 (force brute dans la durée) et C4 (quota partagé) : plafonds sur 24 h par numéro et par motif, D-023 ;
+    - C3 (numéros recyclés) : décision du user ajoutée au backlog ;
+    - durcissements : code masqué dans les logs hors local, liste de mots de passe renforcée, commande qui masque
+      ses secrets, config inutile retirée, test de destruction de la session visiteur.
+- **Suites** : écran d'inscription (front), prérequis avant un vrai fournisseur SMS, décision sur les numéros
+  recyclés (voir `docs/BACKLOG.md`). Prochain use case du lot : UC-002 Se connecter.
+
 ### 2026-11-17 — Socle technique (lot 0) : monorepo, API NestJS + TypeORM, front React
 
 - **Quoi** : l'application démarre de bout en bout. Le monorepo pnpm contient l'API (`backend/`), le front

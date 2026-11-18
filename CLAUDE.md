@@ -186,13 +186,28 @@ backend/src/
   test-support/                # Testcontainers (base modèle migrée, clone par fichier), startTestApp, Browser (session + CSRF), fakes
   shared/                      # socle transverse (voir I.5)
   modules/<module>/
-    domain/                    # agrégats, VO, événements, erreurs, ports (interfaces de repository, de passerelles)
+    domain/                    # pur ; un fichier par concept, rangé par rôle (D-024)
+      aggregates/              # racines d'agrégat (<x>.ts)
+      value-objects/           # un VO par fichier
+      enums/                   # <x>.enum.ts : objet `as const` + type du même nom
+      exceptions/              # une erreur métier par fichier (<intention>.error.ts)
+      events/                  # un événement par fichier (fait au passé)
+      repositories/
+        write/                 # <x>.repository.ts : port + token, charge et sauve un agrégat (impl. TypeORM)
+        read/                  # <x>.read-repository.ts : port + token, lecture pour une commande (impl. SQL pur en application)
+      ports/                   # <x>.port.ts : passerelles externes (SMS, paiement, hachage…) + token
+      services/                # services de domaine sans état (règles sur plusieurs instances)
+      messages/                # textes métier envoyés à l'utilisateur (SMS…)
     application/
-      commands/<use-case>/     # <use-case>.command.ts + <use-case>.handler.ts
+      commands/<use-case>/     # <use-case>.command.ts + <use-case>.handler.ts + <use-case>.response.ts
       queries/<use-case>/      # <use-case>.query.ts + <use-case>.handler.ts (SQL pur) + <use-case>.read-model.ts
+      read-repositories/       # sql-<x>.ts : implémente un port domain/repositories/read en SQL pur (SqlReader)
       subscribers/             # réactions aux événements, délèguent à un handler
     infrastructure/
-      persistence/             # <x>.orm-entity.ts, <x>.mapper.ts, typeorm-<x>.repository.ts
+      persistence/
+        orm-entities/          # <x>.orm-entity.ts, une entité TypeORM par fichier
+        typeorm-repositories/  # typeorm-<x>.repository.ts, implémente un port domain/repositories/write
+        mappers/               # <x>.mapper.ts, seulement si la conversion ne tient pas dans restore()/snapshot()
       http/                    # <x>.controller.ts (+ schémas venant de packages/contracts)
       <adapter>/               # passerelles externes (paiement, SMS…) : couche de traduction
       <module>.module.ts       # câblage Nest : providers, tokens de ports
@@ -278,7 +293,7 @@ export class ListSalonDayPlanningHandler implements IQueryHandler<ListSalonDayPl
 
 ##### Règles obligatoires des QueryHandlers
 
-1. **SQL pur et optimisé, écrit dans le handler** — gabarit `sql\`…\`` de `shared/application/sql` : chaque `${valeur}` devient un paramètre lié `$n` (node-postgres), jamais du texte. Exécution par le port `SqlReader` (`many`, `one`, `maybeOne`) injecté par le token `READ_DB` ; son adaptateur TypeORM (`dataSource.query(text, values)`) vit dans `shared/infrastructure/database/`. Jamais de concaténation, jamais `sql.unsafe()` avec une valeur venue de l'extérieur (identifiants dynamiques : liste blanche de constantes), jamais de QueryBuilder, de `find*` TypeORM, de repository d'agrégat ni d'entité TypeORM dans une lecture. Les **CTE sont filtrées dès l'entrée** (`salon_id`, id de périmètre) — aucun scan global filtré plus tard.
+1. **SQL pur et optimisé, écrit dans le handler** — gabarit `sql\`…\`` de `shared/application/sql` : chaque `${valeur}` devient un paramètre lié `$n` (node-postgres), jamais du texte. Exécution par le port `SqlReader` (`many`, `one`, `maybeOne`) injecté par le token `READ_DB` ; son adaptateur TypeORM (`txHost.tx.query(text, values)` : dans une commande, la lecture passe par la transaction en cours) vit dans `shared/infrastructure/database/`. Jamais de concaténation, jamais `sql.unsafe()` avec une valeur venue de l'extérieur (identifiants dynamiques : liste blanche de constantes), jamais de QueryBuilder, de `find*` TypeORM, de repository d'agrégat ni d'entité TypeORM dans une lecture. Les **CTE sont filtrées dès l'entrée** (`salon_id`, id de périmètre) — aucun scan global filtré plus tard.
 2. **Read models immuables** — `readonly` partout, objets simples, colonnes aliasées en camelCase dans le SQL (`AS "startsAt"`) ; jamais une entité TypeORM ni un agrégat en sortie.
 3. **Tests E2E uniquement** — une query se teste par un test E2E HTTP (Testcontainers), écrit **avant** la requête. Pas d'unit ni d'intégration pour une query.
 4. **Rapport d'analyse obligatoire** — après chaque création ou modification :
@@ -379,7 +394,7 @@ Tableau des événements et de leurs subscribers : `docs/events.md`.
 | Règle métier refusée | `BusinessRuleViolation` (et sous-classes nommées) | 422 + `code` stable + `message` lisible |
 | Inattendu | tout le reste | 500, seul cas loggé en `error`, aucun détail technique au client |
 
-Les erreurs métier vivent dans `domain/errors` et n'héritent **jamais** de `HttpException` : le mapping HTTP est l'affaire du filtre.
+Les erreurs métier vivent dans `domain/exceptions/` (une erreur par fichier) et n'héritent **jamais** de `HttpException` : le mapping HTTP est l'affaire du filtre.
 
 ### I.5. Socle partagé (`backend/src/shared/`)
 
@@ -387,7 +402,7 @@ Les erreurs métier vivent dans `domain/errors` et n'héritent **jamais** de `Ht
 |---|---|
 | `domain/` | `AggregateRoot` (`record`, `pullEvents`), `DomainEvent`, `IntegrationEvent`, erreurs de base, VO transverses (`Id`, `Money` en XAF entiers, `TimeRange`, `PhoneNumber`) — uniquement s'ils servent ≥ 3 modules |
 | `application/` | `TransactionalCommandBus`, `DomainEventSubscriber`, `Clock` (port), `IdGenerator` (port), `SqlReader` (port) + gabarit `sql`, `RealtimePublisher` (port) |
-| `infrastructure/database/` | `TypeOrmModule` (config), `TransactionHost` (adaptateur TypeORM), `TypeOrmSqlReader` (token `READ_DB`, réplica possible), vérification des migrations au démarrage |
+| `infrastructure/database/` | `TypeOrmModule` (config), `TransactionHost` (adaptateur TypeORM), `TypeOrmSqlReader` (token `READ_DB`, lit dans la transaction en cours s'il y en a une), vérification des migrations au démarrage |
 | `infrastructure/events/` | `DomainEventDispatcher`, `OutboxRepository`, `OutboxRelay`, `ProcessedEvents` |
 | `infrastructure/security/` | `AuthGuard` (deny-by-default), `@Public()`, `PermissionsGuard`, `@RequiresPermission()`, `@RequiresSystemRole()`, `@CurrentActor()`, session (PostgreSQL), CSRF, contexte CLS (user, salon actif, requestId) |
 | `infrastructure/http/` | `ApiResponse<T>`, intercepteur de réponse, `DomainExceptionFilter` |
@@ -429,7 +444,7 @@ Création pas à pas du socle : `docs/checklists.md` § Socle.
 
 ### I.8. Base de données (migrations TypeORM)
 
-- Entités TypeORM dans `modules/<module>/infrastructure/persistence/*.orm-entity.ts` ; `migration:generate` produit une migration dans `backend/src/database/migrations/`, **relue ligne à ligne** avant commit (TypeORM génère parfois des `DROP`/`ALTER` inattendus). Contraintes d'exclusion, index partiels, extensions (`btree_gist`) : migration écrite à la main (`migration:create`), TypeORM ne les génère pas.
+- Entités TypeORM dans `modules/<module>/infrastructure/persistence/orm-entities/*.orm-entity.ts` ; `migration:generate` produit une migration dans `backend/src/database/migrations/`, **relue ligne à ligne** avant commit (TypeORM génère parfois des `DROP`/`ALTER` inattendus). Contraintes d'exclusion, index partiels, extensions (`btree_gist`) : migration écrite à la main (`migration:create`), TypeORM ne les génère pas.
 - **Règle absolue** : tout changement de table/colonne/index/contrainte passe par une migration versionnée et commitée, avec une méthode `down` réelle. **Une migration commitée ne se modifie jamais** (hook de garde) : on en ajoute une nouvelle. `typeorm schema:sync`, `schema:drop` et `synchronize: true` sont interdits (hook de garde).
 - Migration destructive (drop, rename, `NOT NULL` sur table remplie) : en deux temps (expand → migrate → contract), jamais dans la même release que le code qui en dépend.
 - Historique : `docs/migrations-history.md`.
@@ -491,7 +506,7 @@ Checklists complètes (backend, frontend, socle) : `docs/checklists.md`.
 - **Tests obligatoires après tout changement** : après toute création ou modification d'un handler, d'une query ou d'un cas d'usage, lancer les tests du module avant de valider. Lire le **nombre** de tests exécutés : « 0 test » est un faux vert.
 - **Seed obligatoire** : tout nouveau module ou nouvelle donnée affichée livre ses données de démo (`backend/src/database/seed/`), droits des rôles compris. Un écran vide au démarrage faute de seed n'est pas terminé.
 - **Migrations** : jamais modifier une migration commitée, jamais `schema:sync` ni `synchronize: true`, toujours relire le SQL généré.
-- **Lectures** : SQL pur dans `application/queries`, via `SqlReader` et le gabarit `sql` ; jamais l'ORM pour lire un écran.
+- **Lectures** : SQL pur dans `application/queries` (écrans) ou `application/read-repositories` (lecture utile à une commande, derrière un port `domain/repositories/read`), via `SqlReader` et le gabarit `sql` ; jamais l'ORM pour lire un écran.
 - **`TransactionalCommandBus`** : seule porte d'entrée des écritures depuis HTTP, un webhook ou une tâche.
 - **Domaine pur** : aucun import `@nestjs/*` / `typeorm` dans `domain/` (`pnpm arch` le vérifie).
 - **Identité et salon actif** lus dans la session côté serveur, jamais dans le body, la query ou un en-tête client. Rôles système et rôles salon ne se mélangent jamais (PRD §2, §4).

@@ -27,6 +27,39 @@ describe('Starting the API with its configuration', () => {
     expect(parseEnv(validLocal).WEB_ORIGIN).toEqual(['http://localhost:10401']);
   });
 
+  describe('the number of reverse proxies in front of the API', () => {
+    it('trusts no proxy locally when the variable is absent', () => {
+      expect(parseEnv(validLocal).TRUST_PROXY).toBe(0);
+    });
+
+    it.each([
+      ['0', 0],
+      ['1', 1],
+      ['2', 2],
+      ['false', 0],
+      ['true', 1],
+    ])('reads TRUST_PROXY=%s as %i hop(s), accepting the former true/false values', (value, hops) => {
+      expect(parseEnv({ ...validLocal, TRUST_PROXY: value }).TRUST_PROXY).toBe(hops);
+    });
+
+    it.each(['-1', '1.5', 'yes', '99'])('refuses TRUST_PROXY=%s', (value) => {
+      expect(() => parseEnv({ ...validLocal, TRUST_PROXY: value })).toThrow(/TRUST_PROXY/);
+    });
+
+    it('requires it to be set explicitly outside local, where a wrong value falsifies the address limits', () => {
+      const deployed = {
+        ...validLocal,
+        APP_ENV: 'preprod',
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'true',
+        DB_SSL: 'true',
+      };
+
+      expect(() => parseEnv(deployed)).toThrow(/TRUST_PROXY/);
+      expect(parseEnv({ ...deployed, TRUST_PROXY: '0' }).TRUST_PROXY).toBe(0);
+    });
+  });
+
   it('refuses to start with a placeholder secret copied from the example file', () => {
     expect(() => parseEnv({ ...validLocal, SESSION_SECRET: '<secret-genere-64-octets-base64>' })).toThrow(
       /SESSION_SECRET/,

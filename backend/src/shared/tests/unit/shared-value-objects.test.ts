@@ -61,7 +61,11 @@ describe('Cameroonian phone numbers', () => {
     expect(PhoneNumber.parse(input).value).toBe(expected);
   });
 
-  it.each([['12345'], ['+33612345678'], ['6771234567']])('refuses %s', (input) => {
+  it('is shown on screen with its middle hidden', () => {
+    expect(PhoneNumber.parse('6 77 12 34 56').masked()).toBe('6 77 •• •• 56');
+  });
+
+  it.each([['12345'], ['+33612345678'], ['6771234567'], ['577123456']])('refuses %s', (input) => {
     expect(() => PhoneNumber.parse(input)).toThrow(InvalidValueError);
   });
 });

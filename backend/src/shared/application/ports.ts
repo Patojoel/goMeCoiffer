@@ -12,7 +12,10 @@ export interface IdGenerator {
 }
 
 export const READ_DB = Symbol('READ_DB');
-/** Exécute le SQL pur des QueryHandlers ; les valeurs sont toujours des paramètres liés. */
+/**
+ * Exécute le SQL pur des lectures (QueryHandlers et repositories de lecture) ; les valeurs sont toujours des
+ * paramètres liés. Appelé dans une commande, il lit dans la transaction de la commande.
+ */
 export interface SqlReader {
   many<T>(query: SqlStatement): Promise<readonly T[]>;
   /** 0 ligne → NotFoundError. */
@@ -30,6 +33,22 @@ export interface RealtimeMessage {
 export interface RealtimePublisher {
   publishToUser(userId: string, message: RealtimeMessage): void;
   publishToSalon(salonId: string, message: RealtimeMessage): void;
+}
+
+export const AUDIT_TRAIL = Symbol('AUDIT_TRAIL');
+export interface AuditEntry {
+  readonly action: string;
+  readonly subjectType: string;
+  readonly subjectId: string;
+  readonly actorUserId: string | null;
+  readonly salonId?: string | null;
+  readonly occurredAt: Date;
+  /** Jamais de secret (mot de passe, code, jeton) ni de donnée personnelle superflue. */
+  readonly details?: Readonly<Record<string, string | number | boolean | null>>;
+}
+/** Trace d'audit écrite dans la transaction de la commande (PRD §11). */
+export interface AuditTrail {
+  record(entry: AuditEntry): Promise<void>;
 }
 
 /** Acteur authentifié, résolu côté serveur depuis la session (jamais depuis la requête). */
