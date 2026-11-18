@@ -54,6 +54,16 @@ export class User extends AggregateRoot {
     return PhoneNumber.parse(this.state.phone);
   }
 
+  /** Empreinte à vérifier à la connexion ; `null` pour un compte client léger, qui ne se connecte pas par mot de passe. */
+  get passwordHash(): string | null {
+    return this.state.passwordHash;
+  }
+
+  /** Même mot de passe, empreinte recalculée avec les réglages en vigueur (D-028). */
+  upgradePasswordHash(newHash: string): void {
+    this.state.passwordHash = newHash;
+  }
+
   /** Un compte avec mot de passe ne se réinscrit pas : il se connecte ou réinitialise son mot de passe. */
   get acceptsOwnerRegistration(): boolean {
     return this.state.passwordHash === null;

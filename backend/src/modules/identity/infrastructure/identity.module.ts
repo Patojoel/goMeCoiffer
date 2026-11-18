@@ -1,38 +1,68 @@
 import { Module } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../../../shared/infrastructure/config/app-config.module.js';
 import { ConfirmSignUpHandler } from '../application/commands/confirm-sign-up/confirm-sign-up.handler.js';
+import { PurgeSignInAttemptsHandler } from '../application/commands/purge-sign-in-attempts/purge-sign-in-attempts.handler.js';
 import { RequestSignUpCodeHandler } from '../application/commands/request-sign-up-code/request-sign-up-code.handler.js';
+import { SignInHandler } from '../application/commands/sign-in/sign-in.handler.js';
+import { SignOutHandler } from '../application/commands/sign-out/sign-out.handler.js';
 import { GetMySessionHandler } from '../application/queries/get-my-session/get-my-session.handler.js';
 import { SqlOtpSendHistory } from '../application/read-repositories/sql-otp-send-history.js';
+import { SqlSignInAttemptHistory } from '../application/read-repositories/sql-sign-in-attempt-history.js';
+import { KnownDeviceRegistry } from '../application/services/known-device-registry.js';
 import { COMMON_PASSWORDS } from '../domain/ports/common-passwords.port.js';
+import { DEVICE_TOKEN_GENERATOR } from '../domain/ports/device-token-generator.port.js';
 import { OTP_CODE_GENERATOR } from '../domain/ports/otp-code-generator.port.js';
 import { PASSWORD_HASHER } from '../domain/ports/password-hasher.port.js';
+import { PASSWORD_VERIFIER } from '../domain/ports/password-verifier.port.js';
 import { SECRET_HASHER } from '../domain/ports/secret-hasher.port.js';
 import { SMS_SENDER } from '../domain/ports/sms-sender.port.js';
 import { OTP_SEND_HISTORY } from '../domain/repositories/read/otp-send-history.read-repository.js';
+import { SIGN_IN_ATTEMPT_HISTORY } from '../domain/repositories/read/sign-in-attempt-history.read-repository.js';
+import { KNOWN_DEVICE_REPOSITORY } from '../domain/repositories/write/known-device.repository.js';
 import { OTP_CHALLENGE_REPOSITORY } from '../domain/repositories/write/otp-challenge.repository.js';
+import { SIGN_IN_ATTEMPT_REPOSITORY } from '../domain/repositories/write/sign-in-attempt.repository.js';
 import { USER_REPOSITORY } from '../domain/repositories/write/user.repository.js';
 import { CommonPasswordList } from './crypto/common-passwords.js';
-import { Argon2PasswordHasher, CryptoOtpCodeGenerator, HmacSecretHasher } from './crypto/secrets.js';
+import {
+  Argon2PasswordHasher,
+  Argon2PasswordVerifier,
+  CryptoDeviceTokenGenerator,
+  CryptoOtpCodeGenerator,
+  HmacSecretHasher,
+} from './crypto/secrets.js';
+import { AuthController } from './http/auth.controller.js';
 import { SessionController } from './http/session.controller.js';
 import { SignUpController } from './http/sign-up.controller.js';
+import { TypeOrmKnownDeviceRepository } from './persistence/typeorm-repositories/typeorm-known-device.repository.js';
 import { TypeOrmOtpChallengeRepository } from './persistence/typeorm-repositories/typeorm-otp-challenge.repository.js';
+import { TypeOrmSignInAttemptRepository } from './persistence/typeorm-repositories/typeorm-sign-in-attempt.repository.js';
 import { TypeOrmUserRepository } from './persistence/typeorm-repositories/typeorm-user.repository.js';
+import { PurgeSignInAttemptsTask } from './scheduling/purge-sign-in-attempts.task.js';
 import { LoggingSmsSender } from './sms/logging-sms-sender.js';
 
 /** Comptes, connexion et défis SMS. */
 @Module({
-  controllers: [SignUpController, SessionController],
+  controllers: [SignUpController, AuthController, SessionController],
   providers: [
     RequestSignUpCodeHandler,
     ConfirmSignUpHandler,
+    SignInHandler,
+    SignOutHandler,
+    PurgeSignInAttemptsHandler,
     GetMySessionHandler,
+    KnownDeviceRegistry,
+    PurgeSignInAttemptsTask,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: OTP_CHALLENGE_REPOSITORY, useClass: TypeOrmOtpChallengeRepository },
+    { provide: SIGN_IN_ATTEMPT_REPOSITORY, useClass: TypeOrmSignInAttemptRepository },
+    { provide: KNOWN_DEVICE_REPOSITORY, useClass: TypeOrmKnownDeviceRepository },
     { provide: OTP_SEND_HISTORY, useClass: SqlOtpSendHistory },
+    { provide: SIGN_IN_ATTEMPT_HISTORY, useClass: SqlSignInAttemptHistory },
     { provide: SECRET_HASHER, useClass: HmacSecretHasher },
     { provide: OTP_CODE_GENERATOR, useClass: CryptoOtpCodeGenerator },
+    { provide: DEVICE_TOKEN_GENERATOR, useClass: CryptoDeviceTokenGenerator },
     { provide: PASSWORD_HASHER, useClass: Argon2PasswordHasher },
+    { provide: PASSWORD_VERIFIER, useClass: Argon2PasswordVerifier },
     { provide: COMMON_PASSWORDS, useClass: CommonPasswordList },
     {
       provide: SMS_SENDER,

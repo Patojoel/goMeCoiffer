@@ -10,7 +10,7 @@ import { sessionMiddleware } from './shared/infrastructure/security/http-securit
 /** Middlewares HTTP communs à main.ts et aux tests E2E ; gardes, pipe, filtre et intercepteur sont dans AppModule. */
 export function configureApp(app: INestApplication, config: AppConfig): void {
   const express = app as NestExpressApplication;
-  if (config.TRUST_PROXY) express.set('trust proxy', 1);
+  if (config.TRUST_PROXY > 0) express.set('trust proxy', config.TRUST_PROXY);
   express.disable('x-powered-by');
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');

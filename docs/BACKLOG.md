@@ -42,11 +42,20 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 
 ## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
 
-- Connexion : `session.regenerate()` + `authenticatedAt` + nouveau jeton CSRF ; déconnexion qui détruit la session
-  et efface les cookies de session et CSRF ; tests « l'id de session change », « un jeton CSRF d'avant la connexion
-  est refusé ». Côté front : remettre le jeton CSRF de `HttpClient` à zéro à la connexion et à la déconnexion.
 - Remplacer `NoRightsYet` par la vraie résolution des droits (`isMember`, permissions du salon actif, rôles
-  système) ; durée absolue plus courte pour les rôles système (aujourd'hui 72 h pour tous).
+  système) — UC-005 / UC-008. Les durées plus courtes des rôles système (D-026) sont déjà appliquées par `AuthGuard`.
+- **Écran de connexion (front de UC-002)** : non fait (back seul, 18/11). Contrat prêt (`SignInSchema`,
+  `SignedInSchema`, `SignedOutSchema`, `SessionSummarySchema`). Le front doit :
+  - remettre le jeton CSRF de `HttpClient` à zéro à la connexion (prendre le `csrfToken` renvoyé) et à la
+    déconnexion ;
+  - traiter un 401 ou 403 sur `POST /api/public/auth/sign-out` comme « déconnecté » : une session déjà expirée rend
+    le jeton CSRF invalide (revue sécurité UC-002) ;
+  - conduire vers l'étape suivante du résumé de session (D-027), afficher les aides et messages du UC (§10, §15).
+- **Numéro mal formé à la connexion** (écart UC-002 E1, 18/11) : l'API répond 422 « Numéro de téléphone camerounais
+  invalide », comme à l'inscription, au lieu d'un 400 par champ. Aucun essai n'est compté. Proposé : garder ce
+  comportement commun ; à confirmer par le user.
+- UC-003 (mot de passe oublié) doit lever les blocages de connexion du numéro (D-025) et fermer toutes les sessions
+  de l'utilisateur (D-028).
 - Front : route `/connexion` (le 401 y redirige déjà, elle tombe en 404) ; poser `<RequirePermission>` sur
   `/salon/*` et `<RequireSystemRole>` sur `/admin/*` ; brancher le flux SSE (`/api/salon/realtime/stream`) dans
   `main.tsx`, le relancer au changement de salon actif et le couper à la déconnexion ; relecture de secours
@@ -74,6 +83,34 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   - si l'isolation par défaut change un jour (`defaultTxOptions` du plugin transactionnel), figer READ COMMITTED
     sur `RequestSignUpCode` ;
   - garder l'E2E « rafale = un seul SMS » avec la configuration de prod.
+
+## Tests : plantage natif intermittent sous Windows (relevé le 18/11, mis de côté à la demande du user)
+
+- Un processus de test meurt parfois sans message (code `0xC0000409`), au hasard pendant l'exécution, d'autant plus
+  souvent qu'un fichier enchaîne de requêtes vers la base. Ce n'est pas un test rouge : relancer le fichier.
+- Mesures : 600 requêtes sur `/api/public/health` (route triviale) plantent aussi (1 à 5 fois sur 8) ; aucun rapport
+  Node (pas une erreur V8) ; `argon2` seul ne plante jamais ; même panne en pool `threads` (le processus principal
+  meurt) ; un seul port d'écoute n'y change rien. Environnement : Node 24.15.0, Windows 11, base dans Docker Desktop.
+- Atténuation faite : les plafonds de connexion sont configurables, les tests de rafale les atteignent en ~40
+  requêtes au lieu de 600.
+- Pistes : faire tourner la suite sur Linux (CI), essayer une autre version de Node 24, activer les vidages mémoire
+  Windows (WER LocalDumps) pour nommer le module fautif.
+
+## Connexion, à surveiller (revues sécurité UC-002, 18/11)
+
+- Filet de 100 connexions/h : compté par jeton d'appareil quand le cookie en porte un, sinon par adresse IP. Des
+  cookies forgés échappent au filet ; le coût reste borné par la politique D-025 (30 échecs/h par adresse ou /64,
+  5/15 min et 20/24 h par numéro). Revoir si l'on observe un abus de calcul argon2id.
+- `TRUST_PROXY` (nombre de sauts) : à régler exactement au déploiement (CDN + répartiteur = 2) ; une valeur fausse
+  regroupe tous les clients sous une seule adresse ou laisse usurper l'adresse.
+- Audit `SIGN_IN_BLOCKED` écrit seulement pour un compte existant (une fois par blocage) : écart de temps minime,
+  non observable par le client ; à sortir du chemin de la réponse si une mesure le montre.
+- Rapport d'index (`EXPLAIN`) de `SqlSignInAttemptHistory` et volume de `sign_in_attempts` (purge horaire) à
+  mesurer avec des données réalistes.
+- IPv6 : la limite par adresse compte par /64 ; un attaquant qui dispose d'un /48 ou d'un /56 multiplie son quota
+  (la limite par numéro tient). Ajouter un compteur au /48 avec un seuil plus haut si l'abus apparaît (contre-revue
+  UC-002) ; modifie D-025, décision du user.
+- Seed de démo d'un compte du personnel pour se connecter en local (non fait).
 
 ## Structure (refactoring D-024, 18/11)
 

@@ -19,6 +19,54 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-18 — UC-002 Se connecter et se déconnecter (backend)
+
+- **Quoi** : un membre du personnel se connecte avec son numéro et son mot de passe, puis se déconnecte.
+  - La connexion ouvre une session neuve (nouvel identifiant, nouveau jeton CSRF, aucun salon actif) et renvoie le
+    résumé de session avec l'étape suivante.
+  - `GET /api/salon/session` redonne ce résumé à la réouverture de l'application.
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-002 (lot 1). Décisions du user D-025 à D-028 :
+  - les blocages ne visent que les appareils non reconnus ;
+  - sessions de 24 h / 7 j pour le personnel, 2 h / 12 h pour les rôles système ;
+  - étape suivante selon les accès ;
+  - audit, purge à 48 h et rehachage.
+- **Périmètre** :
+  - **Module `identity`** :
+    - domaine : politique d'essais (fonction pure), agrégat `KnownDevice`, normalisation des adresses (/64 en IPv6,
+      port retiré), règle de l'étape suivante ;
+    - commandes `SignIn`, `SignOut`, `PurgeSignInAttempts` (tâche horaire) ; query `GetMySession` en SQL pur ;
+      historique des essais en repository de lecture SQL ;
+    - une seule vérification argon2id par refus (empreinte factice), verrou PostgreSQL par numéro, refus levé après
+      le commit ;
+    - appareils reconnus : jetons générés par le serveur, hachés, renouvelés à chaque connexion, un par compte
+      (5 au plus par navigateur).
+  - **Socle** :
+    - `AuthGuard` applique les durées des rôles système ;
+    - deux limiteurs de connexion configurables (`SIGN_IN_RATE_LIMIT_PER_HOUR` = 100 par appareil,
+      `SIGN_IN_ADDRESS_RATE_LIMIT_PER_HOUR` = 600 par adresse) ;
+    - `TRUST_PROXY` devient un nombre de proxys, obligatoire hors local ;
+    - `SqlReader` lit dans la transaction en cours.
+  - **Migration** : `IdentitySignIn` (`sign_in_attempts`, `known_devices`).
+  - **Contrat** : `SignIn`, `SignedIn`, `SignedOut`, `SessionSummary`, `NextStep`.
+- **Vérification** : mode **light**, agents `use-case-writer`, `query-perf`, `backend-builder`, `security-reviewer`.
+  - Suite complète verte : 200 tests unitaires, 36 d'intégration et 50 E2E côté backend, 36 côté frontend.
+    Lint, typecheck et `pnpm arch` verts.
+  - Mutations volontaires vues rouges : seuils et fenêtres de la politique, exemption de l'appareil reconnu, verrou
+    par numéro, plafond de jetons, /64, renouvellement du jeton, filet par adresse.
+  - Revue `security-reviewer` : rien de critique. Les 3 points « à corriger » ont été corrigés :
+    - un tiers pouvait bloquer un appareil reconnu par le filet IP ;
+    - un jeton venu du client était repris ;
+    - un écart de temps révélait les comptes existants.
+  - Contre-revue : 1 point corrigé (cookies forgés sans plafond par adresse).
+  - Rapport d'index de `GetMySession` : Index Scan sur `users_pkey`.
+- **Suites** (`docs/BACKLOG.md`) :
+  - écran de connexion (front) ;
+  - numéro mal formé : 422 plutôt que 400, à confirmer ;
+  - compteur IPv6 au /48 ;
+  - plantage natif intermittent des tests sous Windows ;
+  - UC-003 doit lever les blocages et fermer les sessions.
+
 ### 2026-11-18 — Refactoring de structure du module `identity` (D-024)
 
 - **Quoi** : chaque concept a son fichier, rangé par rôle. Le changement porte sur la structure, sans changer le

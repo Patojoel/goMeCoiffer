@@ -1,3 +1,11 @@
+import { KnownDevice } from '../../domain/aggregates/known-device.js';
+import type { DeviceTokenGenerator } from '../../domain/ports/device-token-generator.port.js';
+import type { PasswordVerifier } from '../../domain/ports/password-verifier.port.js';
+import type { SignInAttemptHistory } from '../../domain/repositories/read/sign-in-attempt-history.read-repository.js';
+import type { KnownDeviceRepository } from '../../domain/repositories/write/known-device.repository.js';
+import type { SignInAttemptRepository } from '../../domain/repositories/write/sign-in-attempt.repository.js';
+import { NETWORK_WINDOW_MS, PHONE_DAILY_WINDOW_MS } from '../../domain/services/sign-in-attempt-policy.js';
+import type { SignInAttempt } from '../../domain/value-objects/sign-in-attempt.js';
 import type { AuditEntry, AuditTrail } from '../../../../shared/application/ports.js';
 import { ConcurrencyConflictError } from '../../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
@@ -127,10 +135,10 @@ export class InMemoryUserRepository implements UserRepository {
     );
   }
 
-  seedStaff(id: string, phone: PhoneNumber) {
+  seedStaff(id: string, phone: PhoneNumber, passwordHash = 'argon:existing') {
     this.seedLightClient(id, phone);
     const row = this.rows.get(id)!;
-    this.rows.set(id, { ...row, name: 'Paul Ebode', passwordHash: 'argon:existing' });
+    this.rows.set(id, { ...row, name: 'Paul Ebode', passwordHash });
   }
 
   all() {
@@ -142,5 +150,98 @@ export class InMemoryAuditTrail implements AuditTrail {
   readonly entries: AuditEntry[] = [];
   async record(entry: AuditEntry) {
     this.entries.push(entry);
+  }
+}
+
+/** Compte les vérifications : l'appel à l'empreinte factice (`hash = null`) coûte autant qu'une vraie vérification. */
+export class FakePasswordVerifier implements PasswordVerifier {
+  verifications = 0;
+
+  async verify(password: string, hash: string | null) {
+    this.verifications += 1;
+    return hash !== null && [`argon:${password}`, `argon-old:${password}`].includes(hash);
+  }
+
+  /** Les empreintes « argon-old: » simulent des réglages dépassés. */
+  needsRehash(hash: string) {
+    return hash.startsWith('argon-old:');
+  }
+
+  async rehash(password: string) {
+    return `argon:${password}`;
+  }
+}
+
+export class FixedDeviceTokens implements DeviceTokenGenerator {
+  constructor(private readonly tokens: string[]) {}
+  next(): string {
+    const token = this.tokens.shift();
+    if (!token) throw new Error('FixedDeviceTokens : plus de jeton prévu par le test');
+    return token;
+  }
+}
+
+/** Comme le repository réel : un essai par ligne, jamais modifié. */
+export class InMemorySignInAttemptRepository implements SignInAttemptRepository {
+  private rows: SignInAttempt[] = [];
+
+  async lockSignInsFor() {}
+
+  async add(attempt: SignInAttempt) {
+    this.rows.push(attempt);
+  }
+
+  async purgeBefore(before: Date) {
+    const kept = this.rows.filter((r) => r.at >= before);
+    const purged = this.rows.length - kept.length;
+    this.rows = kept;
+    return purged;
+  }
+
+  all() {
+    return [...this.rows];
+  }
+}
+
+/** Même filtre que la requête SQL : essais du numéro sur 24 h, échecs de l'adresse sur 1 h (appareils non reconnus). */
+export class InMemorySignInAttemptHistory implements SignInAttemptHistory {
+  constructor(private readonly attempts: InMemorySignInAttemptRepository) {}
+
+  async recentAttempts(phone: PhoneNumber, networkAddress: string, now: Date) {
+    const age = (a: SignInAttempt) => now.getTime() - a.at.getTime();
+    return this.attempts
+      .all()
+      .filter(
+        (a) =>
+          (a.phone === phone.value && age(a) < PHONE_DAILY_WINDOW_MS) ||
+          (a.networkAddress === networkAddress &&
+            age(a) < NETWORK_WINDOW_MS &&
+            !a.succeeded &&
+            !a.fromKnownDevice),
+      );
+  }
+}
+
+/** Un appareil par couple (empreinte du jeton, compte), comme la contrainte d'unicité de la base. */
+export class InMemoryKnownDeviceRepository implements KnownDeviceRepository {
+  private readonly rows = new Map<string, ReturnType<KnownDevice['snapshot']>>();
+
+  lookups = 0;
+
+  async findOf(tokenHashes: readonly string[], userId: string) {
+    this.lookups += 1;
+    const row = [...this.rows.values()].find((r) => tokenHashes.includes(r.tokenHash) && r.userId === userId);
+    return row ? KnownDevice.restore(row) : null;
+  }
+
+  async save(device: KnownDevice) {
+    const next = device.snapshot();
+    const current = this.rows.get(next.id);
+    if ((current?.version ?? 0) !== next.version) throw new ConcurrencyConflictError('KnownDevice', next.id);
+    this.rows.set(next.id, { ...next, version: next.version + 1 });
+  }
+
+  all() {
+    return [...this.rows.values()];
   }
 }

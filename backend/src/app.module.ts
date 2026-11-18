@@ -10,6 +10,11 @@ import { ClsModule } from 'nestjs-cls';
 import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule, type AppConfig } from './shared/infrastructure/config/app-config.module.js';
 import { dataSourceOptions } from './shared/infrastructure/database/typeorm-options.js';
+import {
+  onlyWhereDeclared,
+  PER_ADDRESS_THROTTLER,
+  SIGN_IN_THROTTLER,
+} from './shared/infrastructure/http/per-address-throttler.js';
 import { ApiResponseInterceptor } from './shared/infrastructure/http/api-response.interceptor.js';
 import { DomainExceptionFilter } from './shared/infrastructure/http/domain-exception.filter.js';
 import { contractValidationPipe } from './shared/infrastructure/http/validation.pipe.js';
@@ -62,7 +67,22 @@ export class AppModule {
         }),
         CqrsModule.forRoot(),
         ScheduleModule.forRoot(),
-        ThrottlerModule.forRoot([{ ttl: config.THROTTLE_TTL_SECONDS * 1000, limit: config.THROTTLE_LIMIT }]),
+        ThrottlerModule.forRoot([
+          { ttl: config.THROTTLE_TTL_SECONDS * 1000, limit: config.THROTTLE_LIMIT },
+          // Limiteurs de la connexion (UC-002), actifs seulement sur les routes qui les déclarent.
+          {
+            name: SIGN_IN_THROTTLER,
+            ttl: 3_600_000,
+            limit: config.SIGN_IN_RATE_LIMIT_PER_HOUR,
+            skipIf: onlyWhereDeclared(SIGN_IN_THROTTLER),
+          },
+          {
+            name: PER_ADDRESS_THROTTLER,
+            ttl: 3_600_000,
+            limit: config.SIGN_IN_ADDRESS_RATE_LIMIT_PER_HOUR,
+            skipIf: onlyWhereDeclared(PER_ADDRESS_THROTTLER),
+          },
+        ]),
         SharedModule,
         IdentityModule,
       ],

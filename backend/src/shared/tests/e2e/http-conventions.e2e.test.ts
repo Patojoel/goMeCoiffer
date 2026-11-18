@@ -219,8 +219,8 @@ describe('HTTP conventions of the API', () => {
   });
 
   it('ends a session past its absolute lifetime, even if it was used recently', async () => {
-    const fourDaysAgo = new Date(Date.now() - 4 * DAY_MS).toISOString();
-    const browser = await signedIn(MANAGER, SALON_AKWA, fourDaysAgo);
+    const eightDaysAgo = new Date(Date.now() - 8 * DAY_MS).toISOString();
+    const browser = await signedIn(MANAGER, SALON_AKWA, eightDaysAgo);
     expect((await browser.get('/api/salon/probe/bookings')).status).toBe(401);
     expect((await browser.get('/api/salon/probe/whoami')).status).toBe(401);
   });

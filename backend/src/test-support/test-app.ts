@@ -18,11 +18,16 @@ export interface TestAppOptions {
   readonly controllers?: Type[];
   readonly providers?: Provider[];
   readonly overrides?: ReadonlyArray<readonly [token: unknown, value: unknown]>;
+  /**
+   * Variables de configuration propres au fichier. Sert à abaisser une limite pour l'atteindre en peu de requêtes :
+   * sous Windows, un processus de test qui enchaîne des centaines de requêtes peut planter (0xC0000409).
+   */
+  readonly env?: Readonly<Record<string, string>>;
 }
 
 /** Application Nest complète (gardes, filtre, session, CSRF réels) sur une base de test dédiée. */
 export async function startTestApp(options: TestAppOptions = {}): Promise<TestApp> {
-  const db = await createTestDatabase();
+  const db = await createTestDatabase(options.env);
   let builder = Test.createTestingModule({
     imports: [AppModule.forRoot(db.config)],
     controllers: options.controllers ?? [],
@@ -53,6 +58,11 @@ export class Browser {
 
   constructor(app: INestApplication) {
     this.agent = request.agent(app.getHttpServer());
+  }
+
+  /** Comme le front : après une connexion ou une déconnexion, le jeton change (`null` : il faudra en redemander un). */
+  useCsrfToken(token: string | null): void {
+    this.csrf = token;
   }
 
   get(path: string) {
