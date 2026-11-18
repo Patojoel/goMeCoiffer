@@ -57,7 +57,7 @@ export class SignUpController {
     await openAuthenticatedSession(req, result.userId, this.clock.now());
     return {
       userId: result.userId,
-      nextStep: 'CREATE_ORGANIZATION',
+      nextStep: result.nextStep,
       csrfToken: this.csrf.generateCsrfToken(req, res, { overwrite: true }),
     };
   }

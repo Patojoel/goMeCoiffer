@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { InvalidValueError } from '../../../../shared/domain/errors.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import { OtpChallenge } from '../../domain/otp-challenge.js';
+import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
 import { FixedClock, SequentialIdGenerator } from '../../../../test-support/fakes.js';
 import { ConfirmSignUp } from '../../application/commands/confirm-sign-up/confirm-sign-up.command.js';
 import { ConfirmSignUpHandler } from '../../application/commands/confirm-sign-up/confirm-sign-up.handler.js';

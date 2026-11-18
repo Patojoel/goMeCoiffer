@@ -9,21 +9,20 @@ import {
   type IdGenerator,
 } from '../../../../../shared/application/ports.js';
 import { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
-import { OtpNoLongerValidError } from '../../../domain/errors.js';
-import { type CommonPasswords, NewPassword } from '../../../domain/new-password.js';
+import { User } from '../../../domain/aggregates/user.js';
+import { OtpPurpose } from '../../../domain/enums/otp-purpose.enum.js';
+import { OtpNoLongerValidError } from '../../../domain/exceptions/otp-no-longer-valid.error.js';
+import { COMMON_PASSWORDS, type CommonPasswords } from '../../../domain/ports/common-passwords.port.js';
+import { PASSWORD_HASHER, type PasswordHasher } from '../../../domain/ports/password-hasher.port.js';
+import { SECRET_HASHER, type SecretHasher } from '../../../domain/ports/secret-hasher.port.js';
 import {
-  COMMON_PASSWORDS,
   OTP_CHALLENGE_REPOSITORY,
   type OtpChallengeRepository,
-  PASSWORD_HASHER,
-  type PasswordHasher,
-  SECRET_HASHER,
-  type SecretHasher,
-  USER_REPOSITORY,
-  type UserRepository,
-} from '../../../domain/ports.js';
-import { User } from '../../../domain/user.js';
-import { ConfirmSignUp, type SignUpResult } from './confirm-sign-up.command.js';
+} from '../../../domain/repositories/write/otp-challenge.repository.js';
+import { USER_REPOSITORY, type UserRepository } from '../../../domain/repositories/write/user.repository.js';
+import { NewPassword } from '../../../domain/value-objects/new-password.js';
+import { ConfirmSignUp } from './confirm-sign-up.command.js';
+import type { ConfirmSignUpResponse } from './confirm-sign-up.response.js';
 
 @CommandHandler(ConfirmSignUp)
 export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
@@ -38,13 +37,13 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
     @Inject(ID_GENERATOR) private readonly ids: IdGenerator,
   ) {}
 
-  async execute(cmd: ConfirmSignUp): Promise<SignUpResult> {
+  async execute(cmd: ConfirmSignUp): Promise<ConfirmSignUpResponse> {
     const phone = PhoneNumber.parse(cmd.phone);
     // Mot de passe vérifié avant le code : un refus ici ne consomme ni essai ni code (E8).
     const password = NewPassword.create(cmd.password, phone, this.commonPasswords);
     const now = this.clock.now();
 
-    const challenge = await this.challenges.findActive(phone, 'SIGN_UP');
+    const challenge = await this.challenges.findActive(phone, OtpPurpose.SIGN_UP);
     if (!challenge) return { status: 'REFUSED', refusal: new OtpNoLongerValidError() };
     const verification = challenge.verify(cmd.code, now, this.hasher);
     await this.challenges.save(challenge);
@@ -68,6 +67,11 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
       actorUserId: user.id,
       occurredAt: now,
     });
-    return { status: 'SIGNED_UP', userId: user.id, outcome: existing ? 'COMPLETED' : 'CREATED' };
+    return {
+      status: 'SIGNED_UP',
+      userId: user.id,
+      outcome: existing ? 'COMPLETED' : 'CREATED',
+      nextStep: 'CREATE_ORGANIZATION',
+    };
   }
 }

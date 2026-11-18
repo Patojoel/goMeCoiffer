@@ -1,4 +1,4 @@
-import { OTP_LIFETIME_SECONDS } from '../domain/otp-challenge.js';
+import { OTP_LIFETIME_SECONDS } from '../aggregates/otp-challenge.js';
 
 /** Textes des SMS (UC-001 Q8) : ni nom, ni lien cliquable, pour ne pas ressembler à un hameçonnage. */
 export const SmsMessages = {

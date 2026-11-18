@@ -1,6 +1,6 @@
-import { AggregateRoot } from '../../../shared/domain/aggregate-root.js';
-import { PhoneNumber } from '../../../shared/domain/phone-number.js';
-import { AccountAlreadyRegisteredError } from './errors.js';
+import { AggregateRoot } from '../../../../shared/domain/aggregate-root.js';
+import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
+import { AccountAlreadyRegisteredError } from '../exceptions/account-already-registered.error.js';
 
 interface UserState {
   id: string;

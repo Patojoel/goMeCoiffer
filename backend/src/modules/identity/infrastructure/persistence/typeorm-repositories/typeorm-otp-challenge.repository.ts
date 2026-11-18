@@ -1,13 +1,15 @@
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { Injectable } from '@nestjs/common';
-import { ConcurrencyConflictError, ConflictError } from '../../../../shared/domain/errors.js';
-import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import { isPgError } from '../../../../shared/infrastructure/database/pg-error.js';
-import { OtpChallenge, type OtpPurpose } from '../../domain/otp-challenge.js';
-import type { CodeSend } from '../../domain/otp-sending-policy.js';
-import type { OtpChallengeRepository } from '../../domain/ports.js';
-import { OtpChallengeOrmEntity } from './otp-challenge.orm-entity.js';
+import { ConcurrencyConflictError, ConflictError } from '../../../../../shared/domain/errors.js';
+import type { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
+import { isPgError } from '../../../../../shared/infrastructure/database/pg-error.js';
+import { OtpChallenge } from '../../../domain/aggregates/otp-challenge.js';
+import type { OtpPurpose } from '../../../domain/enums/otp-purpose.enum.js';
+import { OtpStatus } from '../../../domain/enums/otp-status.enum.js';
+import type { OtpChallengeRepository } from '../../../domain/repositories/write/otp-challenge.repository.js';
+import type { CodeSend } from '../../../domain/value-objects/code-send.js';
+import { OtpChallengeOrmEntity } from '../orm-entities/otp-challenge.orm-entity.js';
 
 @Injectable()
 export class TypeOrmOtpChallengeRepository implements OtpChallengeRepository {
@@ -18,7 +20,7 @@ export class TypeOrmOtpChallengeRepository implements OtpChallengeRepository {
   }
 
   async findActive(phone: PhoneNumber, purpose: OtpPurpose): Promise<OtpChallenge | null> {
-    const row = await this.repo.findOneBy({ phone: phone.value, purpose, status: 'ACTIVE' });
+    const row = await this.repo.findOneBy({ phone: phone.value, purpose, status: OtpStatus.ACTIVE });
     return row ? OtpChallenge.restore(row) : null;
   }
 

@@ -1,18 +1,18 @@
 import type { AuditEntry, AuditTrail } from '../../../../shared/application/ports.js';
 import { ConcurrencyConflictError } from '../../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import type { CommonPasswords, NewPassword } from '../../domain/new-password.js';
-import { OtpChallenge, type OtpPurpose } from '../../domain/otp-challenge.js';
-import {
-  type OtpChallengeRepository,
-  type OtpCodeGenerator,
-  type PasswordHasher,
-  type SecretHasher,
-  SmsDeliveryFailedError,
-  type SmsSender,
-  type UserRepository,
-} from '../../domain/ports.js';
-import { User } from '../../domain/user.js';
+import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
+import { User } from '../../domain/aggregates/user.js';
+import type { OtpPurpose } from '../../domain/enums/otp-purpose.enum.js';
+import { SmsDeliveryFailedError } from '../../domain/exceptions/sms-delivery-failed.error.js';
+import type { CommonPasswords } from '../../domain/ports/common-passwords.port.js';
+import type { OtpCodeGenerator } from '../../domain/ports/otp-code-generator.port.js';
+import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js';
+import type { SecretHasher } from '../../domain/ports/secret-hasher.port.js';
+import type { SmsSender } from '../../domain/ports/sms-sender.port.js';
+import type { OtpChallengeRepository } from '../../domain/repositories/write/otp-challenge.repository.js';
+import type { UserRepository } from '../../domain/repositories/write/user.repository.js';
+import type { NewPassword } from '../../domain/value-objects/new-password.js';
 
 /** Empreinte lisible en test ; l'intégration utilise le vrai HMAC. */
 export const fakeSecretHasher: SecretHasher = {

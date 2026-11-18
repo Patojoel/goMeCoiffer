@@ -1,16 +1,8 @@
 import { Command } from '@nestjs/cqrs';
-import type { BusinessRuleViolation } from '../../../../../shared/domain/errors.js';
-
-/**
- * Un code refusé n'est pas une exception : l'essai doit être enregistré, et une exception annulerait la
- * transaction (essais illimités). Le refus est renvoyé, la couche HTTP le transforme en erreur après le commit.
- */
-export type SignUpResult =
-  | { readonly status: 'SIGNED_UP'; readonly userId: string; readonly outcome: 'CREATED' | 'COMPLETED' }
-  | { readonly status: 'REFUSED'; readonly refusal: BusinessRuleViolation };
+import type { ConfirmSignUpResponse } from './confirm-sign-up.response.js';
 
 /** UC-001, intention 2 : prouver le numéro avec le code et créer (ou compléter) son compte propriétaire. */
-export class ConfirmSignUp extends Command<SignUpResult> {
+export class ConfirmSignUp extends Command<ConfirmSignUpResponse> {
   readonly phone: string;
   readonly code: string;
   readonly name: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import { OtpChallenge } from '../../domain/otp-challenge.js';
+import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
 import { fakeSecretHasher } from '../fakes/identity-fakes.js';
 
 const MIREILLE = PhoneNumber.parse('6 77 12 34 56');

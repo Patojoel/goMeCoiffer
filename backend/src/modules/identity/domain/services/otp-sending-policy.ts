@@ -1,4 +1,6 @@
-import { OtpResendTooSoonError, OtpTooManyRequestsError } from './errors.js';
+import { OtpResendTooSoonError } from '../exceptions/otp-resend-too-soon.error.js';
+import { OtpTooManyRequestsError } from '../exceptions/otp-too-many-requests.error.js';
+import type { CodeSend } from '../value-objects/code-send.js';
 
 export const RESEND_DELAY_SECONDS = 60;
 export const MAX_CODES_PER_HOUR = 5;
@@ -6,12 +8,6 @@ export const MAX_CODES_PER_DAY = 10;
 export const MAX_FAILED_ATTEMPTS_PER_DAY = 10;
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;
-
-/** Un code envoyé à un numéro pour un motif, et le nombre de codes faux saisis pour lui. */
-export interface CodeSend {
-  readonly sentAt: Date;
-  readonly failedAttempts: number;
-}
 
 /**
  * Règles d'envoi des codes SMS pour un numéro et un motif (D-021, D-023) : 60 s entre deux codes, 5 codes par

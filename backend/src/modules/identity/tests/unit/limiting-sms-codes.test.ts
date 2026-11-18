@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { assertCanSendCode, type CodeSend } from '../../domain/otp-sending-policy.js';
+import { assertCanSendCode } from '../../domain/services/otp-sending-policy.js';
+import type { CodeSend } from '../../domain/value-objects/code-send.js';
 
 const at = (time: string, day = '18') => new Date(`2026-11-${day}T${time}+01:00`);
 const sent = (time: string, failedAttempts = 0, day = '18'): CodeSend => ({

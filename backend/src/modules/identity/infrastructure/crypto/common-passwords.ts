@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CommonPasswords } from '../../domain/new-password.js';
+import type { CommonPasswords } from '../../domain/ports/common-passwords.port.js';
 
 /**
  * Mots de passe courants (listes publiques de fuites, plus des mots attendus au Cameroun et dans un salon).

@@ -4,20 +4,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ConcurrencyConflictError, ConflictError } from '../../../../shared/domain/errors.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { startTestApp, type TestApp } from '../../../../test-support/test-app.js';
-import { NewPassword } from '../../domain/new-password.js';
-import { OtpChallenge } from '../../domain/otp-challenge.js';
+import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
+import { User } from '../../domain/aggregates/user.js';
+import { COMMON_PASSWORDS } from '../../domain/ports/common-passwords.port.js';
+import { PASSWORD_HASHER, type PasswordHasher } from '../../domain/ports/password-hasher.port.js';
+import { SECRET_HASHER, type SecretHasher } from '../../domain/ports/secret-hasher.port.js';
 import {
-  COMMON_PASSWORDS,
   OTP_CHALLENGE_REPOSITORY,
   type OtpChallengeRepository,
-  PASSWORD_HASHER,
-  type PasswordHasher,
-  SECRET_HASHER,
-  type SecretHasher,
-  USER_REPOSITORY,
-  type UserRepository,
-} from '../../domain/ports.js';
-import { User } from '../../domain/user.js';
+} from '../../domain/repositories/write/otp-challenge.repository.js';
+import { USER_REPOSITORY, type UserRepository } from '../../domain/repositories/write/user.repository.js';
+import { NewPassword } from '../../domain/value-objects/new-password.js';
 
 const MIREILLE = PhoneNumber.parse('6 77 12 34 56');
 const NOW = new Date('2026-11-18T09:00:00Z');

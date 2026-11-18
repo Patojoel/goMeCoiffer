@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import type { SmsSender } from '../../domain/ports.js';
+import type { SmsSender } from '../../domain/ports/sms-sender.port.js';
 
 const logger = new Logger('SMS (fake)');
 

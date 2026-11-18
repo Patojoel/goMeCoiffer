@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import { NewPassword } from '../../domain/new-password.js';
+import { NewPassword } from '../../domain/value-objects/new-password.js';
 import { commonPasswords } from '../fakes/identity-fakes.js';
 
 const MIREILLE = PhoneNumber.parse('6 77 12 34 56');

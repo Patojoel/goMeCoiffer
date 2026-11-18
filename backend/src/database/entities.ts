@@ -1,5 +1,5 @@
-import { OtpChallengeOrmEntity } from '../modules/identity/infrastructure/persistence/otp-challenge.orm-entity.js';
-import { UserOrmEntity } from '../modules/identity/infrastructure/persistence/user.orm-entity.js';
+import { OtpChallengeOrmEntity } from '../modules/identity/infrastructure/persistence/orm-entities/otp-challenge.orm-entity.js';
+import { UserOrmEntity } from '../modules/identity/infrastructure/persistence/orm-entities/user.orm-entity.js';
 
 /**
  * Registre des entités TypeORM (`*.orm-entity.ts`) de tous les modules. Une entité absente d'ici n'est

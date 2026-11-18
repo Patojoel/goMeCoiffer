@@ -1,12 +1,12 @@
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { Injectable } from '@nestjs/common';
-import { ConcurrencyConflictError, ConflictError } from '../../../../shared/domain/errors.js';
-import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
-import { isPgError } from '../../../../shared/infrastructure/database/pg-error.js';
-import type { UserRepository } from '../../domain/ports.js';
-import { User } from '../../domain/user.js';
-import { UserOrmEntity } from './user.orm-entity.js';
+import { ConcurrencyConflictError, ConflictError } from '../../../../../shared/domain/errors.js';
+import type { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
+import { isPgError } from '../../../../../shared/infrastructure/database/pg-error.js';
+import { User } from '../../../domain/aggregates/user.js';
+import type { UserRepository } from '../../../domain/repositories/write/user.repository.js';
+import { UserOrmEntity } from '../orm-entities/user.orm-entity.js';
 
 @Injectable()
 export class TypeOrmUserRepository implements UserRepository {

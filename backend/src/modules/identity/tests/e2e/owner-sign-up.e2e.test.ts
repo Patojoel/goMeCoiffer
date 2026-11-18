@@ -9,7 +9,7 @@ import {
   RequiresSystemRole,
 } from '../../../../shared/infrastructure/security/decorators.js';
 import { type Browser, startTestApp, type TestApp } from '../../../../test-support/test-app.js';
-import { SMS_SENDER } from '../../domain/ports.js';
+import { SMS_SENDER } from '../../domain/ports/sms-sender.port.js';
 import { InMemorySmsSender } from '../fakes/identity-fakes.js';
 
 @Controller('salon/probe-identity')

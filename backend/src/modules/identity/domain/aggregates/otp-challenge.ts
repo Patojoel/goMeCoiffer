@@ -1,24 +1,16 @@
-import { AggregateRoot } from '../../../shared/domain/aggregate-root.js';
-import type { BusinessRuleViolation } from '../../../shared/domain/errors.js';
-import { PhoneNumber } from '../../../shared/domain/phone-number.js';
-import {
-  OtpAttemptsExhaustedError,
-  OtpExpiredError,
-  OtpIncorrectError,
-  OtpNoLongerValidError,
-} from './errors.js';
+import { AggregateRoot } from '../../../../shared/domain/aggregate-root.js';
+import type { BusinessRuleViolation } from '../../../../shared/domain/errors.js';
+import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
+import type { OtpPurpose } from '../enums/otp-purpose.enum.js';
+import { OtpStatus } from '../enums/otp-status.enum.js';
+import { OtpAttemptsExhaustedError } from '../exceptions/otp-attempts-exhausted.error.js';
+import { OtpExpiredError } from '../exceptions/otp-expired.error.js';
+import { OtpIncorrectError } from '../exceptions/otp-incorrect.error.js';
+import { OtpNoLongerValidError } from '../exceptions/otp-no-longer-valid.error.js';
+import type { SecretVerifier } from '../ports/secret-verifier.port.js';
 
 export const OTP_LIFETIME_SECONDS = 5 * 60;
 export const OTP_MAX_ATTEMPTS = 5;
-
-/** Un même défi sert l'inscription, le mot de passe oublié, l'invitation et la vérification client. */
-export type OtpPurpose = 'SIGN_UP' | 'PASSWORD_RESET' | 'INVITATION' | 'CLIENT_LOGIN';
-type OtpStatus = 'ACTIVE' | 'CONSUMED' | 'SUPERSEDED';
-
-/** Comparaison d'un code à son empreinte, fournie par l'infrastructure (temps constant). */
-export interface SecretVerifier {
-  matches(candidate: string, hash: string): boolean;
-}
 
 export type OtpVerification = { accepted: true } | { accepted: false; refusal: BusinessRuleViolation };
 
@@ -50,7 +42,7 @@ export class OtpChallenge extends AggregateRoot {
       phone: input.phone.value,
       purpose: input.purpose,
       codeHash: input.codeHash,
-      status: 'ACTIVE',
+      status: OtpStatus.ACTIVE,
       sentAt: input.now,
       expiresAt: new Date(input.now.getTime() + OTP_LIFETIME_SECONDS * 1000),
       attempts: 0,
@@ -73,7 +65,7 @@ export class OtpChallenge extends AggregateRoot {
 
   /** L'essai est compté avant la comparaison : un essai raté doit être sauvegardé, même si la commande refuse. */
   verify(candidate: string, now: Date, verifier: SecretVerifier): OtpVerification {
-    if (this.state.status !== 'ACTIVE') return refused(new OtpNoLongerValidError());
+    if (this.state.status !== OtpStatus.ACTIVE) return refused(new OtpNoLongerValidError());
     if (now.getTime() >= this.state.expiresAt.getTime()) return refused(new OtpExpiredError());
     if (this.state.attempts >= OTP_MAX_ATTEMPTS) return refused(new OtpAttemptsExhaustedError());
 
@@ -82,18 +74,18 @@ export class OtpChallenge extends AggregateRoot {
       const left = OTP_MAX_ATTEMPTS - this.state.attempts;
       return refused(left > 0 ? new OtpIncorrectError(left) : new OtpAttemptsExhaustedError());
     }
-    this.state.status = 'CONSUMED';
+    this.state.status = OtpStatus.CONSUMED;
     this.state.consumedAt = now;
     return { accepted: true };
   }
 
   /** Codes faux saisis : l'essai qui a consommé le code n'en est pas un. */
   get failedAttempts(): number {
-    return this.state.status === 'CONSUMED' ? this.state.attempts - 1 : this.state.attempts;
+    return this.state.status === OtpStatus.CONSUMED ? this.state.attempts - 1 : this.state.attempts;
   }
 
   supersede(): void {
-    if (this.state.status === 'ACTIVE') this.state.status = 'SUPERSEDED';
+    if (this.state.status === OtpStatus.ACTIVE) this.state.status = OtpStatus.SUPERSEDED;
   }
 
   snapshot(): Readonly<OtpChallengeState> {

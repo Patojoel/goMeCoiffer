@@ -2,8 +2,10 @@ import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { hash } from '@node-rs/argon2';
 import { APP_CONFIG, type AppConfig } from '../../../../shared/infrastructure/config/app-config.module.js';
-import type { NewPassword } from '../../domain/new-password.js';
-import type { OtpCodeGenerator, PasswordHasher, SecretHasher } from '../../domain/ports.js';
+import type { OtpCodeGenerator } from '../../domain/ports/otp-code-generator.port.js';
+import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js';
+import type { SecretHasher } from '../../domain/ports/secret-hasher.port.js';
+import type { NewPassword } from '../../domain/value-objects/new-password.js';
 
 /** Empreinte HMAC-SHA256 des codes à usage unique, avec le poivre TOKEN_HASH_PEPPER ; comparaison à temps constant. */
 @Injectable()
