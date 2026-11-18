@@ -7,3 +7,4 @@ dans `exigences.md` (créé à la première passe). Les scénarios exécutables 
 | ID | Titre | Acteur | Module | Exigences | Priorité | Statut |
 |---|---|---|---|---|---|---|
 | [UC-001](UC-001-creer-son-compte-proprietaire.md) | Créer son compte propriétaire | futur propriétaire | `identity` | EX-001, EX-011, EX-012, EX-018, EX-019, EX-020, EX-023, EX-025, D-017, D-018 | Must | Prêt pour dev |
+| [UC-002](UC-002-se-connecter.md) | Se connecter et se déconnecter | membre du personnel (propriétaire, collaborateur), administrateur GoMeCoiffer | `identity` | EX-001, EX-006, EX-009, EX-011, EX-018, EX-020, EX-024, EX-025, EX-029, D-004, D-017, D-018, D-019, D-020 | Must | À valider (Q1, Q4) |

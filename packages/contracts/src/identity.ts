@@ -44,3 +44,37 @@ export const SignedUpSchema = z.object({
   csrfToken: z.string().min(1),
 });
 export type SignedUp = z.infer<typeof SignedUpSchema>;
+
+/** UC-002 — POST /api/public/auth/sign-in : se connecter avec son numéro et son mot de passe (D-017). */
+export const SignInSchema = z
+  .object({
+    phone: PhoneInput,
+    password: z.string().min(1, 'Saisissez votre mot de passe.').max(128, '128 caractères au plus.'),
+  })
+  .strict();
+export type SignIn = z.infer<typeof SignInSchema>;
+
+/** Où conduire l'utilisateur après la connexion (D-027). */
+export const NextStepSchema = z.enum(['PLATFORM_ADMIN', 'OPEN_SALON', 'CHOOSE_SALON', 'CREATE_ORGANIZATION']);
+export type NextStep = z.infer<typeof NextStepSchema>;
+
+/** UC-002 — GET /api/salon/session : résumé de la session, sans téléphone ni e-mail. */
+export const SessionSummarySchema = z.object({
+  user: z.object({ id: z.uuid(), name: z.string() }),
+  activeSalonId: z.uuid().nullable(),
+  salons: z.array(z.object({ id: z.uuid(), name: z.string(), role: z.string() })),
+  systemRoles: z.array(z.string()),
+  nextStep: NextStepSchema,
+});
+export type SessionSummary = z.infer<typeof SessionSummarySchema>;
+
+export const SignedInSchema = z.object({
+  /** Nouveau jeton CSRF : la session vient d'être régénérée, l'ancien jeton ne vaut plus. */
+  csrfToken: z.string().min(1),
+  session: SessionSummarySchema,
+});
+export type SignedIn = z.infer<typeof SignedInSchema>;
+
+/** UC-002 — POST /api/public/auth/sign-out : même réponse avec ou sans session ouverte. */
+export const SignedOutSchema = z.object({ signedOut: z.literal(true) });
+export type SignedOut = z.infer<typeof SignedOutSchema>;

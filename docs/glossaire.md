@@ -30,5 +30,8 @@ Vocabulaire du PRD, à employer **mot pour mot** dans les use cases et les écra
 | Compte client léger | Compte d'un client sans mot de passe, identifié par son numéro vérifié par code SMS ; il retrouve ses réservations à chaque vérification. | D-018 |
 | Compte propriétaire | Compte d'un responsable de salon : numéro vérifié, mot de passe, sans rôle tant qu'il n'a pas créé son organisation. | UC-001 |
 | Code de vérification (défi SMS) | Code à 6 chiffres envoyé par SMS pour prouver la possession d'un numéro ; valable 5 minutes, 5 essais, un seul actif par numéro et par motif (inscription, mot de passe oublié, invitation, vérification client). | D-017, UC-001 |
+| Session | Période pendant laquelle un utilisateur est connecté sur un appareil ; s'ouvre à la connexion sans salon actif, se ferme à la déconnexion ou à expiration (inactivité, durée absolue). | D-004, UC-002 |
+| Appareil reconnu | Appareil sur lequel le titulaire d'un numéro s'est connecté avec succès récemment ; il échappe aux blocages de connexion visant les appareils inconnus. | UC-002 |
+| Blocage de connexion | Refus temporaire des connexions à un numéro (ou depuis une adresse réseau) après trop d'échecs, pour les appareils non reconnus ; levé par le temps ou « Mot de passe oublié ». | UC-002 |
 | Numéro vérifié | Numéro dont la possession a été prouvée par un code de vérification, avec la date de la preuve. | UC-001 |
 | Période de grâce | Délai après expiration de l'abonnement avant la suspension des nouvelles réservations publiques. | PRD F08 |
