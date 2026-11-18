@@ -17,7 +17,6 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           ACTOR: ${{ github.actor }}
-          COMPARE_URL: ${{ github.event.compare }}
           # Messages de commit passés en variable puis lus par jq : jamais insérés dans le script.
           COMMITS: ${{ toJson(github.event.commits) }}
         run: |
@@ -25,9 +24,10 @@ jobs:
             echo "::warning::Secret DISCORD_WEBHOOK_URL absent : aucune notification envoyée."
             exit 0
           fi
-          payload=$(jq -n --arg actor "$ACTOR" --arg url "$COMPARE_URL" --argjson commits "$COMMITS" '
-            ([$commits[] | "• " + (.message | split("\n")[0]) + " (`" + .id[0:7] + "`)"] | .[0:10] | join("\n")) as $list
+          # Auteur et titres des commits seulement : ni identifiant de commit, ni lien, ni clé.
+          payload=$(jq -n --arg actor "$ACTOR" --argjson commits "$COMMITS" '
+            ([$commits[] | "• " + (.message | split("\n")[0])] | .[0:10] | join("\n")) as $list
             | { username: "GoMeCoiffer",
                 content: ("**develop mis à jour** par " + $actor + " — " + ($commits | length | tostring)
-                          + " commit(s)\n" + $list + "\n" + $url)[0:1900] }')
+                          + " commit(s)\n" + $list)[0:1900] }')
           curl -fsS -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
