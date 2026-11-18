@@ -31,6 +31,8 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Langues de l'interface** : français seul, ou français + anglais (Cameroun bilingue) ? Hypothèse : structure
   i18n dès le départ, français seul au MVP.
 - **Politique de conservation et de protection des données** des clients (PRD §12).
+- **Textes des conditions d'utilisation et de la politique de confidentialité** à rédiger (acceptation obligatoire
+  à l'inscription, D-022) ; d'ici là, l'écran pointe vers des pages provisoires. À fournir avant la production.
 - **Stockage des photos de salon** en prod (disque du serveur ou stockage objet).
 
 ## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
