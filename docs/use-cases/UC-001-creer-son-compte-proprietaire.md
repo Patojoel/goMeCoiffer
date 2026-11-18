@@ -2,7 +2,7 @@
 
 | Champ | Valeur |
 |---|---|
-| Statut | Prêt pour revue |
+| Statut | Prêt pour dev |
 | Priorité | Must |
 | Module | `identity` |
 | Auteur | use-case-writer (rédigé avec la session principale) |
@@ -70,18 +70,18 @@ Le visiteur choisit « Créer mon compte salon » depuis la marketplace ou la pa
 | RG-001-02 | Le numéro doit être camerounais : +237 suivi de 9 chiffres commençant par 6 (mobile) ou 2 (fixe). | « 6 77 12 34 56 » → +237677123456 accepté ; « 6 77 12 34 5 » (8 chiffres) refusé ; « +33 6 12 34 56 78 » refusé. | EX-018, [HYPOTHÈSE] Q7 |
 | RG-001-03 | Le compte n'est créé qu'**après** la saisie du bon code SMS envoyé au numéro. | Sans code, rien n'est créé, même si le formulaire est complet. | D-017 |
 | RG-001-04 | Un code d'inscription compte **6 chiffres**, est valable **5 minutes**, accepte **5 essais** et ne sert **qu'une fois**. | Code envoyé à 10 h 00 → refusé à 10 h 05 et 1 seconde ; 6e essai refusé même avec le bon code. | skill security |
-| RG-001-05 | Un nouveau code ne peut être demandé **qu'après 60 secondes**, et au plus **5 codes par numéro et par heure**. | Demande à 10 h 00 puis à 10 h 00 min 40 s → refusée (« patientez 20 secondes ») ; 6e demande dans l'heure → refusée. | skill security, [HYPOTHÈSE] Q3 |
+| RG-001-05 | Un nouveau code ne peut être demandé **qu'après 60 secondes**, et au plus **5 codes par numéro et par heure**. | Demande à 10 h 00 puis à 10 h 00 min 40 s → refusée (« patientez 20 secondes ») ; 6e demande dans l'heure → refusée. | skill security, D-021 |
 | RG-001-06 | Un seul code est actif par numéro pour l'inscription : un nouveau code **annule** le précédent. | Codes 482913 puis 105377 : seul 105377 est accepté. | skill security |
-| RG-001-07 | Le mot de passe compte **10 à 128 caractères**, ne figure pas dans la liste des mots de passe courants et ne reprend pas le numéro. | « salon2026 » (9) refusé ; « 677123456ab » refusé (contient le numéro) ; « motdepasse123 » refusé (courant) ; « Akwa-Tresses-27 » accepté. | D-017, [HYPOTHÈSE] Q2 |
+| RG-001-07 | Le mot de passe compte **10 à 128 caractères**, ne figure pas dans la liste des mots de passe courants et ne reprend pas le numéro. | « salon2026 » (9) refusé ; « 677123456ab » refusé (contient le numéro) ; « motdepasse123 » refusé (courant) ; « Akwa-Tresses-27 » accepté. | D-017, D-020 |
 | RG-001-08 | Le nom du responsable est obligatoire, de 2 à 80 caractères. | « Mireille Ndongo » accepté ; « M » refusé. | EX-018 |
 | RG-001-09 | L'e-mail est facultatif ; s'il est saisi, il doit être bien formé. Il n'est ni un identifiant de connexion ni vérifié au MVP. | « mireille@gobeauty.cm » accepté ; « mireille@ » refusé ; vide accepté. | EX-018, [HYPOTHÈSE] Q4 |
 | RG-001-10 | Si le numéro porte un **compte client léger** (sans mot de passe), la confirmation **complète** ce compte (nom, mot de passe, e-mail) au lieu d'en créer un autre ; ses réservations restent les siennes. | Mireille avait 2 réservations comme cliente : après inscription, même utilisateur, 2 réservations toujours visibles dans « Mes réservations ». | D-018 |
-| RG-001-11 | Si le numéro porte déjà un compte **avec mot de passe**, aucune inscription n'est possible : le SMS envoyé n'a **pas de code** et invite à se connecter ou à réinitialiser le mot de passe. | Paul, coiffeur déjà inscrit, tente de s'inscrire : il reçoit « Un compte GoMeCoiffer existe déjà pour ce numéro… ». | EX-001, [HYPOTHÈSE] Q1 |
-| RG-001-12 | L'écran affiché après « Recevoir le code » est **le même** quel que soit l'état du numéro (nouveau, client léger, déjà inscrit). | Un tiers qui saisit le numéro de Paul ne peut pas savoir si Paul a un compte. | skill security, [HYPOTHÈSE] Q1 |
+| RG-001-11 | Si le numéro porte déjà un compte **avec mot de passe**, aucune inscription n'est possible : le SMS envoyé n'a **pas de code** et invite à se connecter ou à réinitialiser le mot de passe. | Paul, coiffeur déjà inscrit, tente de s'inscrire : il reçoit « Un compte GoMeCoiffer existe déjà pour ce numéro… ». | EX-001, D-019 |
+| RG-001-12 | L'écran affiché après « Recevoir le code » est **le même** quel que soit l'état du numéro (nouveau, client léger, déjà inscrit). | Un tiers qui saisit le numéro de Paul ne peut pas savoir si Paul a un compte. | skill security, D-019 |
 | RG-001-13 | Le compte créé n'a **aucun rôle** : ni rôle salon (il n'appartient encore à aucun salon), ni rôle système (attribués seulement par GoMeCoiffer). | Après inscription, accéder à l'administration GoMeCoiffer est refusé. | EX-011, EX-012 |
 | RG-001-14 | La création, ou la complétion d'un compte client léger, est **tracée** dans le journal d'audit (qui, quand, quoi), sans le mot de passe ni le code. | Ligne « compte propriétaire créé » datée de 10 h 02. | EX-023 |
-| RG-001-15 | Si le SMS ne peut pas partir (fournisseur indisponible), aucun code n'est actif et la tentative **ne compte pas** dans la limite d'envois. | Panne à 10 h 00 → message « réessayez dans quelques minutes » ; la demande de 10 h 03 est acceptée. | [HYPOTHÈSE] Q3 |
-| RG-001-16 | L'inscription exige l'acceptation des conditions d'utilisation et de la politique de confidentialité ; la date d'acceptation est conservée. | Case non cochée → « Recevoir le code » reste refusé avec l'explication. | EX-025, [HYPOTHÈSE] Q5 |
+| RG-001-15 | Si le SMS ne peut pas partir (fournisseur indisponible), aucun code n'est actif et la tentative **ne compte pas** dans la limite d'envois. | Panne à 10 h 00 → message « réessayez dans quelques minutes » ; la demande de 10 h 03 est acceptée. | D-021 |
+| RG-001-16 | L'inscription exige l'acceptation des conditions d'utilisation et de la politique de confidentialité ; la date d'acceptation est conservée. | Case non cochée → « Recevoir le code » reste refusé avec l'explication. | EX-025, D-022 |
 
 ## 8. Flux nominal
 
@@ -396,16 +396,16 @@ passe rapide en unitaire (l'intégration utilise le vrai argon2id).
 
 | # | Question | Hypothèse retenue en attendant | Impact si différent |
 |---|---|---|---|
-| Q1 | Faut-il dire à l'écran « ce numéro a déjà un compte » (plus simple pour l'utilisateur) ou ne jamais le révéler (protège contre la recherche de comptes) ? | **Ne jamais le révéler à l'écran** ; l'information part par SMS au titulaire du numéro (RG-001-11, -12). Coût : un SMS. | Si on l'affiche : flux plus simple, mais n'importe qui peut tester si un numéro est inscrit. |
-| Q2 | Politique de mot de passe | 10 à 128 caractères, refus des mots de passe courants et du numéro, sans règle de composition imposée. | Une règle « majuscule + chiffre + symbole » gêne les utilisateurs sans gain réel. |
-| Q3 | Limites d'envoi de codes | 60 s entre deux codes, 5 codes par numéro et par heure, limite par IP ; une panne SMS ne compte pas. | Plus strict : utilisateurs bloqués sur réseau lent ; plus large : coût SMS et abus. |
+| Q1 | Faut-il dire à l'écran « ce numéro a déjà un compte » (plus simple pour l'utilisateur) ou ne jamais le révéler (protège contre la recherche de comptes) ? **Validée (D-019).** | **Ne jamais le révéler à l'écran** ; l'information part par SMS au titulaire du numéro (RG-001-11, -12). Coût : un SMS. | Si on l'affiche : flux plus simple, mais n'importe qui peut tester si un numéro est inscrit. |
+| Q2 | Politique de mot de passe **Validée (D-020).** | 10 à 128 caractères, refus des mots de passe courants et du numéro, sans règle de composition imposée. | Une règle « majuscule + chiffre + symbole » gêne les utilisateurs sans gain réel. |
+| Q3 | Limites d'envoi de codes **Validée (D-021).** | 60 s entre deux codes, 5 codes par numéro et par heure, limite par IP ; une panne SMS ne compte pas. | Plus strict : utilisateurs bloqués sur réseau lent ; plus large : coût SMS et abus. |
 | Q4 | Rôle de l'e-mail | Contact facultatif, ni identifiant ni vérifié, pas d'unicité imposée. | S'il devient identifiant : unicité, vérification et non-énumération à concevoir. |
-| Q5 | Conditions d'utilisation et confidentialité | Acceptation explicite obligatoire, date conservée. Textes juridiques à fournir. | Sans acceptation : conformité à la loi camerounaise sur les données personnelles à vérifier. |
+| Q5 | Conditions d'utilisation et confidentialité **Validée (D-022).** | Acceptation explicite obligatoire, date conservée. Textes juridiques à fournir. | Sans acceptation : conformité à la loi camerounaise sur les données personnelles à vérifier. |
 | Q6 | Inscription libre ou sur invitation de GoMeCoiffer ? | Libre ; la publication du salon dans la marketplace sera contrôlée plus tard (lot 7). | Sur invitation : UC-001 devient une activation d'invitation. |
 | Q7 | Les numéros fixes (2…) sont-ils acceptés ? Un fixe ne reçoit pas de SMS. | Acceptés par le format, mais l'écran précise « un numéro qui reçoit les SMS ». | Les refuser : règle de format plus stricte (6 uniquement). |
 | Q8 | Texte exact des SMS | Code : « GoMeCoiffer : votre code est 482913. Il expire dans 5 minutes. Ne le communiquez à personne. » Information : « GoMeCoiffer : un compte existe déjà pour ce numéro. Connectez-vous ou utilisez “Mot de passe oublié”. » | Aucun nom ni lien cliquable dans le SMS (hameçonnage). |
 
-Aucune question n'est bloquante : chacune a une hypothèse sûre. Q1, Q2, Q3 et Q5 sont à valider par le user.
+Aucune question n'est bloquante. **Q1, Q2, Q3 et Q5 validées par le user le 18/11/2026** (D-019 à D-022). Q4, Q6, Q7 et Q8 gardent leur hypothèse.
 
 ## 18. Notes pour le tech lead
 
@@ -458,6 +458,6 @@ client). Seul le **motif** change. Il se conçoit une fois, dans UC-001, et chaq
 - [x] Chaque exigence de la section 0 est couverte par au moins un scénario
 - [x] Toutes les règles métier ont au moins un exemple
 - [x] Tous les flux d'exception ont un scénario Gherkin, sauf E12 (redirection d'interface, vérifiée en test front)
-- [ ] Aucune question ouverte bloquante → aucune n'est bloquante, mais **Q1, Q2, Q3, Q5 attendent la validation du user**
+- [x] Aucune question ouverte bloquante (Q1, Q2, Q3, Q5 validées : D-019 à D-022)
 - [x] Le plan TDD couvre chaque règle
 - [x] Le `.feature` est synchronisé avec la section 12
