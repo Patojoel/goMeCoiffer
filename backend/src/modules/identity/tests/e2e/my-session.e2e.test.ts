@@ -43,7 +43,13 @@ describe('A signed-in user reads their session summary', () => {
 
   it('gives the name, no salon, no system role and leads a newcomer to create their organisation', async () => {
     const browser = t.browser();
-    const userId = await signUp(browser, '6 77 12 34 56', '+237677123456', 'Mireille Ndongo', 'mireille@example.com');
+    const userId = await signUp(
+      browser,
+      '6 77 12 34 56',
+      '+237677123456',
+      'Mireille Ndongo',
+      'mireille@example.com',
+    );
 
     const res = await browser.get('/api/salon/session');
 
