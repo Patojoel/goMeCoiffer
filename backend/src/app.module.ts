@@ -15,6 +15,7 @@ import { DomainExceptionFilter } from './shared/infrastructure/http/domain-excep
 import { contractValidationPipe } from './shared/infrastructure/http/validation.pipe.js';
 import { safeError } from './shared/infrastructure/logging/safe-error.js';
 import { AuthGuard, CsrfGuard, PermissionsGuard } from './shared/infrastructure/security/guards.js';
+import { IdentityModule } from './modules/identity/infrastructure/identity.module.js';
 import { SharedModule } from './shared/infrastructure/shared.module.js';
 
 const REDACTED = [
@@ -63,6 +64,7 @@ export class AppModule {
         ScheduleModule.forRoot(),
         ThrottlerModule.forRoot([{ ttl: config.THROTTLE_TTL_SECONDS * 1000, limit: config.THROTTLE_LIMIT }]),
         SharedModule,
+        IdentityModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },

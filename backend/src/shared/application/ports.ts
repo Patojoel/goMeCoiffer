@@ -32,6 +32,22 @@ export interface RealtimePublisher {
   publishToSalon(salonId: string, message: RealtimeMessage): void;
 }
 
+export const AUDIT_TRAIL = Symbol('AUDIT_TRAIL');
+export interface AuditEntry {
+  readonly action: string;
+  readonly subjectType: string;
+  readonly subjectId: string;
+  readonly actorUserId: string | null;
+  readonly salonId?: string | null;
+  readonly occurredAt: Date;
+  /** Jamais de secret (mot de passe, code, jeton) ni de donnée personnelle superflue. */
+  readonly details?: Readonly<Record<string, string | number | boolean | null>>;
+}
+/** Trace d'audit écrite dans la transaction de la commande (PRD §11). */
+export interface AuditTrail {
+  record(entry: AuditEntry): Promise<void>;
+}
+
 /** Acteur authentifié, résolu côté serveur depuis la session (jamais depuis la requête). */
 export interface Actor {
   readonly userId: string;

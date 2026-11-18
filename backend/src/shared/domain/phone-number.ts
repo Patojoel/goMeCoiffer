@@ -18,6 +18,17 @@ export class PhoneNumber {
     return new PhoneNumber(`+237${national}`);
   }
 
+  /** Partie nationale (9 chiffres), sans l'indicatif. */
+  get national(): string {
+    return this.value.slice(4);
+  }
+
+  /** Affichage à l'écran : seuls le début et la fin restent lisibles (6 77 •• •• 56). */
+  masked(): string {
+    const n = this.national;
+    return `${n[0]} ${n.slice(1, 3)} •• •• ${n.slice(7)}`;
+  }
+
   equals(other: PhoneNumber): boolean {
     return this.value === other.value;
   }
