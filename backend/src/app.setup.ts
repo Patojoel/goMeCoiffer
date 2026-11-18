@@ -34,8 +34,20 @@ export function configureApp(app: INestApplication, config: AppConfig): void {
         .setTitle('GoMeCoiffer API')
         .setVersion('0.1.0')
         .addCookieAuth(config.SESSION_COOKIE_NAME)
+        // Jeton de GET /api/public/session/csrf, saisi dans « Authorize » : sans lui, toute écriture répond 403.
+        .addApiKey(
+          {
+            type: 'apiKey',
+            in: 'header',
+            name: 'x-csrf-token',
+            description:
+              'Jeton CSRF : GET /api/public/session/csrf, puis le renouveler après une connexion ou une inscription.',
+          },
+          'csrf',
+        )
+        .addSecurityRequirements('csrf')
         .build(),
     );
-    SwaggerModule.setup('api/docs', app, document);
+    SwaggerModule.setup('api/docs', app, document, { swaggerOptions: { persistAuthorization: true } });
   }
 }
