@@ -19,6 +19,21 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-18 — Outillage : Swagger utilisable, notification Discord, fusion dans develop
+
+- **Quoi** :
+  - Swagger (`/api/docs`, hors prod) a un champ « Authorize » pour le jeton CSRF : les routes d'écriture se testent
+    depuis le navigateur. Le jeton est à reprendre après une inscription ou une connexion (session régénérée).
+  - Workflow GitHub Actions `.github/workflows/notify-discord-develop.yml` : à chaque mise à jour de `develop`, un
+    message Discord (auteur, titres des commits, identifiants courts, lien vers les différences). L'URL du webhook
+    vit dans le secret `DISCORD_WEBHOOK_URL`, jamais dans le dépôt.
+  - `feature/lot-1-comptes` fusionnée dans `develop` (préprod) : UC-001, UC-002 et le refactoring D-024.
+- **Pourquoi** : demandes du user (voir les routes faites ; être prévenu des mises à jour de la préprod), D-029.
+- **Périmètre** : `backend/src/app.setup.ts`, `.github/workflows/`.
+- **Vérification** : appel `POST /api/public/sign-up/code` rejoué avec le jeton (200) ; typecheck et lint verts.
+  Workflow non testé en local (`jq` absent) : la première mise à jour de `develop` sert de test.
+- **Suites** : créer le secret `DISCORD_WEBHOOK_URL` sur GitHub (user).
+
 ### 2026-11-18 — UC-002 Se connecter et se déconnecter (backend)
 
 - **Quoi** : un membre du personnel se connecte avec son numéro et son mot de passe, puis se déconnecte.
