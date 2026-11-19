@@ -70,6 +70,7 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
     return {
       status: 'SIGNED_UP',
       userId: user.id,
+      credentialsVersion: user.credentialsVersion,
       outcome: existing ? 'COMPLETED' : 'CREATED',
       nextStep: 'CREATE_ORGANIZATION',
     };

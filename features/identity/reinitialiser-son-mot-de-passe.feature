@@ -232,14 +232,23 @@ Fonctionnalité: Réinitialiser son mot de passe
     Alors le journal d'audit contient "mot de passe réinitialisé" et "connexion" à 10 h 00 pour Paul
     Et ni le code, ni le mot de passe, ni le numéro, ni l'adresse réseau n'y figurent
 
-  @erreur @RG-003-05
-  Scénario: Une panne du fournisseur SMS ne bloque pas les demandes suivantes
+  @erreur @securite @RG-003-05 @D-033 @D-019
+  Scénario: Une demande dont le SMS n'est pas parti compte dans les limites
     Étant donné que le fournisseur SMS est indisponible
     Et que Paul a demandé un code de réinitialisation à 10 h 00 sans le recevoir
-    Et que le fournisseur SMS fonctionne de nouveau
-    Quand Paul demande un code de réinitialisation à 10 h 00 min 30 s
-    Alors la demande est acceptée
-    Et le 6 99 00 11 22 reçoit un SMS avec un code
+    Quand Paul demande un nouveau code de réinitialisation à 10 h 00 min 30 s
+    Alors la demande est refusée
+    Et le motif indiqué est "Un code vient d'être envoyé. Vous pourrez en demander un autre dans 30 secondes."
+    Et la réponse est la même que pour le 6 70 00 00 01 dans la même situation
+
+  @securite @RG-003-05 @D-033
+  Scénario: Pendant une panne du fournisseur SMS, les codes faux restent comptés
+    Étant donné que le fournisseur SMS est indisponible
+    Et que Paul a demandé un code de réinitialisation à 10 h 00 sans le recevoir
+    Quand on confirme la réinitialisation pour le "6 99 00 11 22" avec le code "000000" et le nouveau mot de passe "Wouri-Degrade-2027"
+    Alors la réinitialisation est refusée
+    Et le motif indiqué est "Code incorrect. Il vous reste 4 essais."
+    Et 1 code faux compte pour le 6 99 00 11 22 dans la limite de 10 par 24 heures
 
   @erreur @RG-003-01
   Scénario: Une demande sans jeton de sécurité est refusée sans rien compter

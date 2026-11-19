@@ -1,6 +1,7 @@
 import { AggregateRoot } from '../../../../shared/domain/aggregate-root.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { AccountAlreadyRegisteredError } from '../exceptions/account-already-registered.error.js';
+import { NoPasswordToResetError } from '../exceptions/no-password-to-reset.error.js';
 
 interface UserState {
   id: string;
@@ -12,6 +13,8 @@ interface UserState {
   phoneVerifiedAt: Date | null;
   termsAcceptedAt: Date | null;
   createdAt: Date;
+  /** Augmentée à chaque changement d'identifiants : une session ouverte avec une version périmée est refusée (D-031). */
+  credentialsVersion: number;
   version: number;
 }
 
@@ -38,6 +41,7 @@ export class User extends AggregateRoot {
       phoneVerifiedAt: input.now,
       termsAcceptedAt: input.now,
       createdAt: input.now,
+      credentialsVersion: 1,
       version: 0,
     });
   }
@@ -57,6 +61,26 @@ export class User extends AggregateRoot {
   /** Empreinte à vérifier à la connexion ; `null` pour un compte client léger, qui ne se connecte pas par mot de passe. */
   get passwordHash(): string | null {
     return this.state.passwordHash;
+  }
+
+  get credentialsVersion(): number {
+    return this.state.credentialsVersion;
+  }
+
+  /** Un compte client léger n'a pas de mot de passe à réinitialiser : aucun code ne lui est envoyé (D-018). */
+  get canResetPassword(): boolean {
+    return this.state.passwordHash !== null;
+  }
+
+  /**
+   * Nouveau mot de passe prouvé par le code SMS : les sessions ouvertes avec l'ancien deviennent périmées (version),
+   * le numéro est vérifié à cet instant. Aucune comparaison à l'ancien mot de passe (D-031).
+   */
+  resetPassword(newHash: string, now: Date): void {
+    if (!this.canResetPassword) throw new NoPasswordToResetError();
+    this.state.passwordHash = newHash;
+    this.state.phoneVerifiedAt = now;
+    this.state.credentialsVersion += 1;
   }
 
   /** Même mot de passe, empreinte recalculée avec les réglages en vigueur (D-028). */

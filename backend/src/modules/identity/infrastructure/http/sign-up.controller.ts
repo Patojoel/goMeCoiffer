@@ -54,7 +54,7 @@ export class SignUpController {
     // Levé après le commit : l'essai raté reste compté.
     if (result.status === 'REFUSED') throw result.refusal;
 
-    await openAuthenticatedSession(req, result.userId, this.clock.now());
+    await openAuthenticatedSession(req, result, this.clock.now());
     return {
       userId: result.userId,
       nextStep: result.nextStep,

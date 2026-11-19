@@ -31,6 +31,7 @@ export class TypeOrmSignInAttemptRepository implements SignInAttemptRepository {
       attemptedAt: attempt.at,
       succeeded: attempt.succeeded,
       fromKnownDevice: attempt.fromKnownDevice,
+      passwordReset: attempt.passwordReset ?? false,
     });
   }
 

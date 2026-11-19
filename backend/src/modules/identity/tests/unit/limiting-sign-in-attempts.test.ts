@@ -193,3 +193,44 @@ describe('Limiting the failed sign-ins from one network address', () => {
     expect(check(elsewhere, at('10:00:00'))).toBeNull();
   });
 });
+
+describe('Lifting the blocks of a phone number after a password reset', () => {
+  const reset = (time: string): SignInAttempt => ({ ...success(time), networkAddress: '', passwordReset: true });
+  const twentyDaily = () =>
+    Array.from({ length: 20 }, (_, i) => failure(`09:${String(10 + i).padStart(2, '0')}:00`, {}));
+
+  it('forgets the burst of failures entered before the reset', () => {
+    const attempts = [...failures(BURST), reset('10:00:50')];
+
+    expect(check(attempts, at('10:05:00'))).toBeNull();
+  });
+
+  it('forgets the 24-hour ceiling reached before the reset', () => {
+    const attempts = [...twentyDaily(), reset('09:45:00')];
+
+    expect(check(attempts, at('10:00:00'))).toBeNull();
+  });
+
+  it('counts again the failures entered after the reset', () => {
+    const attempts = [reset('09:56:00'), ...failures(['09:57:00', '09:57:10', '09:57:20', '09:57:30', '09:57:40'])];
+
+    expect(check(attempts, at('10:00:00'))).toEqual({ reason: 'PHONE_SHORT', minutes: 13 });
+  });
+
+  it('treats a failure entered at the very second of the reset as entered before it', () => {
+    const everyFourMinutes = Array.from({ length: 19 }, (_, i) =>
+      failure('10:00:00', { at: new Date(at('10:04:00').getTime() + i * 4 * 60_000) }),
+    );
+    const attempts = [failure('10:00:00'), reset('10:00:00'), ...everyFourMinutes];
+
+    expect(check(attempts, at('11:30:00'))).toBeNull();
+  });
+
+  it('keeps the block of a network address, which concerns other numbers', () => {
+    const fromOtherNumbers = Array.from({ length: 30 }, (_, i) =>
+      failure('09:30:00', { phone: `+2376000000${String(i).padStart(2, '0')}` }),
+    );
+
+    expect(check([...fromOtherNumbers, reset('10:00:00')], at('10:00:30'))).toEqual({ reason: 'NETWORK' });
+  });
+});

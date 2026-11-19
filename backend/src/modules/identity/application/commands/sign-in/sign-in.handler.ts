@@ -102,7 +102,7 @@ export class SignInHandler implements ICommandHandler<SignIn> {
       occurredAt: now,
       details: { knownDevice: fromKnownDevice },
     });
-    return { status: 'SIGNED_IN', userId: user.id, deviceTokens };
+    return { status: 'SIGNED_IN', userId: user.id, credentialsVersion: user.credentialsVersion, deviceTokens };
   }
 
   private traceBlock(user: User, now: Date): Promise<void> {

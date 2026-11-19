@@ -19,6 +19,43 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-19 — UC-003 Réinitialiser son mot de passe (backend)
+
+- **Quoi** : un membre du personnel qui a oublié son mot de passe le remplace grâce à un code reçu par SMS, puis il
+  est connecté directement. La réinitialisation a plusieurs effets :
+  - toutes ses autres sessions sont fermées, même une requête en cours ;
+  - ses flux temps réel sont fermés ;
+  - tous ses appareils reconnus sont révoqués, sauf celui qui vient de servir ;
+  - les blocages de connexion du numéro sont levés.
+  Le frontend n'est pas fait.
+- **Pourquoi** : UC-003 (lot 1), décisions D-030 à D-033 (D-033 issue de la revue sécurité).
+- **Périmètre** :
+  - **Module `identity`** :
+    - commandes `RequestPasswordResetCode` (un défi pour tout numéro ; SMS seulement pour un compte, envoyé après la
+      réponse ; une panne est seulement journalisée et la demande compte) et `ResetPassword` ;
+    - version des identifiants sur le compte et dans la session ;
+    - marque de réinitialisation dans l'historique des essais ;
+    - révocation des appareils ;
+    - routes `POST /api/public/auth/password-reset/code` et `POST /api/public/auth/password-reset`.
+  - **Socle** :
+    - `AuthGuard` refuse une session dont la version des identifiants est périmée ;
+    - `AfterCommit.registerDetached` (action après le commit, sans faire attendre la réponse) ;
+    - `RealtimePublisher.closeStreamsOfUser`.
+  - **Migration** : `IdentityPasswordReset` (`users.credentials_version`, `sign_in_attempts.password_reset`, index
+    des sessions par utilisateur).
+  - **Contrat** : `RequestPasswordResetCodeSchema`, `ResetPasswordSchema`.
+- **Vérification** : mode **light**, agents `use-case-writer`, `backend-builder`, `security-reviewer`.
+  - Suite complète verte.
+  - Mutations volontaires vues rouges : levée des blocages, révocation des appareils, fermeture des sessions,
+    version des identifiants non incrémentée ou non comparée, SMS envoyé à un numéro sans compte, panne retirée des
+    limites, fermeture des flux SSE, journal de panne qui recopierait le message.
+  - Revue sécurité : 2 points à corriger, tous deux traités (D-033) :
+    - une panne SMS effaçait les essais ratés (force brute illimitée pendant une panne) ;
+    - elle révélait aussi les comptes existants.
+  - Durcissements faits : fermeture des flux SSE, journal de panne sans numéro ni code.
+- **Suites** : écran « mot de passe oublié » (front) ; le vrai `ActorRights` devra renvoyer la version des
+  identifiants (backlog) ; refactoring des contrôleurs selon D-034 (évolution suivante).
+
 ### 2026-11-18 — Outillage : Swagger utilisable, notification Discord, fusion dans develop
 
 - **Quoi** :

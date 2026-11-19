@@ -56,6 +56,11 @@ export class KnownDevice extends AggregateRoot {
     this.state.revokedAt = null;
   }
 
+  /** Réinitialisation du mot de passe : l'appareil n'est plus reconnu avant sa prochaine connexion réussie (D-031). */
+  revoke(now: Date): void {
+    this.state.revokedAt = now;
+  }
+
   /** Nouveau jeton à chaque connexion réussie : le précédent, s'il a été copié, ne vaut plus rien. */
   renewToken(tokenHash: string): void {
     this.state.tokenHash = tokenHash;

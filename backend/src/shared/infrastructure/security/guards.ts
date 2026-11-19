@@ -1,7 +1,16 @@
 import { type CanActivate, type ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClsService } from 'nestjs-cls';
-import { ACTOR_RIGHTS, type Actor, type ActorRights, CLOCK, type Clock } from '../../application/ports.js';
+import {
+  ACTOR_RIGHTS,
+  type Actor,
+  type ActorRights,
+  CLOCK,
+  type Clock,
+  READ_DB,
+  type SqlReader,
+} from '../../application/ports.js';
+import { sql } from '../../application/sql.js';
 import { APP_CONFIG, type AppConfig } from '../config/app-config.module.js';
 import { CSRF_PROTECTION, type CsrfProtection } from './http-security.js';
 import {
@@ -59,7 +68,14 @@ export class AuthGuard implements CanActivate {
     if (now - authenticatedAt > this.config.SESSION_MAX_AGE_HOURS * HOUR_MS) await this.endSession(req);
 
     let activeSalonId = req.session.activeSalonId ?? null;
-    const { isMember, permissions, systemRoles } = await this.rights.resolve(userId, activeSalonId);
+    const { isMember, permissions, systemRoles, credentialsVersion } = await this.rights.resolve(
+      userId,
+      activeSalonId,
+    );
+    // Réinitialisation du mot de passe : toute session ouverte avec d'anciens identifiants est refusée, même une
+    // session réécrite en fin de requête après sa suppression.
+    if (credentialsVersion === null || credentialsVersion !== (req.session.credentialsVersion ?? 1))
+      await this.endSession(req);
     if (systemRoles.length > 0) await this.enforceSystemRoleDurations(req, now, authenticatedAt);
     if (activeSalonId && !isMember) {
       req.session.activeSalonId = null;
@@ -121,10 +137,19 @@ export class PermissionsGuard implements CanActivate {
   }
 }
 
-/** Remplacé par le module des comptes (lot 1) : d'ici là, aucun droit n'est accordé. */
+/** Remplacé par le module des comptes (lot 1) : d'ici là, aucun droit n'est accordé, mais la version des identifiants est lue. */
 @Injectable()
 export class NoRightsYet implements ActorRights {
-  async resolve() {
-    return { isMember: false, permissions: [], systemRoles: [] };
+  constructor(@Inject(READ_DB) private readonly db: SqlReader) {}
+
+  async resolve(userId: string) {
+    const account = await this.db.maybeOne<{ credentialsVersion: number }>(sql`
+      SELECT u.credentials_version AS "credentialsVersion" FROM users u WHERE u.id = ${userId}`);
+    return {
+      isMember: false,
+      permissions: [],
+      systemRoles: [],
+      credentialsVersion: account?.credentialsVersion ?? null,
+    };
   }
 }

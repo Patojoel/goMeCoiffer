@@ -80,7 +80,7 @@ export class AuthController {
     // Levé après le commit : l'échec reste compté.
     if (result.status === 'REFUSED') throw result.refusal;
 
-    await openAuthenticatedSession(req, result.userId, this.clock.now());
+    await openAuthenticatedSession(req, result, this.clock.now());
     setDeviceCookie(res, result.deviceTokens, this.config);
     const csrfToken = this.csrf.generateCsrfToken(req, res, { overwrite: true });
     const session = await this.queries.execute(new GetMySession(result.userId, null));

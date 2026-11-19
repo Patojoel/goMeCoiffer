@@ -250,7 +250,7 @@ describe('Signing in with a phone number and a password', () => {
     it('opens the way for the right password, records the success and traces it without any secret', async () => {
       const result = await signIn(PAUL, GOOD);
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-1'] });
+      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-1'] });
       expect(verifier.verifications).toBe(1);
       expect(attempts.all()).toEqual([
         {
@@ -353,7 +353,7 @@ describe('Signing in with a phone number and a password', () => {
 
       const result = await signIn(PAUL, GOOD, { tokens: ['usual'] });
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-1'] });
+      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-1'] });
       expect(audit.entries[0]?.details).toEqual({ knownDevice: true });
     });
 
@@ -470,6 +470,7 @@ describe('Signing in with a phone number and a password', () => {
       expect(result).toEqual({
         status: 'SIGNED_IN',
         userId: MIREILLE_ID,
+        credentialsVersion: 1,
         deviceTokens: ['paul-phone', 'tok-1'],
       });
       expect(
@@ -494,7 +495,7 @@ describe('Signing in with a phone number and a password', () => {
     it('never stores a token chosen by the client as a device token: a forged one is ignored and a fresh one is issued', async () => {
       const result = await signIn(PAUL, GOOD, { tokens: ['forged'] });
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['forged', 'tok-1'] });
+      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['forged', 'tok-1'] });
       expect(devices.all().map((d) => d.tokenHash)).toEqual(['h:tok-1']);
     });
 
@@ -504,6 +505,7 @@ describe('Signing in with a phone number and a password', () => {
       expect(result).toEqual({
         status: 'SIGNED_IN',
         userId: PAUL_ID,
+        credentialsVersion: 1,
         deviceTokens: ['b', 'c', 'd', 'e', 'tok-1'],
       });
     });
@@ -523,7 +525,7 @@ describe('Signing in with a phone number and a password', () => {
         tokens: first.status === 'SIGNED_IN' ? first.deviceTokens : [],
       });
 
-      expect(second).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-2'] });
+      expect(second).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-2'] });
     });
 
     it('never recognises a device for a number that has no account', async () => {

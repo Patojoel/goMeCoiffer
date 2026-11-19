@@ -34,6 +34,7 @@ export class GrantedRights implements ActorRights {
       isMember: inSalon !== undefined,
       permissions: inSalon ?? [],
       systemRoles: this.systemRoles[userId] ?? [],
+      credentialsVersion: 1,
     };
   }
 }

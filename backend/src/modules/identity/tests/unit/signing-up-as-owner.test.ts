@@ -234,7 +234,7 @@ describe('Signing up as a salon owner', () => {
     it('creates the owner account with a verified number, a hashed password and no role', async () => {
       const result = await confirm.execute(owner('482913'));
 
-      expect(result).toMatchObject({ status: 'SIGNED_UP', outcome: 'CREATED' });
+      expect(result).toMatchObject({ status: 'SIGNED_UP', outcome: 'CREATED', credentialsVersion: 1 });
       expect(users.all()).toEqual([
         expect.objectContaining({
           phone: MIREILLE_E164,
@@ -270,6 +270,7 @@ describe('Signing up as a salon owner', () => {
       expect(result).toMatchObject({
         status: 'SIGNED_UP',
         outcome: 'COMPLETED',
+        credentialsVersion: 1,
         userId: '0195f000-0000-7000-8000-00000000c0de',
       });
       expect(users.all()).toHaveLength(1);

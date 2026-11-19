@@ -11,6 +11,8 @@ export type ConfirmSignUpResponse =
   | {
       readonly status: 'SIGNED_UP';
       readonly userId: string;
+      /** Version des identifiants du compte, à recopier dans la session. */
+      readonly credentialsVersion: number;
       readonly outcome: 'CREATED' | 'COMPLETED';
       readonly nextStep: SignUpNextStep;
     }

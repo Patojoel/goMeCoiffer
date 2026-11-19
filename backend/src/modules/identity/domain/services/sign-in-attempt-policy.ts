@@ -38,8 +38,13 @@ export function assessSignIn({
   const countedFailures = attempts.filter((a) => !a.succeeded && !a.fromKnownDevice);
   const ageMs = (a: SignInAttempt) => now.getTime() - a.at.getTime();
 
-  const phoneAttempts = attempts.filter((a) => a.phone === phone);
-  const phoneFailures = countedFailures.filter((a) => a.phone === phone);
+  const lastResetAt = attempts
+    .filter((a) => a.phone === phone && a.passwordReset)
+    .reduce((latest, a) => Math.max(latest, a.at.getTime()), Number.NEGATIVE_INFINITY);
+  // Un échec saisi avant la réinitialisation (à la même seconde comprise) ne compte plus ; l'adresse réseau garde tout.
+  const sinceReset = (a: SignInAttempt) => a.succeeded || a.at.getTime() > lastResetAt;
+  const phoneAttempts = attempts.filter((a) => a.phone === phone && sinceReset(a));
+  const phoneFailures = countedFailures.filter((a) => a.phone === phone && sinceReset(a));
 
   if (phoneFailures.filter((a) => ageMs(a) < PHONE_DAILY_WINDOW_MS).length >= PHONE_DAILY_FAILURES)
     return { reason: 'PHONE_DAILY' };

@@ -4,6 +4,8 @@ import { OTP_LIFETIME_SECONDS } from '../aggregates/otp-challenge.js';
 export const SmsMessages = {
   signUpCode: (code: string) =>
     `GoMeCoiffer : votre code est ${code}. Il expire dans ${OTP_LIFETIME_SECONDS / 60} minutes. Ne le communiquez à personne.`,
+  passwordResetCode: (code: string) =>
+    `GoMeCoiffer : votre code pour changer de mot de passe est ${code}. Il expire dans ${OTP_LIFETIME_SECONDS / 60} minutes. Ne le communiquez à personne.`,
   accountAlreadyExists: () =>
     'GoMeCoiffer : un compte existe déjà pour ce numéro. Connectez-vous ou utilisez « Mot de passe oublié ».',
 };

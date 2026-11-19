@@ -18,6 +18,15 @@ export class SseRealtimePublisher implements RealtimePublisher, OnModuleDestroy 
     this.afterCommit.register(() => this.channel(`salon:${salonId}`).next(message));
   }
 
+  closeStreamsOfUser(userId: string): void {
+    this.afterCommit.register(() => this.channel(`close:${userId}`).next({ type: 'closed', payload: {} }));
+  }
+
+  /** Émet quand les flux de cet utilisateur doivent se fermer. */
+  closingOf(userId: string) {
+    return this.channel(`close:${userId}`).asObservable();
+  }
+
   streamOf(channel: `user:${string}` | `salon:${string}`) {
     return this.channel(channel).asObservable();
   }

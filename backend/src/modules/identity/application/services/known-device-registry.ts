@@ -50,6 +50,14 @@ export class KnownDeviceRegistry {
     return { device, matchedToken: matchIndex >= 0 ? (tokens[matchIndex] ?? null) : null };
   }
 
+  /** Réinitialisation du mot de passe : aucun appareil de ce compte n'est plus reconnu (D-031). */
+  async revokeAllOf(userId: string, now: Date): Promise<void> {
+    for (const device of await this.devices.findNotRevokedOf(userId)) {
+      device.revoke(now);
+      await this.devices.save(device);
+    }
+  }
+
   async recordFailure(device: KnownDevice, now: Date): Promise<void> {
     device.recordFailure(now);
     await this.devices.save(device);

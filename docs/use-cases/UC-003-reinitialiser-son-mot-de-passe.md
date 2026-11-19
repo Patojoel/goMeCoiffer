@@ -8,7 +8,7 @@
 | Auteur | use-case-writer |
 | Date | 2026-11-19 |
 | Use cases liés | UC-001 (défi SMS réutilisé ; inscription vers laquelle on oriente un client léger), UC-002 (connexion : blocages levés, sessions fermées, appareils reconnus), UC-004 / UC-005 (étape suivante après la connexion automatique), UC-009 (vérification client par SMS, motif distinct) |
-| Exigences couvertes | EX-001, EX-018, EX-020, EX-024, EX-025, EX-029, D-004, D-017, D-018, D-019, D-020, D-021, D-023, D-025, D-028 |
+| Exigences couvertes | EX-001, EX-018, EX-020, EX-024, EX-025, EX-029, D-004, D-017, D-018, D-019, D-020, D-021, D-023, D-025, D-028, D-033 |
 
 ## 0. Traçabilité
 
@@ -18,6 +18,7 @@
 | D-019 | DECISIONS.md | RG-003-01, RG-003-02, RG-003-05, RG-003-14, scénarios « même réponse quel que soit le numéro », « Sans compte du personnel… », « numéro sans compte limité comme les autres » |
 | D-018 | DECISIONS.md | RG-003-02, RG-003-14 (un compte client léger n'obtient pas de mot de passe par ce parcours) |
 | D-020 | DECISIONS.md | RG-003-06, plan « Le nouveau mot de passe doit être difficile à deviner » |
+| D-033 | DECISIONS.md (remplace le point de D-030 sur la panne du fournisseur SMS) | RG-003-05, postconditions d'échec, E5, scénarios « Une demande dont le SMS n'est pas parti compte dans les limites », « Pendant une panne du fournisseur SMS, les codes faux restent comptés » |
 | D-021, D-023 | DECISIONS.md | RG-003-04, RG-003-05, RG-003-13, plans « 60 secondes », « 5 par heure et 10 par 24 heures », scénarios « 10 codes faux », « codes d'inscription ne comptent pas », « demandes simultanées » |
 | D-025 | DECISIONS.md (« Mot de passe oublié lève les blocages ») | RG-003-09, RG-003-10, plan « lève les blocages », scénarios « échecs après la réinitialisation », « adresse réseau », « anciens appareils reconnus » |
 | D-028 | DECISIONS.md (« la réinitialisation ferme toutes les sessions ») | RG-003-08, RG-003-12, scénarios « ferme toutes les sessions », « connexion terminée pendant la réinitialisation », « tracée sans secret » |
@@ -79,7 +80,7 @@ blocage de UC-002, E3 et E4), ou ouvre directement la page « Mot de passe oubli
   - le mot de passe, les sessions, les blocages et les appareils reconnus sont inchangés ;
   - un code faux est compté (essai du code et quota « 10 codes faux en 24 h ») ;
   - une demande de code acceptée est comptée dans les limites d'envoi, même si aucun SMS n'est parti faute de
-    compte (RG-003-02) ; une demande dont le SMS a échoué chez le fournisseur ne compte pas (RG-003-05).
+    compte (RG-003-02), et aussi quand le SMS n'a pas pu partir chez le fournisseur (RG-003-05, D-033).
 
 ## 7. Règles métier
 
@@ -89,7 +90,7 @@ blocage de UC-002, E3 et E4), ou ouvre directement la page « Mot de passe oubli
 | RG-003-02 | Le code n'est envoyé **qu'au numéro d'un compte avec mot de passe**. Pour un numéro sans compte ou un compte client léger, **aucun SMS** ne part, mais la demande est **enregistrée et comptée** dans les limites exactement comme un envoi (avec un code que personne ne reçoit et qui ne peut jamais être accepté). | Demande pour 6 70 00 00 01 (sans compte) à 10 h 00 : rien n'est envoyé ; une 2e demande à 10 h 00 min 30 s reçoit « Vous pourrez en demander un autre dans 30 secondes », comme pour Paul. | D-019, D-018, D-030 |
 | RG-003-03 | Un code de réinitialisation compte **6 chiffres**, est valable **5 minutes**, accepte **5 essais**, ne sert **qu'une fois** ; un seul code est actif par numéro pour le motif « mot de passe oublié », un nouveau code **annule** le précédent. Les codes des autres motifs (inscription, invitation…) ne sont jamais acceptés ici. | Code envoyé à 10 h 00 min 00 s : accepté à 10 h 04 min 59 s, refusé à 10 h 05 min 00 s ; codes 482913 puis 105377 : seul 105377 est accepté ; 6e essai refusé même avec le bon code. | D-017, UC-001 RG-001-04 / RG-001-06 |
 | RG-003-04 | Pour un même numéro, et pour le seul motif « mot de passe oublié » : un nouveau code **après 60 secondes**, au plus **5 codes par heure** et **10 par 24 heures**, et **plus aucun code après 10 codes faux en 24 heures**. Les codes d'inscription (ou d'autres motifs) ne comptent pas. S'y ajoute une limite par adresse réseau (30 demandes par heure, comme l'inscription). | 5 codes envoyés depuis 9 h 10 → demande de 10 h 00 refusée ; 5 codes d'inscription depuis 9 h 10 → demande de réinitialisation acceptée. | D-021 (limite par adresse IP, valeur alignée sur la demande de code d'inscription), D-023 |
-| RG-003-05 | La réponse à la demande **n'attend pas** le fournisseur SMS : elle a la même durée qu'un SMS parte ou non. Une panne du fournisseur n'est **pas annoncée** à l'écran (elle révélerait que le numéro a un compte) ; la demande en échec **ne compte pas** dans les limites, ni dans le délai de 60 s. | Panne à 10 h 00 : l'écran habituel s'affiche, aucun SMS n'arrive ; la demande de 10 h 00 min 30 s est acceptée et le SMS part. | D-019, D-021, D-030 |
+| RG-003-05 | La réponse à la demande **n'attend pas** le fournisseur SMS : elle a la même durée qu'un SMS parte ou non. Une panne du fournisseur n'est **pas annoncée** à l'écran (elle révélerait que le numéro a un compte). La demande dont le SMS n'a pas pu partir **compte quand même** dans les limites (60 s, 5 par heure, 10 par 24 h), exactement comme une demande pour un numéro sans compte ; son code expire normalement et les codes faux saisis pour lui restent comptés. La panne est seulement journalisée (type et code d'erreur, sans numéro ni texte du SMS). | Panne à 10 h 00 : l'écran habituel s'affiche, aucun SMS n'arrive ; la demande de 10 h 00 min 30 s est refusée (« Vous pourrez en demander un autre dans 30 secondes »), comme pour le 6 70 00 00 01 ; un code faux saisi à 10 h 01 compte parmi les 10 codes faux autorisés en 24 h. | D-019, D-021, D-030, D-033 |
 | RG-003-06 | Le nouveau mot de passe suit D-020 : **10 à 128 caractères**, pas un mot de passe courant, sans le numéro. Il est vérifié **avant** le code : un refus ne consomme **ni le code ni un essai**. Il n'est **pas comparé** au mot de passe actuel. | « salon2026 » refusé (9 caractères) ; « 699001122ab » refusé (contient le numéro) ; « motdepasse123 » refusé (courant) ; « Wouri-Degrade-2027 » accepté. Reprendre « Bastos-Fade-2026 » est accepté. | D-020, UC-001 RG-001-07, D-031 |
 | RG-003-07 | Avec le bon code, actif et non expiré, le mot de passe du compte est **remplacé**, le code est consommé et la date de vérification du numéro devient celle de la réinitialisation. Les refus (code faux, expiré, essais épuisés, plus valable) sont **les mêmes** qu'il y ait un compte ou non. | Paul confirme avec 482913 et « Wouri-Degrade-2027 » à 10 h 02 : « Bastos-Fade-2026 » est refusé ensuite, « Wouri-Degrade-2027 » accepté ; numéro vérifié le 19/11/2026 à 10 h 02. | D-017, EX-001, glossaire « Numéro vérifié » |
 | RG-003-08 | La réinitialisation **ferme toutes les sessions** de l'utilisateur ouvertes avant elle, sur tous les appareils, y compris une session ouverte avec l'ancien mot de passe par une connexion qui se termine **pendant** la réinitialisation. Les sessions des autres utilisateurs ne sont pas touchées. | Paul connecté sur son téléphone et sur la tablette ; réinitialisation depuis un autre navigateur à 10 h 02 → téléphone et tablette renvoyés vers « Se connecter » à leur prochaine action. | D-028 |
@@ -145,8 +146,8 @@ blocage de UC-002, E3 et E4), ou ouvre directement la page « Mot de passe oubli
 - **E4 — Trop de codes demandés** (étape 3) : « Trop de codes demandés pour ce numéro. Réessayez dans une heure ou
   contactez l'assistance. » (quota horaire, quota de 24 h ou 10 codes faux en 24 h).
 - **E5 — Fournisseur SMS indisponible** (étape 4) : l'écran habituel s'affiche (RG-003-05) ; aucun code n'arrive ;
-  la demande ne compte pas ; la personne redemande un code (l'écran rappelle « Pas de SMS au bout d'une minute ?
-  Demandez un nouveau code. »).
+  la demande compte dans les limites et la panne est journalisée sans numéro (D-033) ; après 60 secondes, la
+  personne redemande un code (l'écran rappelle « Pas de SMS au bout d'une minute ? Demandez un nouveau code. »).
 - **E6 — Mot de passe refusé** (étape 7) : message qui dit pourquoi (« Le mot de passe doit compter au moins
   10 caractères. », « Ce mot de passe est trop courant : choisissez une phrase propre à vous. », « Le mot de passe
   ne doit pas contenir votre numéro de téléphone. ») ; ni le code ni un essai ne sont consommés.
@@ -181,7 +182,7 @@ flowchart TD
     F -- non --> H[Aucun SMS ; code que personne ne reçoit]
     G --> I[Écran générique : numéro masqué, délais, aides]
     H --> I
-    G -. panne du fournisseur .-> E5[E5 : demande non comptée, écran inchangé]
+    G -. panne du fournisseur .-> E5[E5 : demande comptée, panne journalisée, écran inchangé]
     I --> J[Code + nouveau mot de passe]
     J --> K{Nouveau mot de passe conforme ?}
     K -- non --> E6[E6 : refus, code et essai conservés]
@@ -196,8 +197,7 @@ Cycle de vie du code de réinitialisation :
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Actif : demande acceptée (SMS envoyé, ou aucun SMS si pas de compte du personnel)
-    [*] --> NonEnvoyé : panne du fournisseur (E5, non compté)
+    [*] --> Actif : demande acceptée et comptée (SMS envoyé ; aucun SMS si pas de compte du personnel ou panne du fournisseur, E5)
     Actif --> Actif : code faux, essais restants (E7) / mot de passe refusé (E6)
     Actif --> Remplacé : nouveau code demandé (A1)
     Actif --> Expiré : 5 minutes écoulées (E8)
@@ -207,7 +207,6 @@ stateDiagram-v2
     Remplacé --> [*]
     Expiré --> [*]
     Épuisé --> [*]
-    NonEnvoyé --> [*]
 ```
 
 ## 12. Scénarios d'acceptation (BDD)
@@ -449,14 +448,23 @@ Fonctionnalité: Réinitialiser son mot de passe
     Alors le journal d'audit contient "mot de passe réinitialisé" et "connexion" à 10 h 00 pour Paul
     Et ni le code, ni le mot de passe, ni le numéro, ni l'adresse réseau n'y figurent
 
-  @erreur @RG-003-05
-  Scénario: Une panne du fournisseur SMS ne bloque pas les demandes suivantes
+  @erreur @securite @RG-003-05 @D-033 @D-019
+  Scénario: Une demande dont le SMS n'est pas parti compte dans les limites
     Étant donné que le fournisseur SMS est indisponible
     Et que Paul a demandé un code de réinitialisation à 10 h 00 sans le recevoir
-    Et que le fournisseur SMS fonctionne de nouveau
-    Quand Paul demande un code de réinitialisation à 10 h 00 min 30 s
-    Alors la demande est acceptée
-    Et le 6 99 00 11 22 reçoit un SMS avec un code
+    Quand Paul demande un nouveau code de réinitialisation à 10 h 00 min 30 s
+    Alors la demande est refusée
+    Et le motif indiqué est "Un code vient d'être envoyé. Vous pourrez en demander un autre dans 30 secondes."
+    Et la réponse est la même que pour le 6 70 00 00 01 dans la même situation
+
+  @securite @RG-003-05 @D-033
+  Scénario: Pendant une panne du fournisseur SMS, les codes faux restent comptés
+    Étant donné que le fournisseur SMS est indisponible
+    Et que Paul a demandé un code de réinitialisation à 10 h 00 sans le recevoir
+    Quand on confirme la réinitialisation pour le "6 99 00 11 22" avec le code "000000" et le nouveau mot de passe "Wouri-Degrade-2027"
+    Alors la réinitialisation est refusée
+    Et le motif indiqué est "Code incorrect. Il vous reste 4 essais."
+    Et 1 code faux compte pour le 6 99 00 11 22 dans la limite de 10 par 24 heures
 
   @erreur @RG-003-01
   Scénario: Une demande sans jeton de sécurité est refusée sans rien compter
@@ -491,7 +499,7 @@ base (Testcontainers) ; E2E = parcours HTTP. Aucune query nouvelle : le résumé
 | T5 | Unitaire | Renvoi trop tôt, borne à la seconde | code à 10:00:00 | demandes à 10:00:59 / 10:01:00 | refus (1 s) / accepté | RG-003-04 |
 | T6 | Unitaire | Limites lues pour le seul motif `PASSWORD_RESET` | 5 codes d'inscription depuis 9:10 | demande à 10:00 | acceptée | RG-003-04 |
 | T7 | Unitaire | Numéro sans compte limité comme un compte | 5 demandes pour 6 70 00 00 01 | 6e | refus « trop de codes » | RG-003-02, -04 |
-| T8 | Unitaire | Panne SMS non comptée | fournisseur en panne | demande puis demande à +30 s | 2e acceptée | RG-003-05 |
+| T8 | Unitaire | Panne SMS comptée comme un numéro sans compte, codes faux comptés, panne journalisée sans numéro | fournisseur en panne | demande, puis demande à +30 s, puis code faux | 2e refusée (30 s), même réponse que pour 6 70 00 00 01 ; code faux compté ; journal : type et code d'erreur seulement | RG-003-05 |
 | T9 | Unitaire | Nouveau code annule le précédent | 482913 puis 105377 | confirmation 482913 | refus « 4 essais » | RG-003-03 |
 | T10 | Unitaire | Mot de passe refusé avant le code, rien consommé | code reçu | « salon2026 » puis « Wouri-Degrade-2027 » | refus puis réussite ; essais = 0 après le refus | RG-003-06 |
 | T11 | Unitaire | Aucun défi actif | — | confirmation | `OTP_NO_LONGER_VALID` | RG-003-07 |
@@ -588,7 +596,7 @@ vrai argon2id et la vraie table `sessions`.
 | # | Question | Hypothèse retenue en attendant (recommandation) | Impact si différent |
 |---|---|---|---|
 | Q1 | Que reçoit par SMS un **numéro sans compte** ou un **compte client léger** qui demande un code ? **Validée (D-030).** | **Recommandé : rien.** La demande est enregistrée et comptée comme un envoi (code que personne ne reçoit), la réponse est identique, l'écran oriente (« Créez votre compte salon », « Retrouvez vos réservations par SMS »). Coût SMS nul, et personne ne peut faire envoyer des SMS GoMeCoiffer à des inconnus. | **SMS d'information** (comme D-019 à l'inscription) : plus clair pour un client léger égaré, mais jusqu'à 10 SMS payants par jour vers n'importe quel numéro camerounais, utilisables pour harceler. **SMS seulement au client léger** : coût moindre, utile au client, mais les numéros sans compte restent muets. |
-| Q2 | Le SMS part-il **sans faire attendre la réponse** (après l'enregistrement de la demande) ? **Validée (D-030).** | **Recommandé : oui.** Sinon la durée de la réponse révèle qu'un SMS est parti, donc qu'un compte existe ; et une panne du fournisseur, annoncée seulement aux comptes, le révélerait aussi. Une panne n'est donc pas annoncée ; la demande en échec sort des limites. Prérequis déjà au backlog (« envoi après commit » avant le vrai fournisseur). Le code en clair ne doit jamais être stocké pour cet envoi différé (pas d'outbox avec le code). | **Envoi pendant la requête** (comme l'inscription aujourd'hui) : plus simple, et une panne s'affiche ; mais l'existence d'un compte se lit au temps de réponse dès qu'un vrai fournisseur répond en 300 ms à 3 s. |
+| Q2 | Le SMS part-il **sans faire attendre la réponse** (après l'enregistrement de la demande) ? **Validée (D-030).** (point de la panne remplacé par D-033) | **Recommandé : oui.** Sinon la durée de la réponse révèle qu'un SMS est parti, donc qu'un compte existe ; et une panne du fournisseur, annoncée seulement aux comptes, le révélerait aussi. Une panne n'est donc pas annoncée ; la demande compte quand même dans les limites, son code expire normalement et ses codes faux restent comptés (D-033 : retirer la demande ne profitait qu'aux vrais comptes et effaçait les essais ratés). Prérequis déjà au backlog (« envoi après commit » avant le vrai fournisseur). Le code en clair ne doit jamais être stocké pour cet envoi différé (pas d'outbox avec le code). | **Envoi pendant la requête** (comme l'inscription aujourd'hui) : plus simple, et une panne s'affiche ; mais l'existence d'un compte se lit au temps de réponse dès qu'un vrai fournisseur répond en 300 ms à 3 s. |
 | Q3 | Après la réinitialisation : **connexion automatique** ou retour à « Se connecter » ? **Validée (D-031).** | **Recommandé : connexion automatique** sur ce navigateur (session neuve, nouveau jeton, appareil reconnu), comme après l'inscription (UC-001). La personne vient de prouver son numéro et de choisir le mot de passe : lui faire retaper les deux sur un réseau lent n'ajoute pas de sécurité. | **Retour à « Se connecter »** (conseil fréquent des guides de sécurité, moins de code de session) : un écran de plus pour un public non technique ; la connexion qui suit reste soumise au blocage d'adresse (RG-003-09). |
 | Q4 | Le nouveau mot de passe doit-il être **différent de l'actuel** ? **Validée (D-031).** | **Recommandé : non contrôlé.** La comparaison coûte un calcul argon2id et, faite avant le code, transformerait la page en moyen de tester des mots de passe sans limite ; faite après, elle n'apporte presque rien (la personne l'avait oublié). | **Contrôlé après le code** : refuse la réutilisation d'un mot de passe peut-être volé ; un calcul de plus ; message à ajouter. |
 | Q5 | Quels **blocages** la réinitialisation lève-t-elle (D-025 dit « les blocages ») ? **Validée (D-031).** | **Recommandé : ceux du numéro** (15 min et plafond 24 h : les échecs antérieurs ne comptent plus). **Pas celui d'une adresse réseau**, qui concerne des essais sur d'autres numéros. Les compteurs d'échecs des appareils reconnus disparaissent avec eux (Q6). | **Lever aussi l'adresse** : un attaquant qui possède un compte lèverait le blocage de son adresse à chaque réinitialisation (10 codes par jour). |
@@ -644,6 +652,9 @@ Deux intentions, comme UC-001 : demander un code, puis réinitialiser. Aucune qu
 - **Rien après le commit qui puisse échouer à moitié** : mot de passe, sessions, marque, appareils et audit dans la
   même transaction (`TransactionalCommandBus`) ; seule l'ouverture de la session neuve suit le commit.
 - Le code en clair n'est jamais persisté, même pour l'envoi différé (Q2).
+- **Panne du fournisseur SMS (D-033)** : la demande reste enregistrée et comptée, le défi reste actif jusqu'à son
+  échéance ; seul un journal (type et code d'erreur, sans numéro ni texte) garde la trace de la panne. Ne pas
+  reprendre ici le statut « en échec, exclu des quotas » envisagé au backlog pour l'inscription.
 
 ### Incréments livrables, dans l'ordre
 
