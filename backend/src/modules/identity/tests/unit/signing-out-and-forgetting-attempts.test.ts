@@ -27,6 +27,15 @@ describe('Signing out', () => {
       },
     ]);
   });
+
+  it('confirms a sign-out without any open session and traces nothing', async () => {
+    const audit = new InMemoryAuditTrail();
+
+    const result = await new SignOutHandler(audit, new FixedClock(at('10:30:00'))).execute(new SignOut(null));
+
+    expect(result).toEqual({ signedOut: true });
+    expect(audit.entries).toEqual([]);
+  });
 });
 
 describe('Forgetting the sign-in attempts', () => {

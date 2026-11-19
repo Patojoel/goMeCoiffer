@@ -73,6 +73,8 @@ Règle par défaut : une commande modifie **un** agrégat. Un agrégat et ses en
 
 Exception assumée : un **`DomainEvent` synchrone** dont le subscriber modifie un autre agrégat **dans la même transaction**, seulement quand une règle métier exige que les deux soient cohérents au même instant. Exemple légitime : accepter une `RescheduleProposal` déplace le `Booking` (le client ne doit jamais voir une proposition acceptée sur un rendez-vous non déplacé). Le nommer dans `docs/events.md` comme tel.
 
+Autre exception assumée, à nommer dans `docs/domains.md` avec sa décision : une commande de **sécurité du compte** qui doit tout changer au même instant (ex. `ResetPassword`, D-031 : compte, défi, appareils reconnus, sessions et historique des essais), sinon un état intermédiaire laisserait une porte ouverte.
+
 Hors de ce cas, la cohérence entre agrégats, et toujours entre modules, est **éventuelle** : un `IntegrationEvent` post-commit (outbox), un subscriber idempotent, une compensation si l'effet échoue (ex. paiement confirmé après expiration → `PaymentIncident`, BR-06).
 
 ## 6. Value objects
@@ -94,7 +96,7 @@ Hors de ce cas, la cohérence entre agrégats, et toujours entre modules, est **
   - choix du professionnel pour « Peu importe » ;
   - unicité d'un téléphone, d'un nom de salon dans une organisation.
 - **Absence de chevauchement (BR-02)** : la règle est vérifiée par le service de domaine **et** garantie par la contrainte d'exclusion PostgreSQL (`CLAUDE.md` §I.5) ; le repository traduit `23P01` en `SlotNoLongerAvailableError`.
-- **Le handler orchestre** (charger, appeler l'agrégat ou le service, sauver) et ne porte **aucune règle métier**. Pas de logique métier dans un contrôleur, un mapper, une entité TypeORM ou un subscriber.
+- **Le handler orchestre** (charger, appeler l'agrégat ou le service, sauver) et ne porte **aucune règle métier**. Pas de logique métier dans un contrôleur, un mapper (de persistance ou de requête HTTP), un répondeur HTTP, une entité TypeORM ou un subscriber (D-034).
 
 ## 8. Repositories
 
@@ -109,7 +111,7 @@ Les autres dépendances externes (SMS, paiement, hachage, générateur de code) 
 
 ## 9. Erreurs métier
 
-Une règle du domaine a son erreur **nommée par l'intention**, **une par fichier** dans `domain/exceptions/<intention>.error.ts` (`SlotNoLongerAvailableError`, `BookingAlreadyStartedError`, `ProposalExpiredError`, `OwnerRightsCannotBeRevokedError`), sous-classe de `BusinessRuleViolation` avec un `code` stable (`BOOKING_ALREADY_STARTED`). Jamais `new Error('...')` pour une règle, jamais d'héritage de `HttpException`. Une panne système n'est **jamais catchée** dans un handler.
+Une règle du domaine a son erreur **nommée par l'intention**, **une par fichier** dans `domain/exceptions/<intention>.error.ts` (`SlotNoLongerAvailableError`, `BookingAlreadyStartedError`, `ProposalExpiredError`, `OwnerRightsCannotBeRevokedError`), sous-classe de `BusinessRuleViolation` avec un `code` stable (`BOOKING_ALREADY_STARTED`). Jamais `new Error('...')` pour une règle, jamais d'héritage de `HttpException`. Une panne système n'est **jamais catchée** dans un handler. Un refus qui doit **laisser une trace** (essai de code ou de mot de passe compté) se lève par `throw new RefuseAfterCommit(new XxxError())` : le bus commite puis lève l'erreur (D-034) ; jamais un résultat `status: 'REFUSED'`.
 
 ## 10. Événements
 

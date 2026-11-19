@@ -8,4 +8,5 @@ export class SignInAttemptOrmEntity {
   @Column('timestamptz') attemptedAt!: Date;
   @Column('boolean') succeeded!: boolean;
   @Column('boolean') fromKnownDevice!: boolean;
+  @Column('boolean', { default: false }) passwordReset!: boolean;
 }

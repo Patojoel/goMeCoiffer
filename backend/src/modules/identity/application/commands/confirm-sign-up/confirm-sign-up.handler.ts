@@ -8,6 +8,7 @@ import {
   ID_GENERATOR,
   type IdGenerator,
 } from '../../../../../shared/application/ports.js';
+import { RefuseAfterCommit } from '../../../../../shared/application/refuse-after-commit.js';
 import { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
 import { User } from '../../../domain/aggregates/user.js';
 import { OtpPurpose } from '../../../domain/enums/otp-purpose.enum.js';
@@ -44,10 +45,10 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
     const now = this.clock.now();
 
     const challenge = await this.challenges.findActive(phone, OtpPurpose.SIGN_UP);
-    if (!challenge) return { status: 'REFUSED', refusal: new OtpNoLongerValidError() };
+    if (!challenge) throw new RefuseAfterCommit(new OtpNoLongerValidError());
     const verification = challenge.verify(cmd.code, now, this.hasher);
     await this.challenges.save(challenge);
-    if (!verification.accepted) return { status: 'REFUSED', refusal: verification.refusal };
+    if (!verification.accepted) throw new RefuseAfterCommit(verification.refusal);
 
     const details = {
       name: cmd.name,
@@ -68,8 +69,8 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
       occurredAt: now,
     });
     return {
-      status: 'SIGNED_UP',
       userId: user.id,
+      credentialsVersion: user.credentialsVersion,
       outcome: existing ? 'COMPLETED' : 'CREATED',
       nextStep: 'CREATE_ORGANIZATION',
     };

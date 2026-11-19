@@ -20,7 +20,7 @@ Charge `CLAUDE.md`, `docs/domains.md`, `docs/events.md`, `docs/checklists.md` et
 
 **Hexagonal / CQRS**
 - Commande `extends Command<R>`, handler `@CommandHandler` bien placé (`application/commands/<use-case>/`) ?
-- Contrôleur mince qui passe par `TransactionalCommandBus` (jamais `CommandBus` brut, jamais un handler injecté, jamais `dataSource.transaction()`) ?
+- Contrôleur sans logique (D-034) qui passe par `TransactionalCommandBus` (jamais `CommandBus` brut, jamais un handler injecté, jamais `dataSource.transaction()`) ? Commande ou query construite par un mapper de requête (`http/mappers/<use-case>.request-mapper.ts`, fonction pure) ; effets HTTP après commit dans un répondeur ; refus enregistré par `RefuseAfterCommit`. Lance `grep -nE "if (|new [A-Z]|req.session|res.(cookie|clearCookie)|generateCsrfToken| as [A-Z]" backend/src/modules/**/*.controller.ts` : la sortie doit être vide (exemptés : contrôleurs techniques du socle). `pnpm arch` porte la règle `controller-builds-no-command`.
 - Port lié à son adapter par token dans le module Nest ; `application/` sans import `typeorm` ?
 - Subscriber dans `application/subscribers/`, handler injecté, sans logique ; événement = fait métier ; `DomainEvent` vs `IntegrationEvent` bien choisi ; `type` d'intégration stable ?
 

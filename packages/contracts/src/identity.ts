@@ -78,3 +78,17 @@ export type SignedIn = z.infer<typeof SignedInSchema>;
 /** UC-002 — POST /api/public/auth/sign-out : même réponse avec ou sans session ouverte. */
 export const SignedOutSchema = z.object({ signedOut: z.literal(true) });
 export type SignedOut = z.infer<typeof SignedOutSchema>;
+
+/** UC-003 — POST /api/public/auth/password-reset/code : demander un code (réponse `SignUpCodeSent`, identique pour tout numéro). */
+export const RequestPasswordResetCodeSchema = z.object({ phone: PhoneInput }).strict();
+export type RequestPasswordResetCode = z.infer<typeof RequestPasswordResetCodeSchema>;
+
+/** UC-003 — POST /api/public/auth/password-reset : nouveau mot de passe ; réponse `SignedIn` (connexion automatique, D-031). */
+export const ResetPasswordSchema = z
+  .object({
+    phone: PhoneInput,
+    code: z.string().regex(/^\d{6}$/, 'Le code reçu par SMS compte 6 chiffres.'),
+    newPassword: z.string().min(1).max(128, 'Le mot de passe ne peut pas dépasser 128 caractères.'),
+  })
+  .strict();
+export type ResetPassword = z.infer<typeof ResetPasswordSchema>;

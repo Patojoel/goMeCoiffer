@@ -10,6 +10,7 @@ export class UserOrmEntity {
   @Column('timestamptz', { nullable: true }) phoneVerifiedAt!: Date | null;
   @Column('timestamptz', { nullable: true }) termsAcceptedAt!: Date | null;
   @Column('timestamptz') createdAt!: Date;
+  @Column('integer', { default: 1 }) credentialsVersion!: number;
   @Column('timestamptz', { default: () => 'now()' }) updatedAt!: Date;
   @Column('integer') version!: number;
 }

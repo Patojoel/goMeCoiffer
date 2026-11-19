@@ -3,6 +3,8 @@ import { APP_CONFIG, type AppConfig } from '../../../shared/infrastructure/confi
 import { ConfirmSignUpHandler } from '../application/commands/confirm-sign-up/confirm-sign-up.handler.js';
 import { PurgeSignInAttemptsHandler } from '../application/commands/purge-sign-in-attempts/purge-sign-in-attempts.handler.js';
 import { RequestSignUpCodeHandler } from '../application/commands/request-sign-up-code/request-sign-up-code.handler.js';
+import { RequestPasswordResetCodeHandler } from '../application/commands/request-password-reset-code/request-password-reset-code.handler.js';
+import { ResetPasswordHandler } from '../application/commands/reset-password/reset-password.handler.js';
 import { SignInHandler } from '../application/commands/sign-in/sign-in.handler.js';
 import { SignOutHandler } from '../application/commands/sign-out/sign-out.handler.js';
 import { GetMySessionHandler } from '../application/queries/get-my-session/get-my-session.handler.js';
@@ -16,6 +18,7 @@ import { PASSWORD_HASHER } from '../domain/ports/password-hasher.port.js';
 import { PASSWORD_VERIFIER } from '../domain/ports/password-verifier.port.js';
 import { SECRET_HASHER } from '../domain/ports/secret-hasher.port.js';
 import { SMS_SENDER } from '../domain/ports/sms-sender.port.js';
+import { USER_SESSIONS } from '../domain/ports/user-sessions.port.js';
 import { OTP_SEND_HISTORY } from '../domain/repositories/read/otp-send-history.read-repository.js';
 import { SIGN_IN_ATTEMPT_HISTORY } from '../domain/repositories/read/sign-in-attempt-history.read-repository.js';
 import { KNOWN_DEVICE_REPOSITORY } from '../domain/repositories/write/known-device.repository.js';
@@ -31,28 +34,35 @@ import {
   HmacSecretHasher,
 } from './crypto/secrets.js';
 import { AuthController } from './http/auth.controller.js';
+import { AuthenticatedSessionResponder } from './http/authenticated-session.responder.js';
+import { PasswordResetController } from './http/password-reset.controller.js';
 import { SessionController } from './http/session.controller.js';
 import { SignUpController } from './http/sign-up.controller.js';
 import { TypeOrmKnownDeviceRepository } from './persistence/typeorm-repositories/typeorm-known-device.repository.js';
 import { TypeOrmOtpChallengeRepository } from './persistence/typeorm-repositories/typeorm-otp-challenge.repository.js';
 import { TypeOrmSignInAttemptRepository } from './persistence/typeorm-repositories/typeorm-sign-in-attempt.repository.js';
+import { TypeOrmUserSessions } from './persistence/typeorm-repositories/typeorm-user-sessions.js';
 import { TypeOrmUserRepository } from './persistence/typeorm-repositories/typeorm-user.repository.js';
 import { PurgeSignInAttemptsTask } from './scheduling/purge-sign-in-attempts.task.js';
 import { LoggingSmsSender } from './sms/logging-sms-sender.js';
 
 /** Comptes, connexion et défis SMS. */
 @Module({
-  controllers: [SignUpController, AuthController, SessionController],
+  controllers: [SignUpController, AuthController, PasswordResetController, SessionController],
   providers: [
     RequestSignUpCodeHandler,
     ConfirmSignUpHandler,
+    RequestPasswordResetCodeHandler,
+    ResetPasswordHandler,
     SignInHandler,
     SignOutHandler,
     PurgeSignInAttemptsHandler,
     GetMySessionHandler,
     KnownDeviceRegistry,
+    AuthenticatedSessionResponder,
     PurgeSignInAttemptsTask,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
+    { provide: USER_SESSIONS, useClass: TypeOrmUserSessions },
     { provide: OTP_CHALLENGE_REPOSITORY, useClass: TypeOrmOtpChallengeRepository },
     { provide: SIGN_IN_ATTEMPT_REPOSITORY, useClass: TypeOrmSignInAttemptRepository },
     { provide: KNOWN_DEVICE_REPOSITORY, useClass: TypeOrmKnownDeviceRepository },

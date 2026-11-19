@@ -7,5 +7,7 @@ export interface KnownDeviceRepository {
    * une seule requête, quel que soit le nombre de jetons.
    */
   findOf(tokenHashes: readonly string[], userId: string): Promise<KnownDevice | null>;
+  /** Les appareils de ce compte encore reconnus (non révoqués). */
+  findNotRevokedOf(userId: string): Promise<KnownDevice[]>;
   save(device: KnownDevice): Promise<void>;
 }

@@ -5,17 +5,15 @@ import {
   DEVICE_TOKEN_GENERATOR,
   type DeviceTokenGenerator,
 } from '../../domain/ports/device-token-generator.port.js';
+import { deviceLookupTokens, rotateDeviceTokens } from '../../domain/services/device-cookie-tokens.js';
 import { SECRET_HASHER, type SecretHasher } from '../../domain/ports/secret-hasher.port.js';
 import {
   KNOWN_DEVICE_REPOSITORY,
   type KnownDeviceRepository,
 } from '../../domain/repositories/write/known-device.repository.js';
 
-/** Un navigateur porte au plus un jeton par compte, et jamais plus de 5 jetons. */
-export const MAX_DEVICE_TOKENS = 5;
 /** Compte qui n'existe pas : la recherche se fait quand même, pour un temps de réponse identique. */
 const NO_ACCOUNT = '00000000-0000-0000-0000-000000000000';
-const PADDING_TOKEN = 'no-device';
 
 export interface DeviceLookup {
   readonly device: KnownDevice | null;
@@ -41,13 +39,19 @@ export class KnownDeviceRegistry {
    * recherche ne révèle pas qu'un compte existe. L'appareil est celui de ce compte seulement.
    */
   async find(cookieTokens: readonly string[], userId: string | null): Promise<DeviceLookup> {
-    const tokens = cookieTokens.slice(0, MAX_DEVICE_TOKENS);
-    const hashes = Array.from({ length: MAX_DEVICE_TOKENS }, (_, i) =>
-      this.hasher.hash(tokens[i] ?? PADDING_TOKEN),
-    );
+    const tokens = deviceLookupTokens(cookieTokens);
+    const hashes = tokens.map((token) => this.hasher.hash(token));
     const device = await this.devices.findOf(hashes, userId ?? NO_ACCOUNT);
     const matchIndex = device ? hashes.indexOf(device.snapshot().tokenHash) : -1;
     return { device, matchedToken: matchIndex >= 0 ? (tokens[matchIndex] ?? null) : null };
+  }
+
+  /** Réinitialisation du mot de passe : aucun appareil de ce compte n'est plus reconnu (D-031). */
+  async revokeAllOf(userId: string, now: Date): Promise<void> {
+    for (const device of await this.devices.findNotRevokedOf(userId)) {
+      device.revoke(now);
+      await this.devices.save(device);
+    }
   }
 
   async recordFailure(device: KnownDevice, now: Date): Promise<void> {
@@ -74,10 +78,6 @@ export class KnownDeviceRegistry {
       device.recordSuccess(now);
     }
     await this.devices.save(device);
-
-    const tokens = cookieTokens.slice(0, MAX_DEVICE_TOKENS);
-    const replaced = found.matchedToken === null ? -1 : tokens.indexOf(found.matchedToken);
-    if (replaced >= 0) return tokens.map((token, i) => (i === replaced ? fresh : token));
-    return [...tokens, fresh].slice(-MAX_DEVICE_TOKENS);
+    return rotateDeviceTokens(cookieTokens, found.matchedToken, fresh);
   }
 }

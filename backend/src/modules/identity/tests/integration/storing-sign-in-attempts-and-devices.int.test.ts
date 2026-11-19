@@ -152,7 +152,7 @@ describe('Storing sign-in attempts and recognised devices in PostgreSQL', () => 
       await add(phone, '10.2.2.2', new Date(now.getTime() - minutes * 60_000));
     const bus = t.moduleRef.get(TransactionalCommandBus);
 
-    const results = await Promise.all(
+    const results = await Promise.allSettled(
       Array.from({ length: 10 }, (_, i) =>
         bus.execute(
           new SignIn({
@@ -165,7 +165,9 @@ describe('Storing sign-in attempts and recognised devices in PostgreSQL', () => 
       ),
     );
 
-    const refusals = results.map((r) => (r.status === 'REFUSED' ? r.refusal.code : r.status));
+    const refusals = results.map((r) =>
+      r.status === 'rejected' ? (r.reason as { code: string }).code : r.status,
+    );
     expect(refusals.filter((c) => c === 'INVALID_CREDENTIALS')).toHaveLength(1);
     expect(refusals.filter((c) => c === 'SIGN_IN_TEMPORARILY_BLOCKED')).toHaveLength(9);
     const stored = await db.query(`SELECT count(*) AS n FROM sign_in_attempts WHERE phone = $1`, [phone]);

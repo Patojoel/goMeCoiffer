@@ -6,6 +6,7 @@ import type { KnownDeviceRepository } from '../../domain/repositories/write/know
 import type { SignInAttemptRepository } from '../../domain/repositories/write/sign-in-attempt.repository.js';
 import { NETWORK_WINDOW_MS, PHONE_DAILY_WINDOW_MS } from '../../domain/services/sign-in-attempt-policy.js';
 import type { SignInAttempt } from '../../domain/value-objects/sign-in-attempt.js';
+import type { AfterCommit } from '../../../../shared/application/after-commit.js';
 import type { AuditEntry, AuditTrail } from '../../../../shared/application/ports.js';
 import { ConcurrencyConflictError } from '../../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
@@ -18,6 +19,7 @@ import type { OtpCodeGenerator } from '../../domain/ports/otp-code-generator.por
 import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js';
 import type { SecretHasher } from '../../domain/ports/secret-hasher.port.js';
 import type { SmsSender } from '../../domain/ports/sms-sender.port.js';
+import type { UserSessions } from '../../domain/ports/user-sessions.port.js';
 import type { OtpSendHistory } from '../../domain/repositories/read/otp-send-history.read-repository.js';
 import type { OtpChallengeRepository } from '../../domain/repositories/write/otp-challenge.repository.js';
 import type { UserRepository } from '../../domain/repositories/write/user.repository.js';
@@ -53,8 +55,11 @@ export class FixedOtpCodes implements OtpCodeGenerator {
 export class InMemorySmsSender implements SmsSender {
   readonly sent: { to: string; text: string }[] = [];
   outage = false;
+  /** Erreur quelconque du futur adaptateur (son message peut citer le numéro et le texte). */
+  failure: Error | null = null;
 
   async send(to: PhoneNumber, text: string): Promise<void> {
+    if (this.failure) throw this.failure;
     if (this.outage) throw new SmsDeliveryFailedError();
     this.sent.push({ to: to.value, text });
   }
@@ -130,6 +135,7 @@ export class InMemoryUserRepository implements UserRepository {
         phoneVerifiedAt: new Date('2026-10-01T09:00:00Z'),
         termsAcceptedAt: null,
         createdAt: new Date('2026-10-01T09:00:00Z'),
+        credentialsVersion: 1,
         version: 1,
       }).snapshot(),
     );
@@ -234,6 +240,12 @@ export class InMemoryKnownDeviceRepository implements KnownDeviceRepository {
     return row ? KnownDevice.restore(row) : null;
   }
 
+  async findNotRevokedOf(userId: string) {
+    return [...this.rows.values()]
+      .filter((r) => r.userId === userId && r.revokedAt === null)
+      .map((r) => KnownDevice.restore(r));
+  }
+
   async save(device: KnownDevice) {
     const next = device.snapshot();
     const current = this.rows.get(next.id);
@@ -243,5 +255,56 @@ export class InMemoryKnownDeviceRepository implements KnownDeviceRepository {
 
   all() {
     return [...this.rows.values()];
+  }
+}
+
+/** Sessions ouvertes par utilisateur ; `closeAllOf` ne touche que celles du compte demandé. */
+export class InMemoryUserSessions implements UserSessions {
+  private readonly open = new Map<string, number>();
+
+  opened(userId: string, count: number) {
+    this.open.set(userId, (this.open.get(userId) ?? 0) + count);
+  }
+
+  openCountOf(userId: string) {
+    return this.open.get(userId) ?? 0;
+  }
+
+  async closeAllOf(userId: string) {
+    const closed = this.openCountOf(userId);
+    this.open.delete(userId);
+    return closed;
+  }
+}
+
+/** Enregistre les flux temps réel fermés (le vrai adaptateur les ferme après le commit). */
+export class InMemoryRealtime {
+  readonly closedUsers: string[] = [];
+  publishToUser() {}
+  publishToSalon() {}
+  closeStreamsOfUser(userId: string) {
+    this.closedUsers.push(userId);
+  }
+}
+
+/** Le « commit » est déclenché par le test : `commit()` exécute les actions enregistrées, comme le bus après le commit. */
+export class FakeAfterCommit {
+  private readonly pending: Array<() => unknown> = [];
+
+  register(callback: () => unknown) {
+    this.pending.push(callback);
+  }
+
+  registerDetached(callback: () => unknown) {
+    this.pending.push(callback);
+  }
+
+  async commit() {
+    const callbacks = this.pending.splice(0);
+    await Promise.all(callbacks.map((callback) => callback()));
+  }
+
+  asAfterCommit() {
+    return this as unknown as AfterCommit;
   }
 }

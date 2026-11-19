@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { RefuseAfterCommit } from '../../../../shared/application/refuse-after-commit.js';
 import { InvalidValueError } from '../../../../shared/domain/errors.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { FixedClock, SequentialIdGenerator } from '../../../../test-support/fakes.js';
 import { SignIn } from '../../application/commands/sign-in/sign-in.command.js';
 import { SignInHandler } from '../../application/commands/sign-in/sign-in.handler.js';
-import type { SignInResponse } from '../../application/commands/sign-in/sign-in.response.js';
 import { KnownDeviceRegistry } from '../../application/services/known-device-registry.js';
 import { KnownDevice } from '../../domain/aggregates/known-device.js';
 import type { SignInAttempt } from '../../domain/value-objects/sign-in-attempt.js';
@@ -88,8 +88,16 @@ describe('Signing in with a phone number and a password', () => {
         networkAddress: over.address ?? HOME,
       }),
     );
-  const refusalOf = (result: SignInResponse) =>
-    result.status === 'REFUSED' ? { code: result.refusal.code, message: result.refusal.message } : result;
+  /** Un refus est levé après le commit : l'essai reste compté. Renvoie le code et le message du refus. */
+  const refusedSignIn = async (...args: Parameters<typeof signIn>) => {
+    const failure: unknown = await signIn(...args).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(RefuseAfterCommit);
+    const { code, message } = (failure as RefuseAfterCommit).refusal;
+    return { code, message };
+  };
   const priorFailures = (phone: string, times: string[], over: Partial<SignInAttempt> = {}, day = '18') =>
     Promise.all(
       times.map((time) =>
@@ -122,9 +130,9 @@ describe('Signing in with a phone number and a password', () => {
     ])(
       'refuses %s with the same message, after exactly one password verification',
       async (_, phone, password) => {
-        const result = await signIn(phone, password);
+        const result = await refusedSignIn(phone, password);
 
-        expect(refusalOf(result)).toEqual({
+        expect(result).toEqual({
           code: 'INVALID_CREDENTIALS',
           message: 'Numéro ou mot de passe incorrect.',
         });
@@ -151,9 +159,9 @@ describe('Signing in with a phone number and a password', () => {
     it('refuses a number blocked after 5 wrong passwords, even with the right password and without verifying it', async () => {
       await priorFailures(PAUL, FIVE_WRONG);
 
-      const result = await signIn(PAUL, GOOD);
+      const result = await refusedSignIn(PAUL, GOOD);
 
-      expect(refusalOf(result)).toEqual({
+      expect(result).toEqual({
         code: 'SIGN_IN_TEMPORARILY_BLOCKED',
         message:
           "Trop d'essais pour ce numéro. Réessayez dans 14 minutes ou utilisez « Mot de passe oublié ».",
@@ -165,9 +173,9 @@ describe('Signing in with a phone number and a password', () => {
     it('blocks a number without an account exactly like a registered one', async () => {
       await priorFailures(NOBODY, FIVE_WRONG);
 
-      const result = await signIn(NOBODY, GOOD);
+      const result = await refusedSignIn(NOBODY, GOOD);
 
-      expect(refusalOf(result)).toEqual({
+      expect(result).toEqual({
         code: 'SIGN_IN_TEMPORARILY_BLOCKED',
         message:
           "Trop d'essais pour ce numéro. Réessayez dans 14 minutes ou utilisez « Mot de passe oublié ».",
@@ -179,12 +187,12 @@ describe('Signing in with a phone number and a password', () => {
       await priorFailures(PAUL, ['10:00:00', '10:01:00', '10:02:00', '10:03:00', '10:04:00']);
 
       clock.set(at('10:18:59'));
-      const tooEarly = await signIn(PAUL, GOOD);
+      const tooEarly = await refusedSignIn(PAUL, GOOD);
       clock.set(at('10:19:00'));
       const onTime = await signIn(PAUL, GOOD);
 
-      expect(refusalOf(tooEarly)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
-      expect(onTime.status).toBe('SIGNED_IN');
+      expect(tooEarly).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(onTime.userId).toBe(PAUL_ID);
     });
 
     it('tells to wait until tomorrow once 20 wrong passwords were typed within 24 hours', async () => {
@@ -204,9 +212,9 @@ describe('Signing in with a phone number and a password', () => {
         ),
       );
 
-      const result = await signIn(PAUL, GOOD);
+      const result = await refusedSignIn(PAUL, GOOD);
 
-      expect(refusalOf(result)).toEqual({
+      expect(result).toEqual({
         code: 'SIGN_IN_TEMPORARILY_BLOCKED',
         message:
           "Trop d'essais pour ce numéro aujourd'hui. Utilisez « Mot de passe oublié » ou réessayez demain.",
@@ -226,9 +234,9 @@ describe('Signing in with a phone number and a password', () => {
         ),
       );
 
-      const result = await signIn(PAUL, GOOD);
+      const result = await refusedSignIn(PAUL, GOOD);
 
-      expect(refusalOf(result)).toEqual({
+      expect(result).toEqual({
         code: 'SIGN_IN_TEMPORARILY_BLOCKED',
         message:
           "Trop d'essais depuis ce réseau. Réessayez dans une heure ou connectez-vous depuis votre appareil habituel.",
@@ -238,19 +246,21 @@ describe('Signing in with a phone number and a password', () => {
 
   it('counts the failures of one IPv6 /64 together, whatever the address used inside it', async () => {
     for (let i = 10; i < 40; i++)
-      await signIn(`6 70 00 00 ${i}`, 'wrong-password', { address: `2001:db8:1:2::${i.toString(16)}` });
+      await refusedSignIn(`6 70 00 00 ${i}`, 'wrong-password', {
+        address: `2001:db8:1:2::${i.toString(16)}`,
+      });
 
-    const result = await signIn(PAUL, GOOD, { address: '2001:db8:1:2:ffff::9' });
+    const result = await refusedSignIn(PAUL, GOOD, { address: '2001:db8:1:2:ffff::9' });
 
-    expect(refusalOf(result)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
-    expect((await signIn(PAUL, GOOD, { address: '2001:db8:1:3::1' })).status).toBe('SIGNED_IN');
+    expect(result).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+    expect((await signIn(PAUL, GOOD, { address: '2001:db8:1:3::1' })).userId).toBe(PAUL_ID);
   });
 
   describe('a successful sign-in', () => {
     it('opens the way for the right password, records the success and traces it without any secret', async () => {
       const result = await signIn(PAUL, GOOD);
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-1'] });
+      expect(result).toEqual({ userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-1'] });
       expect(verifier.verifications).toBe(1);
       expect(attempts.all()).toEqual([
         {
@@ -280,10 +290,10 @@ describe('Signing in with a phone number and a password', () => {
       await signIn(PAUL, GOOD);
 
       clock.set(at('10:00:00'));
-      for (const wrong of ['a', 'b', 'c', 'd']) await signIn(PAUL, wrong);
+      for (const wrong of ['a', 'b', 'c', 'd']) await refusedSignIn(PAUL, wrong);
       const result = await signIn(PAUL, GOOD);
 
-      expect(result.status).toBe('SIGNED_IN');
+      expect(result.userId).toBe(PAUL_ID);
     });
 
     it('strengthens a password hash computed with outdated settings, keeping the same password', async () => {
@@ -292,7 +302,7 @@ describe('Signing in with a phone number and a password', () => {
       await signIn(PAUL, GOOD);
 
       expect((await users.findByPhone(PhoneNumber.parse(PAUL)))?.passwordHash).toBe(`argon:${GOOD}`);
-      expect((await signIn(PAUL, GOOD)).status).toBe('SIGNED_IN');
+      expect((await signIn(PAUL, GOOD)).userId).toBe(PAUL_ID);
     });
 
     it('leaves a hash with current settings as it is', async () => {
@@ -306,7 +316,7 @@ describe('Signing in with a phone number and a password', () => {
     it('does not strengthen anything after a wrong password', async () => {
       users.seedStaff(PAUL_ID, PhoneNumber.parse(PAUL), `argon-old:${GOOD}`);
 
-      await signIn(PAUL, 'wrong-password');
+      await refusedSignIn(PAUL, 'wrong-password');
 
       expect((await users.findByPhone(PhoneNumber.parse(PAUL)))?.passwordHash).toBe(`argon-old:${GOOD}`);
     });
@@ -316,7 +326,7 @@ describe('Signing in with a phone number and a password', () => {
     it('traces the block that the 5th wrong password raises, without the phone number', async () => {
       await priorFailures(PAUL, ['09:55:00', '09:56:00', '09:57:00', '09:58:00']);
 
-      await signIn(PAUL, 'wrong-password');
+      await refusedSignIn(PAUL, 'wrong-password');
 
       expect(audit.entries).toEqual([
         {
@@ -332,7 +342,7 @@ describe('Signing in with a phone number and a password', () => {
     it('traces nothing for a number without an account', async () => {
       await priorFailures(NOBODY, ['09:55:00', '09:56:00', '09:57:00', '09:58:00']);
 
-      await signIn(NOBODY, 'wrong-password');
+      await refusedSignIn(NOBODY, 'wrong-password');
 
       expect(audit.entries).toEqual([]);
     });
@@ -340,7 +350,7 @@ describe('Signing in with a phone number and a password', () => {
     it('does not trace the refused attempts made during the block', async () => {
       await priorFailures(PAUL, FIVE_WRONG);
 
-      await signIn(PAUL, 'wrong-password');
+      await refusedSignIn(PAUL, 'wrong-password');
 
       expect(audit.entries).toEqual([]);
     });
@@ -353,7 +363,7 @@ describe('Signing in with a phone number and a password', () => {
 
       const result = await signIn(PAUL, GOOD, { tokens: ['usual'] });
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-1'] });
+      expect(result).toEqual({ userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-1'] });
       expect(audit.entries[0]?.details).toEqual({ knownDevice: true });
     });
 
@@ -371,34 +381,34 @@ describe('Signing in with a phone number and a password', () => {
         ),
       );
 
-      expect((await signIn(PAUL, GOOD, { tokens: ['usual'] })).status).toBe('SIGNED_IN');
+      expect((await signIn(PAUL, GOOD, { tokens: ['usual'] })).userId).toBe(PAUL_ID);
     });
 
     it('does not block the number for the wrong passwords typed on the usual phone, but stops recognising that phone at the 5th', async () => {
       await rememberDevice(PAUL_ID, 'usual', at('10:00:00', '10'));
-      for (let i = 0; i < 5; i++) await signIn(PAUL, 'wrong-password', { tokens: ['usual'] });
+      for (let i = 0; i < 5; i++) await refusedSignIn(PAUL, 'wrong-password', { tokens: ['usual'] });
 
       const fromNewDevice = await signIn(PAUL, GOOD);
 
-      expect(fromNewDevice.status).toBe('SIGNED_IN');
+      expect(fromNewDevice.userId).toBe(PAUL_ID);
       expect(devices.all()[0]?.revokedAt).toEqual(at('10:00:00'));
     });
 
     it('treats a phone that reached 5 wrong passwords as a new device', async () => {
       await rememberDevice(PAUL_ID, 'usual', at('10:00:00', '10'));
-      for (let i = 0; i < 5; i++) await signIn(PAUL, 'wrong-password', { tokens: ['usual'] });
+      for (let i = 0; i < 5; i++) await refusedSignIn(PAUL, 'wrong-password', { tokens: ['usual'] });
       await priorFailures(PAUL, FIVE_WRONG);
 
-      const result = await signIn(PAUL, GOOD, { tokens: ['usual'] });
+      const result = await refusedSignIn(PAUL, GOOD, { tokens: ['usual'] });
 
-      expect(refusalOf(result)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(result).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
     });
 
     it('keeps recognising the usual phone after 4 wrong passwords, and starts counting again after a success', async () => {
       await rememberDevice(PAUL_ID, 'usual', at('10:00:00', '10'));
-      for (let i = 0; i < 4; i++) await signIn(PAUL, 'wrong-password', { tokens: ['usual'] });
+      for (let i = 0; i < 4; i++) await refusedSignIn(PAUL, 'wrong-password', { tokens: ['usual'] });
       await signIn(PAUL, GOOD, { tokens: ['usual'] });
-      for (let i = 0; i < 4; i++) await signIn(PAUL, 'wrong-password', { tokens: ['tok-1'] });
+      for (let i = 0; i < 4; i++) await refusedSignIn(PAUL, 'wrong-password', { tokens: ['tok-1'] });
 
       expect(devices.all()[0]).toMatchObject({ failedAttempts: 4, revokedAt: null });
     });
@@ -413,9 +423,12 @@ describe('Signing in with a phone number and a password', () => {
         await priorFailures(PAUL, FIVE_WRONG, {}, '17');
         clock.set(new Date(instant));
 
-        const result = await signIn(PAUL, GOOD, { tokens: ['usual'] });
+        const outcome = await signIn(PAUL, GOOD, { tokens: ['usual'] }).then(
+          () => 'SIGNED_IN',
+          (error: unknown) => (error instanceof RefuseAfterCommit ? 'REFUSED' : 'FAILED'),
+        );
 
-        expect(result.status).toBe(expected);
+        expect(outcome).toBe(expected);
       },
     );
 
@@ -431,9 +444,9 @@ describe('Signing in with a phone number and a password', () => {
       await rememberDevice(MIREILLE_ID, 'tablet', at('10:00:00', '10'));
       await priorFailures(PAUL, FIVE_WRONG);
 
-      const result = await signIn(PAUL, GOOD, { tokens: ['tablet'] });
+      const result = await refusedSignIn(PAUL, GOOD, { tokens: ['tablet'] });
 
-      expect(refusalOf(result)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(result).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
     });
 
     it('recognises the shared salon tablet separately for each account, each with its own token in the cookie', async () => {
@@ -444,15 +457,15 @@ describe('Signing in with a phone number and a password', () => {
       const LATER_WRONG = ['10:05:00', '10:06:00', '10:07:00', '10:08:00', '10:09:00'];
       await priorFailures(PAUL, LATER_WRONG);
       await priorFailures(MIREILLE, LATER_WRONG);
-      const cookie = paulOnTablet.status === 'SIGNED_IN' ? paulOnTablet.deviceTokens : [];
-      const withoutCookie = await signIn(PAUL, GOOD);
+      const cookie = paulOnTablet.deviceTokens;
+      const withoutCookie = await refusedSignIn(PAUL, GOOD);
       const paulAgain = await signIn(PAUL, GOOD, { tokens: cookie });
       const mireilleAgain = await signIn(MIREILLE, 'Akwa-Tresses-27', { tokens: cookie });
 
       expect(cookie).toEqual(['tablet', 'tok-1']);
-      expect(paulAgain.status).toBe('SIGNED_IN');
-      expect(mireilleAgain.status).toBe('SIGNED_IN');
-      expect(refusalOf(withoutCookie)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(paulAgain.userId).toBe(PAUL_ID);
+      expect(mireilleAgain.userId).toBe(MIREILLE_ID);
+      expect(withoutCookie).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
       expect(
         devices
           .all()
@@ -468,8 +481,8 @@ describe('Signing in with a phone number and a password', () => {
       const result = await signIn(MIREILLE, 'Akwa-Tresses-27', { tokens: ['paul-phone', 'tablet'] });
 
       expect(result).toEqual({
-        status: 'SIGNED_IN',
         userId: MIREILLE_ID,
+        credentialsVersion: 1,
         deviceTokens: ['paul-phone', 'tok-1'],
       });
       expect(
@@ -486,15 +499,15 @@ describe('Signing in with a phone number and a password', () => {
       clock.set(at('10:10:00'));
       await priorFailures(MIREILLE, ['10:05:00', '10:06:00', '10:07:00', '10:08:00', '10:09:00']);
 
-      const withCopiedToken = await signIn(MIREILLE, 'Akwa-Tresses-27', { tokens: ['tablet'] });
+      const withCopiedToken = await refusedSignIn(MIREILLE, 'Akwa-Tresses-27', { tokens: ['tablet'] });
 
-      expect(refusalOf(withCopiedToken)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(withCopiedToken).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
     });
 
     it('never stores a token chosen by the client as a device token: a forged one is ignored and a fresh one is issued', async () => {
       const result = await signIn(PAUL, GOOD, { tokens: ['forged'] });
 
-      expect(result).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['forged', 'tok-1'] });
+      expect(result).toEqual({ userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['forged', 'tok-1'] });
       expect(devices.all().map((d) => d.tokenHash)).toEqual(['h:tok-1']);
     });
 
@@ -502,8 +515,8 @@ describe('Signing in with a phone number and a password', () => {
       const result = await signIn(PAUL, GOOD, { tokens: ['a', 'b', 'c', 'd', 'e'] });
 
       expect(result).toEqual({
-        status: 'SIGNED_IN',
         userId: PAUL_ID,
+        credentialsVersion: 1,
         deviceTokens: ['b', 'c', 'd', 'e', 'tok-1'],
       });
     });
@@ -520,30 +533,30 @@ describe('Signing in with a phone number and a password', () => {
       await priorFailures(PAUL, FIVE_WRONG);
       clock.set(at('10:00:30'));
       const second = await signIn(PAUL, GOOD, {
-        tokens: first.status === 'SIGNED_IN' ? first.deviceTokens : [],
+        tokens: first.deviceTokens,
       });
 
-      expect(second).toEqual({ status: 'SIGNED_IN', userId: PAUL_ID, deviceTokens: ['tok-2'] });
+      expect(second).toEqual({ userId: PAUL_ID, credentialsVersion: 1, deviceTokens: ['tok-2'] });
     });
 
     it('never recognises a device for a number that has no account', async () => {
       await rememberDevice(PAUL_ID, 'usual', at('10:00:00', '10'));
       await priorFailures(NOBODY, FIVE_WRONG);
 
-      const result = await signIn(NOBODY, GOOD, { tokens: ['usual'] });
+      const result = await refusedSignIn(NOBODY, GOOD, { tokens: ['usual'] });
 
-      expect(refusalOf(result)).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
+      expect(result).toMatchObject({ code: 'SIGN_IN_TEMPORARILY_BLOCKED' });
     });
 
     it('looks the device up the same way with or without an account, so that the response time does not reveal accounts', async () => {
       await priorFailures(NOBODY, FIVE_WRONG);
       await priorFailures(PAUL, FIVE_WRONG);
 
-      await signIn(NOBODY, GOOD, { tokens: ['forged'] });
+      await refusedSignIn(NOBODY, GOOD, { tokens: ['forged'] });
       const withoutAccount = { hashes: hashCalls, lookups: devices.lookups };
       hashCalls = 0;
       devices.lookups = 0;
-      await signIn(PAUL, GOOD, { tokens: ['forged'] });
+      await refusedSignIn(PAUL, GOOD, { tokens: ['forged'] });
       const withAccount = { hashes: hashCalls, lookups: devices.lookups };
 
       expect(withAccount).toEqual(withoutAccount);

@@ -33,6 +33,11 @@ export interface RealtimeMessage {
 export interface RealtimePublisher {
   publishToUser(userId: string, message: RealtimeMessage): void;
   publishToSalon(salonId: string, message: RealtimeMessage): void;
+  /**
+   * Ferme, après le commit, tous les flux ouverts de cet utilisateur (réinitialisation du mot de passe) : un flux
+   * ne revérifie la session qu'à son ouverture. Le client se reconnecte et le garde de session tranche.
+   */
+  closeStreamsOfUser(userId: string): void;
 }
 
 export const AUDIT_TRAIL = Symbol('AUDIT_TRAIL');
@@ -68,5 +73,14 @@ export interface ActorRights {
   resolve(
     userId: string,
     activeSalonId: string | null,
-  ): Promise<{ isMember: boolean; permissions: readonly string[]; systemRoles: readonly string[] }>;
+  ): Promise<{
+    isMember: boolean;
+    permissions: readonly string[];
+    systemRoles: readonly string[];
+    /**
+     * Version des identifiants du compte (augmentée par une réinitialisation du mot de passe) ; `null` : compte
+     * inconnu. Une session qui ne porte pas cette version n'ouvre plus rien (D-028, D-031).
+     */
+    credentialsVersion: number | null;
+  }>;
 }

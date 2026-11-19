@@ -4,7 +4,7 @@ import { READ_DB, type SqlReader } from '../../../../../shared/application/ports
 import { sql } from '../../../../../shared/application/sql.js';
 import { nextStepAfterSignIn } from '../../../domain/services/next-step-after-sign-in.js';
 import { GetMySession } from './get-my-session.query.js';
-import type { SessionSalon, SessionSummaryReadModel } from './get-my-session.read-model.js';
+import type { SessionSummaryReadModel } from './get-my-session.read-model.js';
 
 /**
  * Index utilisé : clé primaire `users (id)`.
@@ -15,16 +15,15 @@ import type { SessionSalon, SessionSummaryReadModel } from './get-my-session.rea
 export class GetMySessionHandler implements IQueryHandler<GetMySession> {
   constructor(@Inject(READ_DB) private readonly db: SqlReader) {}
 
-  async execute(q: GetMySession): Promise<SessionSummaryReadModel | null> {
-    const user = await this.db.maybeOne<{ id: string; name: string }>(sql`
+  async execute(q: GetMySession): Promise<SessionSummaryReadModel> {
+    const user = await this.db.one<{ id: string; name: string }>(sql`
       SELECT u.id, COALESCE(u.name, '') AS name
       FROM users u
       WHERE u.id = ${q.userId}`);
-    if (!user) return null;
 
     // Tables d'appartenances et de rôles système pas encore créées : aucune donnée à lire.
-    const salons: readonly SessionSalon[] = [];
-    const systemRoles: readonly string[] = [];
+    const salons: SessionSummaryReadModel['salons'] = [];
+    const systemRoles: string[] = [];
 
     return {
       user,

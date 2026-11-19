@@ -12,6 +12,7 @@ export class SignOutHandler implements ICommandHandler<SignOut> {
   ) {}
 
   async execute({ userId }: SignOut): Promise<SignOutResponse> {
+    if (userId === null) return { signedOut: true };
     await this.audit.record({
       action: 'USER_SIGNED_OUT',
       subjectType: 'user',

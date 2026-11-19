@@ -128,7 +128,7 @@ Le contenu et le parcours validés ne changent pas sans accord : une refonte tou
 | État front | **Redux Toolkit 2** (commandes) + **RTK Query** (lectures) | gateways injectés via `extraArgument` |
 | UI | Tailwind CSS v4 + shadcn/ui (Radix) + lucide-react | formulaires `react-hook-form` + `zod` |
 | Tests | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation) | pas de Jest, pas de `vi.mock` de module |
-| Qualité | oxlint + ESLint, Prettier, **dependency-cruiser** (`pnpm arch`) | les règles d'architecture sont vérifiées par outil |
+| Qualité | oxlint, Prettier, **dependency-cruiser** (`pnpm arch`) | les règles d'architecture sont vérifiées par outil |
 | Observabilité | `nestjs-pino` (JSON, redaction PII), `GET /api/public/health` (ping de la base) | |
 
 > Versions vérifiées au socle (17/11/2026) : NestJS 12.5, TypeORM 1.1, nestjs-cls 7 / transactional 4, Zod 4.6, Vite 8.3, React 19.3, Vitest 5.1. `@Body({ schema })` + `StandardSchemaValidationPipe` confirmés dans `@nestjs/common` 12. Toute brique remplacée met à jour cette table **et** les skills concernés dans le même commit, avec une ligne dans `docs/DECISIONS.md`.
@@ -202,13 +202,16 @@ backend/src/
       commands/<use-case>/     # <use-case>.command.ts + <use-case>.handler.ts + <use-case>.response.ts
       queries/<use-case>/      # <use-case>.query.ts + <use-case>.handler.ts (SQL pur) + <use-case>.read-model.ts
       read-repositories/       # sql-<x>.ts : implémente un port domain/repositories/read en SQL pur (SqlReader)
+      services/                # orchestration partagée par ≥ 2 handlers du module (sans règle métier)
       subscribers/             # réactions aux événements, délèguent à un handler
     infrastructure/
       persistence/
         orm-entities/          # <x>.orm-entity.ts, une entité TypeORM par fichier
         typeorm-repositories/  # typeorm-<x>.repository.ts, implémente un port domain/repositories/write
         mappers/               # <x>.mapper.ts, seulement si la conversion ne tient pas dans restore()/snapshot()
-      http/                    # <x>.controller.ts (+ schémas venant de packages/contracts)
+      http/                    # <x>.controller.ts : corps de route sans logique (D-034, voir I.4)
+        mappers/               # <use-case>.request-mapper.ts : requête validée → commande ou query (fonction pure)
+        <x>.responder.ts       # effets HTTP après le commit (session, cookies, jeton CSRF, corps de réponse)
       <adapter>/               # passerelles externes (paiement, SMS…) : couche de traduction
       <module>.module.ts       # câblage Nest : providers, tokens de ports
     tests/
@@ -219,7 +222,8 @@ Modules prévus (détail et état dans `docs/domains.md`) : `identity` (comptes,
 
 Règles de dépendance (vérifiées par `pnpm arch`) :
 - `domain/` n'importe **rien** d'autre que `shared/domain` : ni `@nestjs/*`, ni `typeorm`, ni `application/`, ni `infrastructure/`.
-- `application/` importe `domain/`, `shared/domain`, `shared/application` et les décorateurs Nest de DI/CQRS (`@nestjs/common`, `@nestjs/cqrs`) ; **jamais `typeorm`**, HTTP ou SDK externe. Le SQL des queries y est écrit en texte pur et exécuté par le port `SqlReader`.
+- `application/` importe `domain/`, `shared/domain`, `shared/application` et les décorateurs Nest de DI/CQRS (`@nestjs/common`, `@nestjs/cqrs`) ; **jamais `typeorm`**, HTTP (express, session, CSRF) ou SDK externe. Le SQL des queries y est écrit en texte pur et exécuté par le port `SqlReader`. Seule exception nommée : `shared/application` (`TransactionalCommandBus`, `AfterCommit`) importe `nestjs-cls` / `@nestjs-cls/transactional`.
+- Dans `infrastructure/http/`, seuls les **mappers de requête** importent un `*.command.ts` ou un `*.query.ts` ; un contrôleur n'en importe jamais (`pnpm arch` : `controller-builds-no-command`).
 - `infrastructure/` importe tout le reste. Un module n'importe jamais l'`infrastructure/` d'un autre module.
 
 Modèle à suivre pour un nouveau module : le premier module complet du projet, nommé dans `docs/domains.md` (skill `ddd`).
@@ -323,17 +327,27 @@ WITH totals AS (SELECT staff_id, count(*) FROM bookings WHERE salon_id = ${salon
 Enveloppe toute commande dans **une transaction + dispatch des événements**.
 
 ```ts
-@Controller('bookings')
+// infrastructure/http/mappers/confirm-booking.request-mapper.ts — seul endroit HTTP qui construit la commande
+export const toConfirmBooking = (bookingId: string, actor: Actor) =>
+  new ConfirmBooking(actor.activeSalonId, actor.userId, bookingId);
+
+// infrastructure/http/bookings.controller.ts — corps de route sans logique (D-034)
+@Controller('salon/bookings')
 export class BookingsController {
   constructor(private readonly commands: TransactionalCommandBus) {}
 
   @Post(':id/confirmation')
   @RequiresPermission('bookings:manage')
   confirm(@Param('id', ParseUUIDPipe) id: string, @CurrentActor() actor: Actor) {
-    return this.commands.execute(new ConfirmBooking(actor.activeSalonId, actor.userId, id));
+    return this.commands.execute(toConfirmBooking(id, actor));
   }
 }
 ```
+
+**Refus qui doit rester enregistré** (essai de code ou de mot de passe compté) : le handler lève
+`throw new RefuseAfterCommit(new OtpIncorrectError(left))` (`shared/application/refuse-after-commit.ts`) ; le bus
+**commite** la transaction (l'essai raté est gardé), exécute les actions post-commit, puis lève l'erreur métier. Une
+autre exception annule tout. Jamais de résultat `status: 'REFUSED'` testé par le contrôleur.
 
 **Cycle de vie :**
 1. `TransactionalCommandBus.execute` ouvre la transaction (`TransactionHost.withTransaction`, propagée par AsyncLocalStorage via `nestjs-cls`, adaptateur TypeORM).
@@ -378,7 +392,11 @@ Tableau des événements et de leurs subscribers : `docs/events.md`.
 - Espaces de routes : `/api/public/*` (marketplace, réservation client, liens de reprogrammation — `@Public()`), `/api/salon/*` (back-office, salon actif de la session, `@RequiresPermission` ou `@AuthenticatedOnly()`), `/api/admin/*` (administration GoMeCoiffer, `@RequiresSystemRole`), `/api/webhooks/*` (agrégateur de paiement, `@Public()` + `@SkipCsrf()` + signature). **`RouteProtectionCheck` refuse de démarrer l'API** si une route sort de ces espaces ou oublie la protection de son espace.
 - Session : expiration glissante (`SESSION_TTL_HOURS`) **et** durée absolue depuis la connexion (`SESSION_MAX_AGE_HOURS`, `session.authenticatedAt`) ; l'appartenance au salon actif est relue à chaque requête (`ActorRights.resolve` → `isMember`), un salon quitté est oublié. Un flux SSE se referme au bout de 30 min.
 - Logs : sérialiseur `safeError` (jamais requête SQL, paramètres ni `detail` PostgreSQL) ; journalisation SQL de TypeORM seulement avec `DB_LOGGING=true`, interdit hors local.
-- Contrôleur mince : extrait les entrées validées et l'acteur, construit la commande/query, appelle `TransactionalCommandBus` / `QueryBus`. Aucune logique métier.
+- **Contrôleur sans logique (D-034)** — trois rôles séparés :
+  - **mapper de requête** `http/mappers/<use-case>.request-mapper.ts` : fonction pure `to<UseCase>(body | params | query, req?, actor?, config?)` qui renvoie la commande ou la query (lit l'adresse IP, les cookies, l'acteur) ; ni règle, ni I/O, ni valeur par défaut métier ;
+  - **use case** (handler) : toute l'orchestration, y compris le refus commité (`RefuseAfterCommit`) et ce que la session doit porter ;
+  - **répondeur** `http/<x>.responder.ts` (`@Injectable`, seulement si la réponse a un effet de transport) : après le commit, ouvre ou détruit la session, pose ou efface les cookies, génère le jeton CSRF, compose le corps du contrat (peut lire par le `QueryBus`) ; ni `if` sur un état métier, ni repository, ni commande.
+  - Le **corps d'une route** se limite à `execute(to<UseCase>(…))` puis éventuellement `responder.x(req, res, résultat)` : ni `if`, `try`, `new`, `?:`, cast, `req.session`, `res.cookie` ni `generateCsrfToken`. Les trackers `@Throttle` sont des fonctions nommées. Exemptés : contrôleurs techniques du socle (`public.controller.ts`, `realtime.controller.ts`).
 - **Validation** : schémas Zod de `packages/contracts` passés aux décorateurs (`@Body({ schema: CreateBookingSchema })`, `@Query({ schema })`), mode strict (clé inconnue = refus). Les ids de route passent par `ParseUUIDPipe`.
 - **Réponse standard** : `ApiResponse<T>` (`shared/infrastructure/http`) — `{ status: 'OK', data }` ou `{ status: 'ERROR', message, code, errors? }`, posé par un intercepteur global.
 
@@ -508,6 +526,7 @@ Checklists complètes (backend, frontend, socle) : `docs/checklists.md`.
 - **Migrations** : jamais modifier une migration commitée, jamais `schema:sync` ni `synchronize: true`, toujours relire le SQL généré.
 - **Lectures** : SQL pur dans `application/queries` (écrans) ou `application/read-repositories` (lecture utile à une commande, derrière un port `domain/repositories/read`), via `SqlReader` et le gabarit `sql` ; jamais l'ORM pour lire un écran.
 - **`TransactionalCommandBus`** : seule porte d'entrée des écritures depuis HTTP, un webhook ou une tâche.
+- **Contrôleurs (D-034)** : la commande se construit dans un mapper de requête, les effets HTTP après le commit dans un répondeur, un refus enregistré passe par `RefuseAfterCommit` ; aucun `if`, `new` ni cast dans un corps de route.
 - **Domaine pur** : aucun import `@nestjs/*` / `typeorm` dans `domain/` (`pnpm arch` le vérifie).
 - **Identité et salon actif** lus dans la session côté serveur, jamais dans le body, la query ou un en-tête client. Rôles système et rôles salon ne se mélangent jamais (PRD §2, §4).
 - **Paiement** : un statut n'est cru que s'il est confirmé par le serveur auprès de l'agrégateur ; référence de transaction unique en base ; webhook idempotent ; aucun code secret Mobile Money stocké ni loggé ; paiement tardif sur créneau perdu → incident, jamais une réservation inventée (BR-06).

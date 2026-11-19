@@ -25,6 +25,8 @@ export class RealtimeController {
       map((message): MessageEvent => ({ type: 'message', data: message })),
     );
     const heartbeat = interval(HEARTBEAT_MS).pipe(map((): MessageEvent => ({ type: 'heartbeat', data: '' })));
-    return merge(messages, heartbeat).pipe(takeUntil(timer(MAX_STREAM_LIFETIME_MS)));
+    return merge(messages, heartbeat).pipe(
+      takeUntil(merge(timer(MAX_STREAM_LIFETIME_MS), this.publisher.closingOf(actor.userId))),
+    );
   }
 }

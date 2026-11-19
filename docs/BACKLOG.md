@@ -54,8 +54,11 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Numéro mal formé à la connexion** (écart UC-002 E1, 18/11) : l'API répond 422 « Numéro de téléphone camerounais
   invalide », comme à l'inscription, au lieu d'un 400 par champ. Aucun essai n'est compté. Proposé : garder ce
   comportement commun ; à confirmer par le user.
-- UC-003 (mot de passe oublié) doit lever les blocages de connexion du numéro (D-025) et fermer toutes les sessions
-  de l'utilisateur (D-028).
+- **Écran « mot de passe oublié » (front de UC-003)** : non fait (back seul, 19/11). Contrat prêt
+  (`RequestPasswordResetCodeSchema`, `ResetPasswordSchema`, réponses `SignUpCodeSent` et `SignedIn`). Après la
+  réinitialisation, prendre le `csrfToken` renvoyé ; « Pas de SMS au bout d'une minute ? » (D-033).
+- Le vrai `ActorRights` (UC-005/UC-008) doit renvoyer `credentialsVersion` comme `NoRightsYet` aujourd'hui, sinon
+  la fermeture des sessions après une réinitialisation (D-031) cesse de fonctionner.
 - Front : route `/connexion` (le 401 y redirige déjà, elle tombe en 404) ; poser `<RequirePermission>` sur
   `/salon/*` et `<RequireSystemRole>` sur `/admin/*` ; brancher le flux SSE (`/api/salon/realtime/stream`) dans
   `main.tsx`, le relancer au changement de salon actif et le couper à la déconnexion ; relecture de secours
@@ -111,6 +114,21 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   (la limite par numéro tient). Ajouter un compteur au /48 avec un seuil plus haut si l'abus apparaît (contre-revue
   UC-002) ; modifie D-025, décision du user.
 - Seed de démo d'un compte du personnel pour se connecter en local (non fait).
+
+## Revue d'architecture du 19/11 : suggestions 🟠 non traitées
+
+- `RequestSignUpCode` envoie le SMS dans la transaction (si le commit échoue, le code part sans être enregistré) :
+  l'aligner sur `RequestPasswordResetCode` (`AfterCommit.registerDetached`) avant le vrai fournisseur SMS.
+- Repositories : la version en mémoire n'est pas mise à jour après `save` (un 2e `save` du même agrégat dans une
+  transaction échoue) ; aucun `dispatch(pullEvents())` dans `save` (le premier événement de domaine serait perdu).
+- `SignUpNextStep` double l'enum `NextStep` ; le champ `outcome` de `ConfirmSignUp` n'est lu que par les tests.
+- Renommer `typeorm-user-sessions` en adaptateur ; le contrat `SignUpCodeSent` (réutilisé par UC-003) en `CodeSent`.
+- Limites de débit en dur sur l'inscription et la réinitialisation (celles de la connexion sont configurables) ;
+  `HOUR_MS` dupliqué.
+- Commentaires trop longs à raccourcir.
+- Doublons à surveiller (factoriser à la 3e occurrence) : « vérifier le code » (inscription, réinitialisation),
+  « remplacer le défi » (deux demandes de code).
+- Temps de réponse comparable (D-019) non mesurable avec le faux fournisseur SMS : à mesurer avec le vrai.
 
 ## Structure (refactoring D-024, 18/11)
 

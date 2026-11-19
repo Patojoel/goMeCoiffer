@@ -20,7 +20,8 @@ export class SqlSignInAttemptHistory implements SignInAttemptHistory {
     const networkSince = new Date(now.getTime() - NETWORK_WINDOW_MS);
     return this.db.many<SignInAttempt>(sql`
       SELECT a.phone, a.network_address AS "networkAddress", a.attempted_at AS "at",
-             a.succeeded, a.from_known_device AS "fromKnownDevice"
+             a.succeeded, a.from_known_device AS "fromKnownDevice",
+             a.password_reset AS "passwordReset"
       FROM sign_in_attempts a
       WHERE (a.phone = ${phone.value} AND a.attempted_at > ${phoneSince})
          OR (a.network_address = ${networkAddress} AND a.attempted_at > ${networkSince}

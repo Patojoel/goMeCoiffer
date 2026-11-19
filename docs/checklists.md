@@ -47,11 +47,11 @@ d'une évolution. Les règles de fond sont dans `CLAUDE.md` et les skills ; ici,
    - `tests/{unit,integration,e2e,builders,fakes}/`.
 3. [ ] Liste des règles en phrases métier ; tests unitaires un par un (rouge vu, puis vert).
 4. [ ] Agrégat, VO, enums, une erreur nommée par fichier, ports + tokens (un par fichier), événements au passé.
-5. [ ] Commande en 3 fichiers : `.command.ts`, `.handler.ts`, `.response.ts` (la réponse est définie en application, pas dans le contrôleur).
+5. [ ] Commande en 3 fichiers : `.command.ts`, `.handler.ts`, `.response.ts` (la réponse est définie en application, pas dans le contrôleur ; pas de branche `REFUSED`).
 6. [ ] Entité dans `orm-entities/`, `TypeOrm<X>Repository` dans `typeorm-repositories/` (via `txHost.tx`, périmètre `salonId`, verrou optimiste) ; lecture utile à une commande en SQL pur dans `application/read-repositories/` ; fakes in-memory équivalents.
 7. [ ] Migration TypeORM générée **relue** (+ parties écrites à la main) ; ligne dans `docs/migrations-history.md`.
 8. [ ] Tests d'intégration des repositories d'écriture et de lecture (Testcontainers, vraies migrations).
-9. [ ] Contrôleur mince + `@RequiresPermission` + `TransactionalCommandBus` ; câblage `<module>.module.ts` ; import dans `app.module.ts`.
+9. [ ] Contrôleur sans logique (D-034) : mapper de requête `http/mappers/<use-case>.request-mapper.ts`, répondeur `http/<x>.responder.ts` si la réponse a un effet HTTP (session, cookies, jeton CSRF), refus enregistré par `RefuseAfterCommit` ; `@RequiresPermission` + `TransactionalCommandBus` ; câblage `<module>.module.ts` ; import dans `app.module.ts` ; le grep de revue des corps de route est vide.
 10. [ ] Test E2E du parcours, avec cas « autre salon → 404 » et refus de droit en table de cas.
 11. [ ] Seed de démo et droits des rôles prédéfinis pour les nouvelles permissions.
 12. [ ] `docs/domains.md`, `docs/events.md` à jour ; revue selon le mode (`archi-reviewer` en full ; `security-reviewer` si périmètre critique).

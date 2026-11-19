@@ -115,7 +115,28 @@ inTransaction<R>(work: () => Promise<R>): Promise<R> {
 }
 ```
 
-- Une action à faire **après** le commit (SSE, réveil du relais d'outbox) passe par `AfterCommit.register(fn)` ; hors transaction du bus, elle part tout de suite.
+- Une action à faire **après** le commit (SSE, réveil du relais d'outbox) passe par `AfterCommit.register(fn)` ; hors transaction du bus, elle part tout de suite. `AfterCommit.registerDetached(fn)` : après le commit, sans que la réponse l'attende (SMS dont le délai ne doit rien révéler) ; erreurs journalisées (type et code seulement).
+- **Refus enregistré** : `throw new RefuseAfterCommit(new XxxError())` (`shared/application/refuse-after-commit.ts`). Le bus intercepte cette exception dans `withTransaction`, **commite** (l'essai raté reste en base), exécute les actions post-commit, puis lève l'erreur métier (422 par le filtre). Toute autre exception annule la transaction. Test : `await expect(handler.execute(cmd)).rejects.toMatchObject({ refusal: expect.any(XxxError) })` en unitaire ; l'intégration vérifie aussi les lignes restées en base.
+
+## HTTP : mapper de requête, répondeur, corps de route (D-034)
+
+```ts
+// infrastructure/http/mappers/sign-in.request-mapper.ts — fonction pure, seul import de la commande côté HTTP
+export const toSignIn = (body: SignInBody, req: Request, config: AppConfig) =>
+  new SignIn({ phone: body.phone, password: body.password,
+    deviceTokens: readDeviceTokens(req, config), networkAddress: req.ip ?? 'unknown' });
+
+// infrastructure/http/auth.controller.ts — corps de route sans logique
+@Post('sign-in')
+async signIn(@Body({ schema: SignInSchema }) body: SignInBody, @Req() req: Request,
+             @Res({ passthrough: true }) res: Response): Promise<SignedIn> {
+  const account = await this.commands.execute(toSignIn(body, req, this.config));
+  return this.session.signedIn(req, res, account);   // AuthenticatedSessionResponder
+}
+```
+
+- **Répondeur** (`<x>.responder.ts`, `@Injectable()`) : `openAuthenticatedSession` (régénère l'id), cookie d'appareil, `generateCsrfToken(req, res, { overwrite: true })`, lecture du résumé par `QueryBus`, `session.destroy` + `clearCookie` avec les mêmes attributs qu'à la pose. Ni `if` sur un état métier, ni repository, ni commande.
+- Interdits dans un corps de route : `if`, `try`, `new`, `?:`, cast, `req.session`, `res.cookie`, `generateCsrfToken`. Les trackers `@Throttle` sont des fonctions nommées.
 - `DomainEventDispatcher.dispatch(aggregate.pullEvents())` dans `save()` : `DomainEvent` → subscribers synchrones ; `IntegrationEvent` (classe avec `static type` et `integration = true`) → ligne d'outbox. Le relais livre chaque ligne dans sa propre transaction, `processed_events` rend chaque consommateur idempotent.
 
 Isolation par défaut `READ COMMITTED` ; les invariants de concurrence reposent sur les contraintes de base (exclusion, unicité) et le verrou optimiste, pas sur un niveau d'isolation plus fort.
