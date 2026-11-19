@@ -38,6 +38,11 @@ export interface RealtimePublisher {
    * ne revérifie la session qu'à son ouverture. Le client se reconnecte et le garde de session tranche.
    */
   closeStreamsOfUser(userId: string): void;
+  /**
+   * Ferme les seuls flux ouverts avec cette session (changement de salon, D-039) : les autres appareils de
+   * l'utilisateur gardent leur salon actif et leur flux. Hors transaction, l'envoi part tout de suite.
+   */
+  closeStreamsOfSession(sessionId: string): void;
 }
 
 export const AUDIT_TRAIL = Symbol('AUDIT_TRAIL');

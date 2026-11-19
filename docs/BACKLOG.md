@@ -121,12 +121,20 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   (`CreateOrganizationSchema`, `OrganizationCreatedSchema`, `CITIES`). Un seul envoi à la fois ; sur
   `ORGANIZATION_ALREADY_EXISTS`, relire `GET /api/salon/session` plutôt qu'afficher une erreur (un double clic peut
   finir en 409 avec l'ancien cookie de session, déjà détruit : 401 puis reconnexion).
-- Session régénérée : une requête en vol qui sauve l'ancienne session après la régénération peut la recréer (sans
-  salon actif ; il faut déjà détenir l'identifiant). Marquer la rotation (`rotatedTo`) et refuser une session marquée,
-  ou ne sauver que si la session existe encore.
 - Flux SSE `salon:<id>` : fermer les flux d'un utilisateur quand son appartenance change ou est révoquée (UC-005 /
   UC-008) ; aujourd'hui seule la réinitialisation du mot de passe les ferme.
 - Seed : sortir le dossier `seed/` de l'image de production.
+- **Écran « choisir mon salon » (front de UC-005)** : non fait (back seul, 19/11). Contrat prêt
+  (`SelectActiveSalonSchema`, `ActiveSalonSelectedSchema`). Quand l'étape suivante est `OPEN_SALON`, appeler aussitôt
+  « ouvrir ce salon » (D-040) ; attendre ou annuler les requêtes en cours avant un changement de salon ; prendre le
+  nouveau `csrfToken` ; sur `CSRF_INVALID` (onglet resté sur l'ancien salon), relire le résumé de session ; relancer
+  le flux SSE sur le nouveau salon.
+- Requête lente partie avec l'ancien cookie et terminée après une rotation de session : avec `rolling: true`, elle
+  renvoie `Set-Cookie` avec l'ancien identifiant, le navigateur écrase le nouveau et l'utilisateur est déconnecté (accès
+  refusé, pas une faille). Côté front : attendre les requêtes en cours avant un changement de salon ; côté serveur,
+  envisager de ne plus renvoyer le cookie d'une session qui n'existe plus (revue sécurité UC-005).
+- SSE : `closingOf(userId)` à passer au même modèle que `closingOfSession` (un seul `Subject` filtré, sans table par
+  canal) ; le `Subject` de fermeture vit dans un seul processus, à revoir avant toute 2e instance de l'API.
 - « Autre salon → 404 » à rejouer en E2E avec UC-005 (aujourd'hui couvert en intégration sur `ActorRights`).
 - Le champ `role` et le catalogue de permissions sont provisoires jusqu'à UC-008.
 - Repositories d'`identity` : toujours sans `dispatch(pullEvents())` (ceux d'`organizations` le font).

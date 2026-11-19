@@ -19,6 +19,47 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-19 — UC-005 Ouvrir et changer de salon (backend)
+
+- **Quoi** : un membre du personnel ouvre un de ses salons ou change de salon actif.
+  - Un salon inexistant, d'une autre organisation, ou dont il n'est plus membre donne le même 404, sans rien changer
+    à la session.
+  - Chaque changement régénère la session (nouveau jeton CSRF) et ferme seulement les flux temps réel de l'ancienne
+    session.
+  - Le résumé de session montre la ville et le quartier de chaque salon.
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-005 (lot 1, EX-008, EX-009), décisions du user D-039 à D-041. L'ajout d'un 2e salon devient
+  UC-010.
+- **Périmètre** :
+  - **Module `organizations`** :
+    - commande `SelectActiveSalon`, qui vérifie l'appartenance par `ActorRights` et n'écrit rien ;
+    - route `POST /api/salon/session/active-salon`, avec mapper, `ActiveSalonResponder` et contrôleur sans logique.
+  - **Socle** :
+    - `RotationSafePgStore` : une session authentifiée n'est **créée** que par le code qui vient de l'émettre. Toute
+      autre sauvegarde est une mise à jour seule, et une rotation **consomme atomiquement** l'ancienne ligne avant
+      d'émettre. Une session détruite (déconnexion) ou déjà remplacée ne revit jamais, et deux changements
+      simultanés laissent une seule session.
+    - SSE : `closeStreamsOfSession`, avec une mémoire bornée des sessions fermées.
+  - **`identity`** : `GetMySession` lit aussi la ville et le quartier (rapport d'index : index partiel des
+    appartenances actives, 0,09 ms).
+  - **Seed** : Mireille (Akwa et Bastos), Clarisse (Élégance), Paul (coiffeur chez Clarisse), Awa.
+  - **Contrat** : `cities.ts` (liste des villes, partagée), `SelectActiveSalonSchema`, `ActiveSalonSelectedSchema`,
+    ville et quartier dans `SessionSummary`.
+- **Vérification** : mode light, agents `use-case-writer`, `backend-builder`, `security-reviewer` (revue et
+  contre-revue).
+  - Suite complète verte : 324 unitaires, 75 intégration, 125 E2E, 36 front.
+  - Mutations volontaires vues rouges : 404 uniforme, régénération, session remplacée ou détruite jamais recréée,
+    fermeture des seuls flux de l'ancienne session, vérification d'appartenance.
+  - Revue sécurité, un point corrigé : une rotation pouvait repartir d'une session détruite et annuler une
+    déconnexion simultanée. Deux durcissements aussi : marqueur de session neuve effacé, flux SSE ouvert juste après
+    la fermeture.
+  - Contre-revue : correct, aucun nouveau trou.
+- **Suites** :
+  - écran « choisir mon salon » (front) ;
+  - ancien cookie renvoyé par une requête lente après une rotation ;
+  - fermeture des flux SSE au retrait d'une appartenance (UC-008) ;
+  - UC-010 à rédiger.
+
 ### 2026-11-19 — UC-004 Créer son organisation et son premier salon (backend)
 
 - **Quoi** : un utilisateur connecté crée en une seule action son organisation, son premier salon et son

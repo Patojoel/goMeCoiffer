@@ -1,8 +1,8 @@
-import connectPgSimple from 'connect-pg-simple';
 import { doubleCsrf } from 'csrf-csrf';
 import type { Request, RequestHandler } from 'express';
 import session from 'express-session';
 import pg from 'pg';
+import { RotationSafePgStore } from './rotation-safe-session-store.js';
 import type { AppConfig } from '../config/app-config.module.js';
 import './session-types.js';
 
@@ -28,9 +28,8 @@ export function sessionMiddleware(config: AppConfig): {
     ssl: config.DB_SSL ? { rejectUnauthorized: true } : false,
     max: 3,
   });
-  const PgStore = connectPgSimple(session);
   const middleware = session({
-    store: new PgStore({
+    store: new RotationSafePgStore({
       pool,
       tableName: 'sessions',
       createTableIfMissing: false,

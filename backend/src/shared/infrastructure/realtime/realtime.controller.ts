@@ -1,7 +1,7 @@
 import { Controller, type MessageEvent, Sse } from '@nestjs/common';
 import { interval, map, merge, type Observable, takeUntil, timer } from 'rxjs';
 import type { Actor } from '../../application/ports.js';
-import { AuthenticatedOnly, CurrentActor } from '../security/decorators.js';
+import { AuthenticatedOnly, CurrentActor, CurrentSessionId } from '../security/decorators.js';
 import { SseRealtimePublisher } from './sse-realtime.publisher.js';
 
 const HEARTBEAT_MS = 25_000;
@@ -18,7 +18,7 @@ export class RealtimeController {
 
   @Sse('stream')
   @AuthenticatedOnly()
-  stream(@CurrentActor() actor: Actor): Observable<MessageEvent> {
+  stream(@CurrentActor() actor: Actor, @CurrentSessionId() sessionId: string): Observable<MessageEvent> {
     const sources = [this.publisher.streamOf(`user:${actor.userId}`)];
     if (actor.activeSalonId) sources.push(this.publisher.streamOf(`salon:${actor.activeSalonId}`));
     const messages = merge(...sources).pipe(
@@ -26,7 +26,13 @@ export class RealtimeController {
     );
     const heartbeat = interval(HEARTBEAT_MS).pipe(map((): MessageEvent => ({ type: 'heartbeat', data: '' })));
     return merge(messages, heartbeat).pipe(
-      takeUntil(merge(timer(MAX_STREAM_LIFETIME_MS), this.publisher.closingOf(actor.userId))),
+      takeUntil(
+        merge(
+          timer(MAX_STREAM_LIFETIME_MS),
+          this.publisher.closingOf(actor.userId),
+          this.publisher.closingOfSession(sessionId),
+        ),
+      ),
     );
   }
 }

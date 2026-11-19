@@ -10,6 +10,8 @@ declare module 'express-session' {
     authenticatedAt?: number;
     /** Dernière requête authentifiée (ms) : borne l'inactivité d'une session portant un rôle système. */
     lastActivityAt?: number;
+    /** Posé par le code qui émet une session authentifiée ; le magasin le retire (voir RotationSafePgStore). */
+    freshlyIssued?: true;
     /** Posé à la délivrance du jeton CSRF : la session d'un visiteur est alors conservée. */
     visitor?: true;
   }

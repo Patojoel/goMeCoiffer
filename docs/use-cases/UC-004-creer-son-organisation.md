@@ -7,7 +7,7 @@
 | Module | `organizations` (impacts : `identity` pour `GetMySession`, `shared` pour `ActorRights`) |
 | Auteur | use-case-writer |
 | Date | 2026-11-19 |
-| Use cases liés | UC-001 / UC-002 / UC-003 (précèdent : session ouverte, étape suivante `CREATE_ORGANIZATION`), UC-005 (suit : ouvrir et changer de salon actif, ajouter un salon), UC-008 (rôles salon, permissions ajustables, droits protégés du propriétaire, rôles système), UC-009 (compte client léger, refusé ici) |
+| Use cases liés | UC-001 / UC-002 / UC-003 (précèdent : session ouverte, étape suivante `CREATE_ORGANIZATION`), UC-005 (suit : ouvrir et changer de salon actif), UC-010 (suit : ajouter un salon à son organisation, D-041), UC-008 (rôles salon, permissions ajustables, droits protégés du propriétaire, rôles système), UC-009 (compte client léger, refusé ici) |
 | Exigences couvertes | EX-002, EX-003, EX-005, EX-006, EX-008, EX-009, EX-011, EX-012, EX-014 (en partie), EX-019, EX-020, EX-021, EX-023, EX-024, EX-025, EX-026, EX-030, EX-033, EX-034, D-003, D-004, D-007, D-027, D-035, D-036, D-037, D-038 |
 
 ## 0. Traçabilité
@@ -16,7 +16,7 @@
 |---|---|---|
 | EX-019 | prd.md §7 Étape 1 « L'utilisateur crée ensuite son organisation » | Déclencheur, flux nominal 1-7, RG-004-03, scénario « Une propriétaire crée son organisation et son premier salon en une seule fois » |
 | EX-030 | prd.md §7 Étape 2 | RG-004-04 à RG-004-08, §14, plan « Les informations du salon sont contrôlées » |
-| EX-003 | prd.md §3 Hiérarchie | RG-004-03 (l'organisation porte ses salons ; le premier est créé avec elle, les suivants par UC-005) |
+| EX-003 | prd.md §3 Hiérarchie | RG-004-03 (l'organisation porte ses salons ; le premier est créé avec elle, les suivants par UC-010, D-041) |
 | EX-005 | prd.md §3 Exemple | RG-004-09 (salon créé vide, sans rien d'un autre salon), scénario « Le propriétaire du salon où travaille un coiffeur n'obtient aucun droit… » |
 | EX-033 | prd.md §5.1 | RG-004-10, scénarios « …en une seule fois », « La propriétaire peut agir dans son salon dès sa création » |
 | EX-008 | prd.md §3 Multi-tenancy | RG-004-10 (appartenance de propriétaire sur chaque salon de l'organisation), scénario « …agir dans son salon dès sa création » |
@@ -32,7 +32,7 @@
 | EX-023 | prd.md §11 | RG-004-15, scénario « La création est tracée sans donnée personnelle » |
 | EX-025 | prd.md §12 Données | RG-004-08 (téléphone commercial public après publication, aide affichée), RG-004-15, §14 |
 | EX-020 | prd.md §7 introduction | §10 (chaque refus dit quoi faire), §15 Guidage |
-| D-035 | DECISIONS.md | RG-004-02, RG-004-03, §16 (unicité du nom dans l'organisation, UC-005) |
+| D-035 | DECISIONS.md | RG-004-02, RG-004-03, §16 (unicité du nom dans l'organisation, UC-010, D-041) |
 | D-036 | DECISIONS.md | RG-004-04 à RG-004-09 |
 | D-037, D-004 | DECISIONS.md | RG-004-11 (session régénérée, nouveau jeton), RG-004-10 (`ActorRights` réel), scénario « Devenir propriétaire régénère la session » |
 | D-038 | DECISIONS.md | RG-004-01, RG-004-10, RG-004-14, scénarios « Un coiffeur… », « Un administrateur GoMeCoiffer… », « Un compte client léger… » |
@@ -484,7 +484,7 @@ compte ; journal d'audit en mémoire. L'intégration utilise la vraie table et s
     numéros vérifiés (le backlog relève qu'aucun compte de démo n'existe) ;
   - `organizations` : organisation « Go Beauty Akwa » de Mireille avec le salon « Go Beauty Akwa » (mixte, Douala,
     Akwa, non publié) et l'appartenance `OWNER` ; Paul **sans organisation**, pour dérouler UC-004 en local ;
-  - les autres salons de l'exemple du PRD (Bastos, Biyem-Assi) arrivent avec l'ajout d'un salon (UC-005).
+  - les autres salons de l'exemple du PRD (Bastos, Biyem-Assi) arrivent avec l'ajout d'un salon (UC-010, D-041).
 
 ## 15. Exigences non fonctionnelles
 
@@ -511,7 +511,8 @@ compte ; journal d'audit en mémoire. L'intégration utilise la vraie table et s
 
 ## 16. Hors périmètre
 
-- Ajouter un 2e salon à son organisation, ouvrir et changer de salon actif : UC-005.
+- Ajouter un 2e salon à son organisation et l'unicité du nom de salon dans l'organisation : UC-010 (D-041) ; ouvrir
+  et changer de salon actif : UC-005.
 - Rôles salon prédéfinis, permissions par défaut et ajustables, droits protégés du propriétaire, rôles système :
   UC-008.
 - Photo principale et courte description (upload, périmètre critique) ; horaires d'ouverture du salon : use cases à
@@ -527,7 +528,7 @@ compte ; journal d'audit en mémoire. L'intégration utilise la vraie table et s
 
 | # | Question | Décision (recommandation retenue sauf Q14) | Impact si différent |
 |---|---|---|---|
-| Q1 | Un utilisateur peut-il **posséder plusieurs organisations** ? **Validée (D-035).** | **Recommandé : non, une seule au MVP** (contrainte d'unicité sur le propriétaire). Un propriétaire qui a plusieurs salons les ajoute à son organisation (UC-005), conformément à l'exemple du PRD §3. | Plusieurs organisations : plus de cas (choix de l'organisation à l'ajout d'un salon, abonnement), et le refus des doublons par clic double doit passer par une clé d'idempotence au lieu de la contrainte. |
+| Q1 | Un utilisateur peut-il **posséder plusieurs organisations** ? **Validée (D-035).** | **Recommandé : non, une seule au MVP** (contrainte d'unicité sur le propriétaire). Un propriétaire qui a plusieurs salons les ajoute à son organisation (UC-010, D-041), conformément à l'exemple du PRD §3. | Plusieurs organisations : plus de cas (choix de l'organisation à l'ajout d'un salon, abonnement), et le refus des doublons par clic double doit passer par une clé d'idempotence au lieu de la contrainte. |
 | Q2 | Organisation et premier salon : **une seule action ou deux étapes** ? Quelles informations pour l'organisation ? **Validée (D-035).** | **Recommandé : une seule action**, l'organisation prend le **nom commercial** du premier salon (renommable plus tard). Le PRD ne donne aucun champ à l'organisation (A-12) ; « organisation » est une notion abstraite pour un propriétaire non technique ; une seule écriture évite l'état « organisation sans salon » et une étape suivante de plus. | Deux étapes : un écran de plus, un état intermédiaire à gérer (reprise, `nextStep` supplémentaire), et des champs d'organisation à définir (raison sociale, NIU…). |
 | Q3 | Quelles informations de l'étape 2 sont **obligatoires à la création** ? (A-14) **Validée (D-036).** | **Recommandé** : nom commercial, type, ville, quartier, point de repère, téléphone commercial obligatoires ; **photo, description et horaires d'ouverture** dans des étapes suivantes, enregistrées chacune à part (EX-021). La photo est un upload (périmètre critique) et les horaires un sujet à part entière (A-13). Longueurs retenues : nom 2-60, quartier 2-60, repère 5-160. | Tout exiger d'un coup : écran long sur téléphone, abandon plus probable, et upload dans la même requête. Repère facultatif : un salon pourrait être publié sans indication pour le trouver. |
 | Q4 | **Ville** : liste fermée ou texte libre ? **Validée (D-036).** | **Recommandé : liste fermée tenue par GoMeCoiffer** (au départ : Douala, Yaoundé, Bafoussam, Bamenda, Buea, Limbé, Kribi, Garoua, Maroua, Ngaoundéré, Bertoua, Ebolowa), quartier en texte libre. La recherche par ville (F01) exige des valeurs propres (« Douala », pas « douala » ni « Dla »). | Texte libre : saisie plus souple, mais recherche marketplace dégradée et nettoyage à faire plus tard. Liste des quartiers aussi : meilleure recherche, mais référentiel lourd à tenir. |
@@ -539,7 +540,7 @@ compte ; journal d'audit en mémoire. L'intégration utilise la vraie table et s
 | Q10 | Un **collaborateur** d'un salon peut-il créer sa propre organisation ? **Validée (D-038).** | **Recommandé : oui** (PRD §3 : plusieurs salons, rôles différents). Son appartenance existante ne change pas. | Interdit : un coiffeur qui ouvre son propre salon devrait créer un 2e compte, contraire à l'identité unique (EX-001). |
 | Q11 | Les **rôles prédéfinis** du salon (Administrateur, Coiffeur, Responsable financier, Praticien) et leurs permissions par défaut sont-ils **recopiés à la création** du salon, ou lus dans un catalogue commun avec seulement les ajustements par salon ? **Validée (D-038).** | **Recommandé : décidé dans UC-008.** UC-004 n'enregistre que l'appartenance `OWNER` et émet `SalonRegistered` ; si UC-008 choisit la recopie, un abonné à cet événement l'écrira dans la même transaction. Non bloquant. | Décider ici la recopie : UC-004 doit déjà connaître les permissions par défaut des 4 rôles. |
 | Q12 | Un **compte client léger** (UC-009) peut-il créer une organisation ? **Validée (D-038).** | **Recommandé : non** ; il passe par l'inscription (UC-001), qui exige le mot de passe et l'acceptation des conditions (D-022). | Autorisé : un propriétaire sans mot de passe ni conditions acceptées. |
-| Q13 | **Unicité du nom** d'un salon ? **Validée (D-035).** | **Recommandé** : pas d'unicité entre organisations (deux « Go Beauty » peuvent exister à Douala) ; unique dans une organisation, à appliquer à l'ajout d'un salon (UC-005). | Unicité globale : premiers inscrits favorisés, conflits de noms à arbitrer. |
+| Q13 | **Unicité du nom** d'un salon ? **Validée (D-035).** | **Recommandé** : pas d'unicité entre organisations (deux « Go Beauty » peuvent exister à Douala) ; unique dans une organisation, à appliquer à l'ajout d'un salon (UC-010, D-041). | Unicité globale : premiers inscrits favorisés, conflits de noms à arbitrer. |
 | Q14 | Faut-il **régénérer l'identifiant de session** quand l'utilisateur devient propriétaire ? **Validée (D-037), à l'inverse de la recommandation initiale.** | **Décidé : oui.** Devenir propriétaire est un changement de privilèges (skill `nest-stack`) : la session reçoit un nouvel identifiant et un nouveau jeton CSRF renvoyé dans la réponse ; elle garde l'utilisateur, l'instant de connexion et la version des identifiants ; l'ancien identifiant et l'ancien jeton sont refusés (RG-004-11). Recommandation initiale écartée : « non, les droits sont relus à chaque requête ». | Sans régénération : un identifiant de session capté avant la création donnerait les droits du propriétaire. Coût retenu : le front doit prendre le nouveau jeton, et un clic double peut déconnecter (§18, vigilance). |
 
 Toutes les questions sont tranchées par le user le 19/11 (D-035 à D-038).

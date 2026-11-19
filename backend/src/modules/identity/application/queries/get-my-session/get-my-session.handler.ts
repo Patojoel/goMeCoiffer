@@ -21,8 +21,8 @@ export class GetMySessionHandler implements IQueryHandler<GetMySession> {
         SELECT u.id, COALESCE(u.name, '') AS name
         FROM users u
         WHERE u.id = ${q.userId}`),
-      this.db.many<{ id: string; name: string; role: string }>(sql`
-        SELECT s.id, s.name, m.role
+      this.db.many<SessionSummaryReadModel['salons'][number]>(sql`
+        SELECT s.id, s.name, m.role, s.city, s.district
         FROM salon_memberships m
         JOIN salons s ON s.id = m.salon_id
         WHERE m.user_id = ${q.userId} AND m.status = 'ACTIVE'
