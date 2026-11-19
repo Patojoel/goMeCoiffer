@@ -1,4 +1,6 @@
 import type { Request } from 'express';
+import { RotationSafePgStore } from './rotation-safe-session-store.js';
+import { UnauthenticatedError } from './security-errors.js';
 import './session-types.js';
 
 const promisify = (run: (done: (err?: unknown) => void) => void) =>
@@ -18,8 +20,10 @@ export async function openAuthenticatedSession(
   req.session.userId = account.userId;
   req.session.credentialsVersion = account.credentialsVersion;
   req.session.authenticatedAt = at.getTime();
+  req.session.freshlyIssued = true;
   req.session.activeSalonId = null;
   await promisify((done) => req.session.save(done));
+  delete req.session.freshlyIssued;
 }
 
 /**
@@ -29,11 +33,16 @@ export async function openAuthenticatedSession(
  */
 export async function regenerateSessionOnSalon(req: Request, activeSalonId: string): Promise<void> {
   const { userId, credentialsVersion, authenticatedAt, lastActivityAt } = req.session;
+  const store = req.sessionStore;
+  if (!(store instanceof RotationSafePgStore)) throw new Error('Magasin de sessions inattendu.');
+  if (!(await store.consume(req.sessionID))) throw new UnauthenticatedError();
   await promisify((done) => req.session.regenerate(done));
   req.session.userId = userId;
   req.session.credentialsVersion = credentialsVersion;
   req.session.authenticatedAt = authenticatedAt;
   req.session.lastActivityAt = lastActivityAt;
   req.session.activeSalonId = activeSalonId;
+  req.session.freshlyIssued = true;
   await promisify((done) => req.session.save(done));
+  delete req.session.freshlyIssued;
 }

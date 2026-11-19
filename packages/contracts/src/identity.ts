@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CitySchema } from './cities.js';
 
 /** Numéro tel que saisi ; la normalisation (+237…) et la règle camerounaise sont appliquées par l'API. */
 const PhoneInput = z.string().trim().min(8).max(25);
@@ -62,7 +63,10 @@ export type NextStep = z.infer<typeof NextStepSchema>;
 export const SessionSummarySchema = z.object({
   user: z.object({ id: z.uuid(), name: z.string() }),
   activeSalonId: z.uuid().nullable(),
-  salons: z.array(z.object({ id: z.uuid(), name: z.string(), role: z.string() })),
+  /** Salons où l'utilisateur a une appartenance active, avec ville et quartier (D-040). */
+  salons: z.array(
+    z.object({ id: z.uuid(), name: z.string(), role: z.string(), city: CitySchema, district: z.string() }),
+  ),
   systemRoles: z.array(z.string()),
   nextStep: NextStepSchema,
 });

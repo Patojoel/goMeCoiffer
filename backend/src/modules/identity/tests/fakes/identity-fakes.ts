@@ -280,6 +280,10 @@ export class InMemoryUserSessions implements UserSessions {
 /** Enregistre les flux temps réel fermés (le vrai adaptateur les ferme après le commit). */
 export class InMemoryRealtime {
   readonly closedUsers: string[] = [];
+  readonly closedSessions: string[] = [];
+  closeStreamsOfSession(sessionId: string) {
+    this.closedSessions.push(sessionId);
+  }
   publishToUser() {}
   publishToSalon() {}
   closeStreamsOfUser(userId: string) {

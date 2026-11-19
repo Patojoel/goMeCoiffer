@@ -31,3 +31,8 @@ export const CurrentActor = createParamDecorator((_: unknown, ctx: ExecutionCont
   if (!actor) throw new UnauthenticatedError();
   return actor;
 });
+
+/** Identifiant de la session du navigateur : sert à retenir les flux ouverts avec elle (jamais exposé au client). */
+export const CurrentSessionId = createParamDecorator(
+  (_: unknown, ctx: ExecutionContext): string => ctx.switchToHttp().getRequest<Request>().sessionID,
+);

@@ -2,40 +2,88 @@ import type { DataSource } from 'typeorm';
 import { DEMO_USERS } from './identity.seed.js';
 import type { Seeder } from './seeder.js';
 
-const MIREILLE = DEMO_USERS[0];
-const ORGANIZATION_ID = '0195f000-0000-7000-8000-000000000b01';
-const SALON_ID = '0195f000-0000-7000-8000-000000000b02';
-const MEMBERSHIP_ID = '0195f000-0000-7000-8000-000000000b03';
+const [MIREILLE, PAUL, CLARISSE, AWA] = DEMO_USERS;
+
+interface DemoSalon {
+  readonly id: string;
+  readonly name: string;
+  readonly city: string;
+  readonly district: string;
+  readonly landmark: string;
+  readonly phone: string;
+}
+
+const AKWA: DemoSalon = {
+  id: '0195f000-0000-7000-8000-000000000b02',
+  name: 'Go Beauty Akwa',
+  city: 'Douala',
+  district: 'Akwa',
+  landmark: 'Rue Joffre, face à la pharmacie du Centre',
+  phone: '+237699887766',
+};
+const BASTOS: DemoSalon = {
+  id: '0195f000-0000-7000-8000-000000000b12',
+  name: 'Go Beauty Bastos',
+  city: 'Yaoundé',
+  district: 'Bastos',
+  landmark: 'Près de l’ambassade de France',
+  phone: '+237699887767',
+};
+const ELEGANCE: DemoSalon = {
+  id: '0195f000-0000-7000-8000-000000000b22',
+  name: 'Élégance Bonamoussadi',
+  city: 'Douala',
+  district: 'Bonamoussadi',
+  landmark: 'Carrefour Shell, derrière la station',
+  phone: '+237655443323',
+};
 
 /**
- * « Go Beauty Akwa » de Mireille (non publié, propriétaire). Paul n'a volontairement aucune organisation :
- * il déroule UC-004 en local. Clés d'idempotence : le propriétaire, le couple (salon, utilisateur).
+ * Organisations de démo, avec les salons et appartenances du contexte de UC-005. Mireille : « Go Beauty Akwa » et
+ * « Go Beauty Bastos » (propriétaire des deux : elle choisit son salon). Clarisse : « Élégance Bonamoussadi », où Paul
+ * est Coiffeur. Awa : Coiffeur de « Go Beauty Akwa ». Paul n'a volontairement aucune organisation : il déroule UC-004
+ * en local. Clés d'idempotence : le propriétaire de l'organisation, l'identifiant du salon, le couple (salon, utilisateur).
+ * Le 2e salon de Mireille est inséré directement tant que « ajouter un salon à son organisation » (UC-010) n'existe pas.
  */
 export const organizationsSeeder: Seeder = {
   name: 'organizations',
   async run(dataSource: DataSource) {
     await dataSource.transaction(async (tx) => {
-      await tx.query(
-        `INSERT INTO organizations (id, owner_user_id, name, created_at, version)
-         SELECT $1, u.id, 'Go Beauty Akwa', now(), 1 FROM users u WHERE u.phone = $2
-         ON CONFLICT (owner_user_id) DO NOTHING`,
-        [ORGANIZATION_ID, MIREILLE.phone],
-      );
-      await tx.query(
-        `INSERT INTO salons (id, organization_id, name, type, city, district, landmark, phone, created_at, version)
-         SELECT $1, o.id, 'Go Beauty Akwa', 'MIXED', 'Douala', 'Akwa',
-                'Rue Joffre, face à la pharmacie du Centre', '+237699887766', now(), 1
-         FROM organizations o JOIN users u ON u.id = o.owner_user_id WHERE u.phone = $2
-         ON CONFLICT (id) DO NOTHING`,
-        [SALON_ID, MIREILLE.phone],
-      );
-      await tx.query(
-        `INSERT INTO salon_memberships (id, salon_id, user_id, role, status, granted_at, version)
-         SELECT $1, s.id, u.id, 'OWNER', 'ACTIVE', now(), 1
-         FROM salons s, users u WHERE s.id = $2 AND u.phone = $3
-         ON CONFLICT (salon_id, user_id) DO NOTHING`,
-        [MEMBERSHIP_ID, SALON_ID, MIREILLE.phone],
-      );
+      const organization = (id: string, name: string, ownerPhone: string) =>
+        tx.query(
+          `INSERT INTO organizations (id, owner_user_id, name, created_at, version)
+           SELECT $1, u.id, $2, now(), 1 FROM users u WHERE u.phone = $3
+           ON CONFLICT (owner_user_id) DO NOTHING`,
+          [id, name, ownerPhone],
+        );
+      const salon = (s: DemoSalon, ownerPhone: string) =>
+        tx.query(
+          `INSERT INTO salons (id, organization_id, name, type, city, district, landmark, phone, created_at, version)
+           SELECT $1, o.id, $2, 'MIXED', $3, $4, $5, $6, now(), 1
+           FROM organizations o JOIN users u ON u.id = o.owner_user_id WHERE u.phone = $7
+           ON CONFLICT (id) DO NOTHING`,
+          [s.id, s.name, s.city, s.district, s.landmark, s.phone, ownerPhone],
+        );
+      const membership = (id: string, salonId: string, userPhone: string, role: string) =>
+        tx.query(
+          `INSERT INTO salon_memberships (id, salon_id, user_id, role, status, granted_at, version)
+           SELECT $1, s.id, u.id, $4, 'ACTIVE', now(), 1
+           FROM salons s, users u WHERE s.id = $2 AND u.phone = $3
+           ON CONFLICT (salon_id, user_id) DO NOTHING`,
+          [id, salonId, userPhone, role],
+        );
+
+      await organization('0195f000-0000-7000-8000-000000000b01', AKWA.name, MIREILLE.phone);
+      await salon(AKWA, MIREILLE.phone);
+      await salon(BASTOS, MIREILLE.phone);
+      await organization('0195f000-0000-7000-8000-000000000b21', ELEGANCE.name, CLARISSE.phone);
+      await salon(ELEGANCE, CLARISSE.phone);
+
+      await membership('0195f000-0000-7000-8000-000000000b03', AKWA.id, MIREILLE.phone, 'OWNER');
+      await membership('0195f000-0000-7000-8000-000000000b13', BASTOS.id, MIREILLE.phone, 'OWNER');
+      await membership('0195f000-0000-7000-8000-000000000b23', ELEGANCE.id, CLARISSE.phone, 'OWNER');
+      await membership('0195f000-0000-7000-8000-000000000b24', ELEGANCE.id, PAUL.phone, 'HAIRDRESSER');
+      await membership('0195f000-0000-7000-8000-000000000b04', AKWA.id, AWA.phone, 'HAIRDRESSER');
     });
   },
 };

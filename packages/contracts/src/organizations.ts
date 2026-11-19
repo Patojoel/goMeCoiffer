@@ -1,23 +1,6 @@
 import { z } from 'zod';
+import { CitySchema } from './cities.js';
 import { SessionSummarySchema } from './identity.js';
-
-/** Villes couvertes par GoMeCoiffer (D-036) : liste fermée, tenue par GoMeCoiffer. */
-export const CITIES = [
-  'Douala',
-  'Yaoundé',
-  'Bafoussam',
-  'Bamenda',
-  'Buea',
-  'Limbé',
-  'Kribi',
-  'Garoua',
-  'Maroua',
-  'Ngaoundéré',
-  'Bertoua',
-  'Ebolowa',
-] as const;
-export const CitySchema = z.enum(CITIES, { error: 'Choisissez la ville du salon dans la liste.' });
-export type City = z.infer<typeof CitySchema>;
 
 export const SalonTypeSchema = z.enum(['HAIR_SALON', 'BARBER_SHOP', 'BEAUTY', 'MIXED'], {
   error: "Choisissez le type d'activité du salon.",
@@ -65,3 +48,14 @@ export const OrganizationCreatedSchema = z.object({
   session: SessionSummarySchema,
 });
 export type OrganizationCreated = z.infer<typeof OrganizationCreatedSchema>;
+
+/** UC-005 — POST /api/salon/session/active-salon : ouvrir ou changer de salon actif (D-039). */
+export const SelectActiveSalonSchema = z.object({ salonId: z.uuid('Salon inconnu.') }).strict();
+export type SelectActiveSalon = z.infer<typeof SelectActiveSalonSchema>;
+
+/** Réponse 200 : la session vient d'être régénérée, l'ancien jeton CSRF ne vaut plus. */
+export const ActiveSalonSelectedSchema = z.object({
+  csrfToken: z.string().min(1),
+  session: SessionSummarySchema,
+});
+export type ActiveSalonSelected = z.infer<typeof ActiveSalonSelectedSchema>;

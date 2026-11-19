@@ -31,6 +31,7 @@ Référence des modules de `backend/src/modules/`, de leurs commandes et de leur
 | `identity` | `ResetPassword` — réinitialiser le mot de passe (code + nouveau mot de passe) ; `User.resetPassword` (version des identifiants +1), sessions de l'utilisateur fermées, marque `password_reset` (lève les blocages du numéro), appareils révoqués puis appareil courant reconnu, audit `PASSWORD_RESET`, flux SSE de l'utilisateur fermés après le commit ; refus levé par `RefuseAfterCommit` ; le répondeur HTTP ouvre la session neuve | `POST /api/public/auth/password-reset` | publique, CSRF, 60/h par IP | UC-003 |
 | `identity` | `SignOut` — tracer la déconnexion (`userId` `null` sans session : rien à tracer ; le répondeur HTTP détruit la session et efface les cookies ; idempotent) | `POST /api/public/auth/sign-out` | publique, CSRF | UC-002 |
 | `organizations` | `CreateOrganization` — fonder son organisation et son premier salon (nom, type, ville, quartier, repère, téléphone) ; `Organization.found` vérifie compte du personnel et organisation unique puis crée organisation, salon non publié (`Africa/Douala`) et appartenance `OWNER` ; audit ×2 ; événements `OrganizationFounded`, `SalonRegistered` ; le répondeur HTTP régénère la session (même instant de connexion et version des identifiants), pose le salon actif et renvoie le nouveau jeton CSRF | `POST /api/salon/organizations` (201) | `@AuthenticatedOnly()`, CSRF | UC-004 |
+| `organizations` | `SelectActiveSalon` — ouvrir ou changer de salon actif : vérifie l'appartenance active par le port `ActorRights` (même règle qu'à chaque requête, RG-005-16), `SalonNotFoundError` (404 identique : inexistant, autre organisation, appartenance retirée), aucune écriture ni audit ; le répondeur HTTP lit le résumé, régénère la session (instant de connexion, version des identifiants et dernière activité conservés), renouvelle le jeton CSRF puis ferme les seuls flux SSE de l'ancienne session (`closeStreamsOfSession`) ; le magasin de sessions ne recrée jamais une session authentifiée supprimée (`RotationSafePgStore`, D-039) | `POST /api/salon/session/active-salon` (200) | `@AuthenticatedOnly()`, CSRF | UC-005 |
 | `identity` | `PurgeSignInAttempts` — oublier l'historique des essais de plus de 48 h (tâche horaire, `TransactionalCommandBus`) | aucune (`@Interval`) | — | UC-002 |
 
 **Module modèle provisoire** : `identity`, à reproduire pour les modules suivants :
@@ -54,7 +55,7 @@ Format d'une ligne : `module` | query | route | permission | UC | tables lues.
 
 | Module | Query | Route | Permission | UC | Tables lues |
 |---|---|---|---|---|---|
-| `identity` | `GetMySession` — résumé de session : nom, salons, rôles système, étape suivante (D-027) ; ni téléphone ni e-mail | `GET /api/salon/session` | `@AuthenticatedOnly()` | UC-002, UC-004 | `users` (clé primaire), `salon_memberships` (index partiel des appartenances actives), `salons` (clé primaire) ; rôles système à ajouter avec UC-008 |
+| `identity` | `GetMySession` — résumé de session : nom, salons (nom, rôle, ville, quartier), rôles système, étape suivante (D-027) ; ni téléphone ni e-mail | `GET /api/salon/session` | `@AuthenticatedOnly()` | UC-002, UC-004, UC-005 | `users` (clé primaire), `salon_memberships` (index partiel des appartenances actives), `salons` (clé primaire) ; rôles système à ajouter avec UC-008 |
 
 ## Droits de l'acteur (socle)
 

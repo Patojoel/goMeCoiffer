@@ -295,6 +295,34 @@ describe('Storing organizations, salons and memberships, and reading the rights 
       });
     });
 
+    it('gives an owner the protected rights on each salon of the organisation, and nothing on a salon of another one', async () => {
+      const mireille = await owner();
+      const secondSalon = randomUUID();
+      await db.query(
+        `INSERT INTO salons (id, organization_id, name, type, city, district, landmark, phone, created_at, version)
+         SELECT $1, organization_id, 'Go Beauty Bastos', type, 'Yaoundé', 'Bastos', landmark, phone, now(), 1
+         FROM salons WHERE id = $2`,
+        [secondSalon, mireille.salonId],
+      );
+      await db.query(
+        `INSERT INTO salon_memberships (id, salon_id, user_id, role, status, granted_at, version)
+         VALUES ($1, $2, $3, 'OWNER', 'ACTIVE', now(), 1)`,
+        [randomUUID(), secondSalon, mireille.id],
+      );
+      const other = await owner();
+
+      for (const salonId of [mireille.salonId, secondSalon])
+        expect((await rights.resolve(mireille.id, salonId)).permissions).toContain('payout-accounts:manage');
+      expect((await rights.resolve(mireille.id, other.salonId)).isMember).toBe(false);
+    });
+
+    it('answers the same for a salon that does not exist and for a salon the user does not belong to', async () => {
+      const { salonId } = await owner();
+      const stranger = await user();
+
+      expect(await rights.resolve(stranger, randomUUID())).toEqual(await rights.resolve(stranger, salonId));
+    });
+
     it('always returns the credentials version of the account, and null for an unknown account', async () => {
       const versioned = await user('argon-hash', 3);
 

@@ -9,6 +9,8 @@ export const DEMO_PASSWORD = 'Demo-Salon-2026';
 export const DEMO_USERS = [
   { id: '0195f000-0000-7000-8000-000000000a01', phone: '+237677123456', name: 'Mireille Ndongo' },
   { id: '0195f000-0000-7000-8000-000000000a02', phone: '+237699001122', name: 'Paul Ebode' },
+  { id: '0195f000-0000-7000-8000-000000000a03', phone: '+237655443322', name: 'Clarisse Fotso' },
+  { id: '0195f000-0000-7000-8000-000000000a04', phone: '+237670112233', name: 'Awa Tchoua' },
 ] as const;
 
 /** Comptes du personnel de démo, numéro vérifié ; clé d'idempotence : le numéro. */

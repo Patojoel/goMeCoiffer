@@ -89,7 +89,9 @@ describe('A signed-in user creates their organization and first salon', () => {
     expect(created.session).toEqual({
       user: { id: account.id, name: 'Mireille Ndongo' },
       activeSalonId: created.salonId,
-      salons: [{ id: created.salonId, name: 'Go Beauty Akwa', role: 'OWNER' }],
+      salons: [
+        { id: created.salonId, name: 'Go Beauty Akwa', role: 'OWNER', city: 'Douala', district: 'Akwa' },
+      ],
       systemRoles: [],
       nextStep: 'OPEN_SALON',
     });
@@ -128,7 +130,7 @@ describe('A signed-in user creates their organization and first salon', () => {
     expect(summary.status).toBe(200);
     expect(summary.body.data.activeSalonId).toBe(created.salonId);
     expect(summary.body.data.salons).toEqual([
-      { id: created.salonId, name: 'Go Beauty Akwa', role: 'OWNER' },
+      { id: created.salonId, name: 'Go Beauty Akwa', role: 'OWNER', city: 'Douala', district: 'Akwa' },
     ]);
   });
 
@@ -356,7 +358,13 @@ describe('A signed-in user creates their organization and first salon', () => {
       ).toBe('HAIRDRESSER');
       const clarisseSummary = await clarisse.get('/api/salon/session');
       expect(clarisseSummary.body.data.salons).toEqual([
-        { id: elegance.salonId, name: 'Élégance Bonamoussadi', role: 'OWNER' },
+        {
+          id: elegance.salonId,
+          name: 'Élégance Bonamoussadi',
+          role: 'OWNER',
+          city: 'Douala',
+          district: 'Akwa',
+        },
       ]);
       expect(await count('salon_memberships', clarisseAccount.id, 'user_id')).toBe(1);
     });
