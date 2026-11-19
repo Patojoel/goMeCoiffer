@@ -33,6 +33,18 @@ describe('Seeding the demo data', () => {
     expect(await countOf('organizations')).toBe(2);
     expect(await countOf('salons')).toBe(3);
     expect(await countOf('salon_memberships')).toBe(5);
+    expect(await countOf('salon_invitations')).toBe(2);
+  });
+
+  it('gives Akwa one pending and one expired invitation, so the invitations screen is not empty', async () => {
+    const rows = await db.query(
+      `SELECT name, status, expires_at > now() AS "stillValid" FROM salon_invitations ORDER BY sent_at DESC`,
+    );
+
+    expect(rows).toEqual([
+      { name: 'Brice Nana', status: 'PENDING', stillValid: true },
+      { name: 'Grâce Mbarga', status: 'EXPIRED', stillValid: false },
+    ]);
   });
 
   it('lets Mireille sign in and choose between her two salons, Akwa and Bastos', async () => {

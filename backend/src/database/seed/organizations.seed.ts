@@ -73,6 +73,17 @@ export const organizationsSeeder: Seeder = {
           [id, salonId, userPhone, role],
         );
 
+      /** Invitations de Mireille dans Akwa : une en attente (envoyée hier) et une expirée (envoyée il y a 10 jours). */
+      const invitation = (id: string, salonId: string, name: string, phone: string, role: string, sentDaysAgo: number, status: string) =>
+        tx.query(
+          `INSERT INTO salon_invitations (id, salon_id, name, phone, role, invited_by_user_id, sent_at, expires_at, status, ended_at, notified_by_sms, version)
+           SELECT $1, $2, $3, $4, $5, u.id, now() - make_interval(days => $6::int), now() - make_interval(days => $6::int) + interval '7 days', $7,
+                  CASE WHEN $7 = 'EXPIRED' THEN now() - make_interval(days => $6::int) + interval '7 days' END, true, 1
+           FROM users u WHERE u.phone = $8
+           ON CONFLICT DO NOTHING`,
+          [id, salonId, name, phone, role, sentDaysAgo, status, MIREILLE.phone],
+        );
+
       await organization('0195f000-0000-7000-8000-000000000b01', AKWA.name, MIREILLE.phone);
       await salon(AKWA, MIREILLE.phone);
       await salon(BASTOS, MIREILLE.phone);
@@ -84,6 +95,9 @@ export const organizationsSeeder: Seeder = {
       await membership('0195f000-0000-7000-8000-000000000b23', ELEGANCE.id, CLARISSE.phone, 'OWNER');
       await membership('0195f000-0000-7000-8000-000000000b24', ELEGANCE.id, PAUL.phone, 'HAIRDRESSER');
       await membership('0195f000-0000-7000-8000-000000000b04', AKWA.id, AWA.phone, 'HAIRDRESSER');
+
+      await invitation('0195f000-0000-7000-8000-000000000b31', AKWA.id, 'Brice Nana', '+237655443322', 'HAIRDRESSER', 1, 'PENDING');
+      await invitation('0195f000-0000-7000-8000-000000000b32', AKWA.id, 'Grâce Mbarga', '+237670112233', 'PRACTITIONER', 10, 'EXPIRED');
     });
   },
 };

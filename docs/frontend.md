@@ -27,7 +27,7 @@ Module de référence : `modules/health/` (port, adapter HTTP, endpoint RTK Quer
 - Lectures : RTK Query, `injectEndpoints` + `queryFn: fromGateway((deps) => deps.<gateway>.<méthode>())` + `providesTags`. Écran : erreur, puis chargement (skeleton), puis vide, puis données.
 - Écritures : thunk `createAppAsyncThunk` (gateways via `extra`) qui invalide les tags concernés.
 - Jamais d'import d'un `*HttpGateway` hors de `lib/store/dependencies/` (`pnpm arch` le vérifie).
-- Aucun texte en dur : clés dans `lib/i18n/fr.ts`, `t('cle')`. Une 2e langue = un dictionnaire de type `Dictionary` dans `i18n.ts`.
+- Aucun texte en dur : clés dans `lib/i18n/fr.ts,`,`lib/i18n/en.ts`,  `t('cle')`. Une 2e langue = un dictionnaire de type `Dictionary` dans `i18n.ts`.
 - Cache RTK Query jamais persisté ; vidé à la déconnexion (`sessionCleared`) et au changement de salon actif (`activeSalonChanged`) par un listener du store.
 - Temps réel : `realtime.onRealtimeEvent(type, handler)` ; la reconnexion invalide toutes les lectures.
 - Cibles tactiles >= 44 px (`min-h-11`), conçu à 390 px, aucun débordement horizontal.

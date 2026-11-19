@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import type { AppConfig } from './shared/infrastructure/config/app-config.module.js';
+import { noStorePrivateRoutes } from './shared/infrastructure/http/no-store-cache.middleware.js';
 import { sessionMiddleware } from './shared/infrastructure/security/http-security.js';
 
 /** Middlewares HTTP communs à main.ts et aux tests E2E ; gardes, pipe, filtre et intercepteur sont dans AppModule. */
@@ -15,6 +16,7 @@ export function configureApp(app: INestApplication, config: AppConfig): void {
   app.useLogger(app.get(Logger));
   app.setGlobalPrefix('api');
   app.use(helmet());
+  app.use(noStorePrivateRoutes);
   app.use(cookieParser());
   const session = sessionMiddleware(config);
   app.use(session.middleware);
