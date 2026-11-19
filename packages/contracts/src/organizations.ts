@@ -59,3 +59,69 @@ export const ActiveSalonSelectedSchema = z.object({
   session: SessionSummarySchema,
 });
 export type ActiveSalonSelected = z.infer<typeof ActiveSalonSelectedSchema>;
+
+/** Les quatre rôles de collaborateur ; jamais Propriétaire ni rôle système (D-042). */
+export const InvitableSalonRoleSchema = z.enum(['SALON_ADMIN', 'HAIRDRESSER', 'FINANCE_MANAGER', 'PRACTITIONER'], {
+  error: 'Choisissez un des rôles proposés.',
+});
+export type InvitableSalonRole = z.infer<typeof InvitableSalonRoleSchema>;
+
+// oxlint-disable-next-line no-control-regex
+const UNSAFE_TEXT_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F\u200B-\u200D\u202A-\u202E\u2066-\u2069\uFEFF]/g;
+
+/**
+ * UC-006 — POST /api/salon/invitations : nom, numéro et rôle seulement (D-045). Le numéro est contrôlé par le domaine
+ * (422 « Numéro de téléphone camerounais invalide… »), le salon et l'auteur viennent de la session.
+ */
+export const InviteCollaboratorSchema = z
+  .object({
+    name: z
+      .string()
+      .transform((value) => value.replace(UNSAFE_TEXT_CHARS, '').trim().replace(/\s+/g, ' '))
+      .pipe(
+        z
+          .string()
+          .min(2, 'Le nom de la personne compte au moins 2 caractères.')
+          .max(80, 'Le nom de la personne ne peut pas dépasser 80 caractères.'),
+      ),
+    phone: z.string().trim().min(1, 'Saisissez le numéro de la personne.').max(30),
+    role: InvitableSalonRoleSchema,
+  })
+  .strict();
+export type InviteCollaborator = z.infer<typeof InviteCollaboratorSchema>;
+
+/** Réponse 201 : rien sur le compte éventuel du numéro (D-019). */
+export const CollaboratorInvitedSchema = z.object({
+  invitationId: z.uuid(),
+  name: z.string(),
+  phone: z.string(),
+  role: InvitableSalonRoleSchema,
+  expiresAt: z.iso.datetime(),
+});
+export type CollaboratorInvited = z.infer<typeof CollaboratorInvitedSchema>;
+
+/** Réponse 200 de POST /api/salon/invitations/:id/cancellation. */
+export const InvitationCancelledSchema = z.object({
+  invitationId: z.uuid(),
+  status: z.literal('CANCELLED'),
+});
+export type InvitationCancelled = z.infer<typeof InvitationCancelledSchema>;
+
+/**
+ * Réponse de GET /api/salon/invitations : invitations en attente et expirées du salon actif, les plus récentes
+ * d'abord. `status` est calculé à l'instant de la lecture (en attente dont l'échéance est passée = `EXPIRED`) ;
+ * `name` et `phone` sont `null` une fois effacés, 30 jours après la fin (RG-006-17).
+ */
+export const SalonInvitationSchema = z.object({
+  id: z.uuid(),
+  name: z.string().nullable(),
+  phone: z.string().nullable(),
+  role: InvitableSalonRoleSchema,
+  sentAt: z.iso.datetime(),
+  expiresAt: z.iso.datetime(),
+  status: z.enum(['PENDING', 'EXPIRED']),
+});
+export type SalonInvitation = z.infer<typeof SalonInvitationSchema>;
+export const SalonInvitationsSchema = z.array(SalonInvitationSchema);
+export type SalonInvitations = z.infer<typeof SalonInvitationsSchema>;

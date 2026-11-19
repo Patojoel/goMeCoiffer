@@ -19,6 +19,47 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-19 — UC-006 Inviter un collaborateur dans son salon (backend)
+
+- **Quoi** : un propriétaire de salon peut inviter un collaborateur par son numéro de téléphone (avec nom et rôle),
+  consulter les invitations en attente ou expirées du salon actif, et annuler une invitation en attente.
+  - Les invitations sont valables 7 jours ; une seule invitation en attente par numéro et par salon.
+  - Un SMS d'information à texte 100 % fixe (sans code ni nom du salon, D-046) est envoyé après le commit dans la
+    limite de 3 salons distincts par numéro sur 24 h glissantes ; au-delà, l'invitation reste enregistrée sans SMS.
+  - Le nom et le numéro des invitations non acceptées sont effacés 30 jours après la fin (`PurgeEndedInvitations`).
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-006 (lot 1, EX-004, EX-006, EX-007, EX-012, EX-015, EX-022 à EX-026, EX-037, EX-038), décisions du
+  user D-042 à D-046.
+- **Périmètre** :
+  - **Module `organizations`** :
+    - agrégat `Invitation`, VOs (`InviteeName`, `boundedText` nettoyant les caractères de contrôle, d'inversion de sens
+      et invisibles), service `InvitationAdmission`, `RoleGrantPolicy` ;
+    - commandes `InviteCollaborator`, `CancelInvitation`, `PurgeEndedInvitations` (tâche planifiée) ;
+    - query `ListSalonInvitations` (`GET /api/salon/invitations`, SQL pur, max 100 lignes) ;
+    - contrôleur `InvitationsController` (`POST /api/salon/invitations`, `GET /api/salon/invitations`,
+      `POST /api/salon/invitations/:id/cancellation`) et verrous `pg_advisory_xact_lock` (salon puis numéro).
+  - **Socle** : `noStorePrivateRoutes` (`Cache-Control: no-store` sur `/api/salon/*` et `/api/admin/*` dans `app.setup.ts`).
+  - **Base & Seed** : migration `OrganizationsInvitations` (`salon_invitations` + index partiels), seed démo mis à jour.
+  - **Contrat** : `InvitableSalonRoleSchema`, `InviteCollaboratorSchema`, `CollaboratorInvitedSchema`,
+    `InvitationCancelledSchema`, `SalonInvitationsSchema` dans `packages/contracts/src/organizations.ts`.
+- **Vérification** : mode light, agents `use-case-writer`, `backend-builder`, `query-perf`, `security-reviewer`, puis
+  application des 5 correctifs de la revue sécurité, durcissement D1 (`UNSAFE_TEXT_CHARS` dans `InviteCollaboratorSchema`)
+  et mise à jour des docs.
+  - Unitaires `modules/organizations` : 9 fichiers, 126 tests verts.
+  - Intégration `modules/organizations` : 2 fichiers, 39 tests verts.
+  - E2E `modules/organizations` : `inviting-a-collaborator` (49 verts), `listing-salon-invitations` (9 verts),
+    `creating-an-organization` (27 verts), `creating-an-organization-under-stress` (2 verts),
+    `opening-and-switching-salons` (24 verts), `switching-salons-while-streams-and-requests-are-open` (6 verts),
+    `inviting-as-a-salon-administrator` (2 `todo` prévus pour UC-008).
+  - Qualité : `oxlint` (0 erreur), `pnpm typecheck` (`contracts`, `backend`, `frontend` verts), `pnpm arch` (0 violation
+    sur 407 modules).
+- **Suites** :
+  - écran « Équipe → Inviter » et liste des invitations (front UC-006) ;
+  - `RoleGrantPolicy` dynamique par salon et activation des 2 `it.todo` T28 lors de UC-008 ;
+  - effacement nom/numéro à l'acceptation dans UC-007.
+
+---
+
 ### 2026-11-19 — UC-005 Ouvrir et changer de salon (backend)
 
 - **Quoi** : un membre du personnel ouvre un de ses salons ou change de salon actif.

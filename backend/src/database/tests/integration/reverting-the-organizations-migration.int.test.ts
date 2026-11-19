@@ -24,6 +24,7 @@ describe('The organizations migration', () => {
   it('removes its three tables when reverted and creates them again when replayed', async () => {
     expect(await tables()).toEqual(['organizations', 'salon_memberships', 'salons']);
 
+    await db.undoLastMigration(); // les invitations (clés étrangères vers les salons) d'abord
     await db.undoLastMigration();
     expect(await tables()).toEqual([]);
 

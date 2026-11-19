@@ -139,6 +139,25 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Le champ `role` et le catalogue de permissions sont provisoires jusqu'à UC-008.
 - Repositories d'`identity` : toujours sans `dispatch(pullEvents())` (ceux d'`organizations` le font).
 
+## Invitations (UC-006, revue sécurité du 19/11)
+
+- **Avant d'ouvrir `staff:invite` à un autre rôle que le propriétaire (UC-008)** : `RoleGrantPolicy` lit les
+  permissions du rôle visé dans le catalogue statique (`permissionsOfRole`), où les 4 rôles invitables n'ont aujourd'hui
+  aucune permission : la règle « pas plus de droits que soi » (D-042) passe donc toujours. Elle doit lire les
+  permissions du rôle **dans ce salon**, à la même source que `SqlActorRights` (port de lecture commun), et les deux
+  `it.todo` de `inviting-as-a-salon-administrator.e2e.test.ts` (T28) deviennent de vrais tests dans le commit de UC-008.
+  Sinon un administrateur ferait entrer un faux responsable financier (son 2e numéro) pour voir l'argent du salon.
+- **Écran « Équipe → Inviter » et liste des invitations (front de UC-006)** : non fait (back seul). Contrat prêt
+  (`InviteCollaboratorSchema`, `CollaboratorInvitedSchema`, `InvitationCancelledSchema`, `SalonInvitationsSchema`) ;
+  bouton « Partager sur WhatsApp » (D-043), aides des rôles (UC-006 §15), message si la liste atteint 100 lignes.
+- UC-007 : effacer le nom et le numéro de l'invitation à son acceptation (le compte porte déjà le numéro) ;
+  aujourd'hui D-045 ne vise que les invitations non acceptées.
+- Vrai fournisseur SMS : `organizations.module.ts` refuse de démarrer si `SMS_PROVIDER` n'est pas `fake`, et `fake`
+  est refusé en prod : l'API ne démarre pas en prod tant que le fournisseur n'est pas branché (blocage voulu). Deux
+  adaptateurs SMS existent (`identity`, `organizations`) : extraire l'envoi dans `shared` au 3e utilisateur (UC-009).
+- Nom de salon : liste blanche de caractères (pas de liens, `@`, suites de chiffres) à décider avant la publication
+  sur la marketplace (lot 3) ; le SMS d'invitation, lui, ne le contient plus (D-046).
+
 ## Revue d'architecture du 19/11 : suggestions 🟠 non traitées
 
 - `RequestSignUpCode` envoie le SMS dans la transaction (si le commit échoue, le code part sans être enregistré) :
@@ -184,7 +203,7 @@ puis back et front en parallèle.
    salon, appartenances, rôles salon prédéfinis et permissions ajustables, droits protégés du propriétaire,
    salon actif en session, rôles système séparés, onboarding sauvegardé par étape.
 2. **Prestations et intervenants** (onboarding étapes 3-6, F07) : prestations (prix, durée, actif), intervenants,
-   spécialités, prestations autorisées, horaires, pauses, indisponibilités, invitation des collaborateurs.
+   spécialités, prestations autorisées, horaires, pauses, indisponibilités (l'invitation des collaborateurs relève du lot 1 : UC-006, UC-007, D-045).
 3. **Disponibilités et marketplace** (F01, F02) : publication du salon (au moins une prestation, un intervenant
    éligible, des horaires valides), recherche, fiche salon, calcul des créneaux, états « Disponible maintenant /
    Prochain créneau / Indisponible », flux SSE public.

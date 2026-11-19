@@ -5,6 +5,7 @@ Référence technique de GoMeCoiffer pour Claude Code : architecture, patterns, 
 **Projet** : GoMeCoiffer — SaaS multi-salons et marketplace de réservation de prestations de coiffure, barbering, esthétique et soins (marché initial : Cameroun). Cycle cible du MVP : *Disponibilité → Réservation → Paiement → Prestation terminée*.
 
 **Documentation** (chargée à la demande selon la tâche) :
+
 - `docs/cahier-des-charges/prd.md` — PRD du MVP, **source fonctionnelle de vérité** (entrée de `use-case-writer`)
 - `docs/BACKLOG.md` — travaux décidés, en attente, à reprendre ; section **URGENT** lue à chaque reprise
 - `docs/EVOLUTIONS.md` — journal des évolutions livrées (une entrée par évolution, la plus récente en haut)
@@ -19,23 +20,21 @@ Référence technique de GoMeCoiffer pour Claude Code : architecture, patterns, 
 **Maquettes** : aucune pour l'instant. Dès qu'une maquette (Figma ou autre) est fournie, son lien s'ajoute ici et elle devient un **contrat** : pour chaque module touché, vérifier que les écrans, formulaires, libellés et parcours lui correspondent, corriger les écarts (`front-ui`) ou les soumettre au user. Lecture Figma : skill `figma:figma-design-to-code` avant `get_design_context`.
 
 **Config Claude Code** (`.claude/`) :
+
 - Skills (règles à charger avant d'écrire du code) : `ddd`, `hexagonal`, `nest-stack`, `tdd`, `sql-query`, `security`, `clean-code`, `refactoring`, `front-stack`.
-- Agents :
-
-  | Agent | Rôle | Modèle |
-  |---|---|---|
-  | `backend-builder` | Implémente un cas d'usage back (commande, agrégat, endpoint, migration) | sonnet |
-  | `query-perf` | Écrit ou optimise les QueryHandlers (SQL pur), produit le rapport d'index | sonnet |
-  | `front-builder` | Logique front : thunk, slice, RTK Query, gateway, DI | sonnet |
-  | `front-ui` | Présentation, composants, écrans, maquettes | sonnet |
-  | `use-case-writer` | Transforme le PRD en use cases BDD | opus |
-
+- Agents :| Agent               | Rôle                                                                      | Modèle    |
+  | ------------------- | -------------------------------------------------------------------------- | ---------- |
+  | `backend-builder` | Implémente un cas d'usage back (commande, agrégat, endpoint, migration)  | sonnet 5.0 |
+  | `query-perf`      | Écrit ou optimise les QueryHandlers (SQL pur), produit le rapport d'index | sonnet5.0  |
+  | `front-builder`   | Logique front : thunk, slice, RTK Query, gateway, DI                       | sonnet5.0  |
+  | `front-ui`        | Présentation, composants, écrans, maquettes                              | sonnet5.0  |
+  | `use-case-writer` | Transforme le PRD en use cases BDD                                         | opus       |
 - Relecteurs (lecture seule) : `archi-reviewer` (opus), `security-reviewer` (opus), `front-reviewer` (sonnet).
 - Hooks (`.claude/settings.json`, scripts dans `.claude/hooks/`) : garde-fous fichiers (`.env`, migrations déjà commitées), garde-fous shell (push forcé, `--no-verify`, `schema:sync`/`schema:drop`), formatage Prettier du fichier écrit, contexte de session (mode, URGENT du backlog), worktrees dans `.worktrees/`.
 
 ---
 
-## Orchestration — qui fait quoi
+## Orchestration — qui fait quoi		
 
 ```
 PRD ──► use-case-writer ──► docs/use-cases/UC-xxx + features/*.feature
@@ -63,14 +62,15 @@ PRD ──► use-case-writer ──► docs/use-cases/UC-xxx + features/*.featu
 
 **Avant toute tâche de code, la session principale demande au user le mode de la session.** Le mode choisi vaut pour toute la session et est rappelé dans chaque consigne donnée à un agent.
 
-| Mode | Revues | Tests | Code |
-|---|---|---|---|
-| **full** (strict) | Porte de revue complète. `archi-reviewer` systématique sur le back, `front-reviewer` systématique sur le front. `security-reviewer` dès que le périmètre critique est touché. | Tests des modules touchés pendant le travail, puis suite complète (`pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm arch`) avant le commit final. | Standard |
-| **light** | **Sécurité seulement**, et uniquement sur le périmètre critique. Pas de `archi-reviewer`, pas de `front-reviewer`. | On teste **le code écrit** : `pnpm --filter api test <chemin du module>` (idem `web`). Le rapport n'est rendu que tout vert. **La suite complète ne tourne qu'une fois, avant le commit final.** | Concis, priorité à l'avancement |
+| Mode                    | Revues                                                                                                                                                                                     | Tests                                                                                                                                                                                                              | Code                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| **full** (strict) | Porte de revue complète. `archi-reviewer` systématique sur le back, `front-reviewer` systématique sur le front. `security-reviewer` dès que le périmètre critique est touché. | Tests des modules touchés pendant le travail, puis suite complète (`pnpm test`, `pnpm lint`, `pnpm typecheck`, `pnpm arch`) avant le commit final.                                                       | Standard                          |
+| **light**         | **Sécurité seulement**, et uniquement sur le périmètre critique. Pas de `archi-reviewer`, pas de `front-reviewer`.                                                           | On teste **le code écrit** : `pnpm --filter api test <chemin du module>` (idem `web`). Le rapport n'est rendu que tout vert. **La suite complète ne tourne qu'une fois, avant le commit final.** | Concis, priorité à l'avancement |
 
 Intention du mode light : pas de revue inutile, revue seulement sur ce qui est critique pour la sécurité, priorité à la rapidité et à un code concis ; pas de tâches rallongées par des revues ou des suites globales relancées.
 
 **Périmètre critique** : `security-reviewer` est obligatoire dans les 2 modes sur ce qui touche :
+
 - authentification, session, CSRF, cookies, OTP et liens sécurisés de réservation ;
 - mot de passe, invitation de collaborateur, activation de compte, réinitialisation ;
 - autorisation : guards, `@RequiresPermission`, `@RequiresSystemRole`, rôles salon et rôles système, droits protégés du propriétaire ;
@@ -84,6 +84,7 @@ Intention du mode light : pas de revue inutile, revue seulement sur ce qui est c
 - canal temps réel (SSE), upload de fichiers (photo du salon).
 
 **Inchangé dans tous les modes** :
+
 - TDD, avec le test rouge d'abord (skill `tdd`) ;
 - les règles non négociables de ce fichier (migrations, QueryHandlers en SQL pur, `TransactionalCommandBus`, domaine pur, contrainte de non-chevauchement…) ;
 - les tests des modules touchés verts avant commit ;
@@ -94,42 +95,44 @@ Intention du mode light : pas de revue inutile, revue seulement sur ce qui est c
 - ne jamais annoncer un vert non obtenu.
 
 **Guidage de l'utilisateur (obligatoire, tous modes)** — le PRD vise des propriétaires de salon non techniques. Sur chaque écran créé ou modifié :
+
 - chaque choix métier dont l'effet n'est pas évident (mode de paiement, rôle, permission, statut, « Peu importe ») porte une aide courte sous le champ (`hint`, reliée par `aria-describedby`) qui dit ce que le choix implique et suit la valeur choisie ;
 - les états vides, les refus et les blocages disent **pourquoi et quoi faire ensuite** (« Ajoutez au moins une prestation et des horaires pour publier votre salon »), jamais un simple « Non disponible » ;
 - textes courts, en langage de salon, dans toutes les langues du projet.
-Le rapport de l'agent front dit quelles aides ont été ajoutées.
+  Le rapport de l'agent front dit quelles aides ont été ajoutées.
 
 ---
 
 ## Refonte UI/UX : modèle et skills
 
 Quand le travail est une **refonte UI/UX** (nouveau design, écrans jugés trop simples, maquettes, pages marketplace) :
+
 - **le modèle standard de la session suffit.** Le modèle le plus performant (paramètre `model` de l'outil Agent) n'est utilisé pour le front **que si le user le demande explicitement** ;
 - l'agent charge les skills UI/UX avant d'écrire : `frontend-design:frontend-design` d'abord, puis selon le cas les skills Figma et `front-stack` ;
 - il vérifie par captures ordinateur et **mobile (390 px) en priorité** (produit mobile-first), qu'il regarde et fait évoluer jusqu'à un rendu soigné, sans débordement horizontal.
-Le contenu et le parcours validés ne changent pas sans accord : une refonte touche la présentation.
+  Le contenu et le parcours validés ne changent pas sans accord : une refonte touche la présentation.
 
 ---
 
 ## Stack
 
-| Couche | Choix | Notes |
-|---|---|---|
-| Runtime | **Node.js 24 LTS**, **pnpm 11** | `.nvmrc` / `engines` ; pnpm 11 applique une politique d'âge des versions (`minimumReleaseAgeExclude`) et n'exécute que les scripts d'install listés dans `allowBuilds` (`pnpm-workspace.yaml`) |
-| Langage | **TypeScript 6.0** (pas 7 : `@nestjs/swagger` 12 ne l'accepte pas), ESM partout | côté API, build et tests par **SWC** (décorateurs + metadata) |
-| Monorepo | **pnpm workspaces** | `backend/` (paquet `api`), `frontend/` (paquet `web`), `packages/contracts` (`@gomecoiffer/contracts`) |
-| Backend | **NestJS 12**, `@nestjs/cqrs`, `nestjs-cls` + `@nestjs-cls/transactional` + `@nestjs-cls/transactional-adapter-typeorm` | validation **Standard Schema** native (`@Body({ schema })`) |
-| Persistance | **PostgreSQL 17** + **TypeORM** (migrations TypeORM) | écriture : entités et repositories TypeORM ; **lecture : SQL pur écrit dans `application/`**, exécuté par le port `SqlReader` (paramètres liés) |
-| Contrats | `packages/contracts` : schémas **Zod 4** + types inférés | partagés API ↔ web, une seule source de vérité |
-| Temps réel | **SSE** (`@Sse()`) + relecture complète à la reconnexion | exigence PRD §12 ; aucun broker pour le MVP |
-| Tâches | `@nestjs/schedule` | expiration des réservations en attente de paiement, relais d'outbox, réconciliation des paiements |
-| Paiement | adaptateur isolé vers l'agrégateur Mobile Money (Orange Money, MTN MoMo) | agrégateur à choisir (PRD §16) ; adaptateur `fake` en local et en test |
-| Frontend | **React 19.2** + **Vite 8** + TypeScript strict | React Compiler activé, mobile-first |
-| État front | **Redux Toolkit 2** (commandes) + **RTK Query** (lectures) | gateways injectés via `extraArgument` |
-| UI | Tailwind CSS v4 + shadcn/ui (Radix) + lucide-react | formulaires `react-hook-form` + `zod` |
-| Tests | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation) | pas de Jest, pas de `vi.mock` de module |
-| Qualité | oxlint, Prettier, **dependency-cruiser** (`pnpm arch`) | les règles d'architecture sont vérifiées par outil |
-| Observabilité | `nestjs-pino` (JSON, redaction PII), `GET /api/public/health` (ping de la base) | |
+| Couche         | Choix                                                                                                                                 | Notes                                                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime        | **Node.js 24 LTS**, **pnpm 11**                                                                                           | `.nvmrc` / `engines` ; pnpm 11 applique une politique d'âge des versions (`minimumReleaseAgeExclude`) et n'exécute que les scripts d'install listés dans `allowBuilds` (`pnpm-workspace.yaml`) |
+| Langage        | **TypeScript 6.0** (pas 7 : `@nestjs/swagger` 12 ne l'accepte pas), ESM partout                                               | côté API, build et tests par **SWC** (décorateurs + metadata)                                                                                                                                      |
+| Monorepo       | **pnpm workspaces**                                                                                                             | `backend/` (paquet `api`), `frontend/` (paquet `web`), `packages/contracts` (`@gomecoiffer/contracts`)                                                                                          |
+| Backend        | **NestJS 12**, `@nestjs/cqrs`, `nestjs-cls` + `@nestjs-cls/transactional` + `@nestjs-cls/transactional-adapter-typeorm` | validation **Standard Schema** native (`@Body({ schema })`)                                                                                                                                         |
+| Persistance    | **PostgreSQL 17** + **TypeORM** (migrations TypeORM)                                                                      | écriture : entités et repositories TypeORM ; **lecture : SQL pur écrit dans `application/`**, exécuté par le port `SqlReader` (paramètres liés)                                            |
+| Contrats       | `packages/contracts` : schémas **Zod 4** + types inférés                                                                   | partagés API ↔ web, une seule source de vérité                                                                                                                                                          |
+| Temps réel    | **SSE** (`@Sse()`) + relecture complète à la reconnexion                                                                    | exigence PRD §12 ; aucun broker pour le MVP                                                                                                                                                                |
+| Tâches        | `@nestjs/schedule`                                                                                                                  | expiration des réservations en attente de paiement, relais d'outbox, réconciliation des paiements                                                                                                         |
+| Paiement       | adaptateur isolé vers l'agrégateur Mobile Money (Orange Money, MTN MoMo)                                                            | agrégateur à choisir (PRD §16) ; adaptateur `fake` en local et en test                                                                                                                                 |
+| Frontend       | **React 19.2** + **Vite 8** + TypeScript strict                                                                           | React Compiler activé, mobile-first                                                                                                                                                                        |
+| État front    | **Redux Toolkit 2** (commandes) + **RTK Query** (lectures)                                                                | gateways injectés via `extraArgument`                                                                                                                                                                    |
+| UI             | Tailwind CSS v4 + shadcn/ui (Radix) + lucide-react                                                                                    | formulaires `react-hook-form` + `zod`                                                                                                                                                                   |
+| Tests          | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation)       | pas de Jest, pas de `vi.mock` de module                                                                                                                                                                   |
+| Qualité       | oxlint, Prettier, **dependency-cruiser** (`pnpm arch`)                                                                        | les règles d'architecture sont vérifiées par outil                                                                                                                                                       |
+| Observabilité | `nestjs-pino` (JSON, redaction PII), `GET /api/public/health` (ping de la base)                                                   |                                                                                                                                                                                                             |
 
 > Versions vérifiées au socle (17/11/2026) : NestJS 12.5, TypeORM 1.1, nestjs-cls 7 / transactional 4, Zod 4.6, Vite 8.3, React 19.3, Vitest 5.1. `@Body({ schema })` + `StandardSchemaValidationPipe` confirmés dans `@nestjs/common` 12. Toute brique remplacée met à jour cette table **et** les skills concernés dans le même commit, avec une ligne dans `docs/DECISIONS.md`.
 
@@ -221,6 +224,7 @@ backend/src/
 Modules prévus (détail et état dans `docs/domains.md`) : `identity` (comptes, session, OTP), `organizations` (organisation, salons, appartenances, rôles et permissions salon), `catalog` (prestations), `staff` (intervenants, spécialités, prestations autorisées, horaires, indisponibilités), `booking` (réservations, reprogrammations), `payments` (paiements en ligne et au salon), `subscriptions` (abonnements SaaS), `platform` (administration GoMeCoiffer). Les disponibilités (F02) sont une **lecture** (`booking/application/queries`) recalculée depuis horaires, indisponibilités et réservations, et revalidée côté écriture à la confirmation.
 
 Règles de dépendance (vérifiées par `pnpm arch`) :
+
 - `domain/` n'importe **rien** d'autre que `shared/domain` : ni `@nestjs/*`, ni `typeorm`, ni `application/`, ni `infrastructure/`.
 - `application/` importe `domain/`, `shared/domain`, `shared/application` et les décorateurs Nest de DI/CQRS (`@nestjs/common`, `@nestjs/cqrs`) ; **jamais `typeorm`**, HTTP (express, session, CSRF) ou SDK externe. Le SQL des queries y est écrit en texte pur et exécuté par le port `SqlReader`. Seule exception nommée : `shared/application` (`TransactionalCommandBus`, `AfterCommit`) importe `nestjs-cls` / `@nestjs-cls/transactional`.
 - Dans `infrastructure/http/`, seuls les **mappers de requête** importent un `*.command.ts` ou un `*.query.ts` ; un contrôleur n'en importe jamais (`pnpm arch` : `controller-builds-no-command`).
@@ -297,15 +301,15 @@ export class ListSalonDayPlanningHandler implements IQueryHandler<ListSalonDayPl
 
 ##### Règles obligatoires des QueryHandlers
 
-1. **SQL pur et optimisé, écrit dans le handler** — gabarit `sql\`…\`` de `shared/application/sql` : chaque `${valeur}` devient un paramètre lié `$n` (node-postgres), jamais du texte. Exécution par le port `SqlReader` (`many`, `one`, `maybeOne`) injecté par le token `READ_DB` ; son adaptateur TypeORM (`txHost.tx.query(text, values)` : dans une commande, la lecture passe par la transaction en cours) vit dans `shared/infrastructure/database/`. Jamais de concaténation, jamais `sql.unsafe()` avec une valeur venue de l'extérieur (identifiants dynamiques : liste blanche de constantes), jamais de QueryBuilder, de `find*` TypeORM, de repository d'agrégat ni d'entité TypeORM dans une lecture. Les **CTE sont filtrées dès l'entrée** (`salon_id`, id de périmètre) — aucun scan global filtré plus tard.
+1. **SQL pur et optimisé, écrit dans le handler** — gabarit `sql\`…\``de`shared/application/sql`: chaque`${valeur}` devient un paramètre lié `$n`(node-postgres), jamais du texte. Exécution par le port`SqlReader` (`many`, `one`, `maybeOne`) injecté par le token `READ_DB` ; son adaptateur TypeORM (`txHost.tx.query(text, values)`: dans une commande, la lecture passe par la transaction en cours) vit dans`shared/infrastructure/database/`. Jamais de concaténation, jamais `sql.unsafe()`avec une valeur venue de l'extérieur (identifiants dynamiques : liste blanche de constantes), jamais de QueryBuilder, de`find*` TypeORM, de repository d'agrégat ni d'entité TypeORM dans une lecture. Les **CTE sont filtrées dès l'entrée** (`salon_id`, id de périmètre) — aucun scan global filtré plus tard.
 2. **Read models immuables** — `readonly` partout, objets simples, colonnes aliasées en camelCase dans le SQL (`AS "startsAt"`) ; jamais une entité TypeORM ni un agrégat en sortie.
 3. **Tests E2E uniquement** — une query se teste par un test E2E HTTP (Testcontainers), écrit **avant** la requête. Pas d'unit ni d'intégration pour une query.
 4. **Rapport d'analyse obligatoire** — après chaque création ou modification :
-    - structure de la requête (CTE, JOIN, filtres) ;
-    - problèmes de performance (scans globaux, N+1, agrégation en JS en O(n²), données en dur, incohérences projet) ;
-    - **vérification réelle des index** (`pg_indexes` + `EXPLAIN (ANALYZE, BUFFERS)` sur la vraie base) : tableau colonne | index existant (oui/non) | recommandation ;
-    - récapitulatif priorisé 🔴 Critique / 🟡 Important / 🟠 Mineur avec l'impact attendu.
-   Présenté **même si les corrections sont déjà appliquées**. Jamais d'index « estimé ».
+   - structure de la requête (CTE, JOIN, filtres) ;
+   - problèmes de performance (scans globaux, N+1, agrégation en JS en O(n²), données en dur, incohérences projet) ;
+   - **vérification réelle des index** (`pg_indexes` + `EXPLAIN (ANALYZE, BUFFERS)` sur la vraie base) : tableau colonne | index existant (oui/non) | recommandation ;
+   - récapitulatif priorisé 🔴 Critique / 🟡 Important / 🟠 Mineur avec l'impact attendu.
+     Présenté **même si les corrections sont déjà appliquées**. Jamais d'index « estimé ».
 
 ```ts
 // ❌ interpolation brute
@@ -350,6 +354,7 @@ export class BookingsController {
 autre exception annule tout. Jamais de résultat `status: 'REFUSED'` testé par le contrôleur.
 
 **Cycle de vie :**
+
 1. `TransactionalCommandBus.execute` ouvre la transaction (`TransactionHost.withTransaction`, propagée par AsyncLocalStorage via `nestjs-cls`, adaptateur TypeORM).
 2. Le handler s'exécute ; l'agrégat **enregistre** ses événements (`this.record(...)`).
 3. `repository.save()` persiste puis remet les événements au `DomainEventDispatcher` :
@@ -402,30 +407,30 @@ Tableau des événements et de leurs subscribers : `docs/events.md`.
 
 **Convention d'erreur** (filtre global `DomainExceptionFilter`) :
 
-| Cas | Levée par | HTTP |
-|---|---|---|
-| Entrée invalide | validation Standard Schema | 400 + `errors` par champ |
-| Non authentifié / session expirée | `AuthGuard` | 401 |
-| Droit insuffisant | `PermissionsGuard` | 403 |
-| Ressource absente **ou d'un autre salon** | `NotFoundError` / `ScopeViolationError` | 404 (ne révèle pas l'existence) |
-| Conflit (unicité, verrou optimiste, **créneau pris** — violation de la contrainte d'exclusion `23P01`) | `ConflictError`, `SlotNoLongerAvailableError` | 409 |
-| Règle métier refusée | `BusinessRuleViolation` (et sous-classes nommées) | 422 + `code` stable + `message` lisible |
-| Inattendu | tout le reste | 500, seul cas loggé en `error`, aucun détail technique au client |
+| Cas                                                                                                               | Levée par                                           | HTTP                                                                 |
+| ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------- |
+| Entrée invalide                                                                                                  | validation Standard Schema                           | 400 + `errors` par champ                                           |
+| Non authentifié / session expirée                                                                               | `AuthGuard`                                        | 401                                                                  |
+| Droit insuffisant                                                                                                 | `PermissionsGuard`                                 | 403                                                                  |
+| Ressource absente **ou d'un autre salon**                                                                   | `NotFoundError` / `ScopeViolationError`          | 404 (ne révèle pas l'existence)                                    |
+| Conflit (unicité, verrou optimiste, **créneau pris** — violation de la contrainte d'exclusion `23P01`) | `ConflictError`, `SlotNoLongerAvailableError`    | 409                                                                  |
+| Règle métier refusée                                                                                           | `BusinessRuleViolation` (et sous-classes nommées) | 422 + `code` stable + `message` lisible                          |
+| Inattendu                                                                                                         | tout le reste                                        | 500, seul cas loggé en `error`, aucun détail technique au client |
 
 Les erreurs métier vivent dans `domain/exceptions/` (une erreur par fichier) et n'héritent **jamais** de `HttpException` : le mapping HTTP est l'affaire du filtre.
 
 ### I.5. Socle partagé (`backend/src/shared/`)
 
-| Dossier | Contenu |
-|---|---|
-| `domain/` | `AggregateRoot` (`record`, `pullEvents`), `DomainEvent`, `IntegrationEvent`, erreurs de base, VO transverses (`Id`, `Money` en XAF entiers, `TimeRange`, `PhoneNumber`) — uniquement s'ils servent ≥ 3 modules |
-| `application/` | `TransactionalCommandBus`, `DomainEventSubscriber`, `Clock` (port), `IdGenerator` (port), `SqlReader` (port) + gabarit `sql`, `RealtimePublisher` (port) |
-| `infrastructure/database/` | `TypeOrmModule` (config), `TransactionHost` (adaptateur TypeORM), `TypeOrmSqlReader` (token `READ_DB`, lit dans la transaction en cours s'il y en a une), vérification des migrations au démarrage |
-| `infrastructure/events/` | `DomainEventDispatcher`, `OutboxRepository`, `OutboxRelay`, `ProcessedEvents` |
-| `infrastructure/security/` | `AuthGuard` (deny-by-default), `@Public()`, `PermissionsGuard`, `@RequiresPermission()`, `@RequiresSystemRole()`, `@CurrentActor()`, session (PostgreSQL), CSRF, contexte CLS (user, salon actif, requestId) |
-| `infrastructure/http/` | `ApiResponse<T>`, intercepteur de réponse, `DomainExceptionFilter` |
-| `infrastructure/config/` | `ConfigModule` validé par schéma Zod au démarrage (fail-fast) |
-| `infrastructure/realtime/` | adaptateur SSE du port `RealtimePublisher` |
+| Dossier                      | Contenu                                                                                                                                                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `domain/`                  | `AggregateRoot` (`record`, `pullEvents`), `DomainEvent`, `IntegrationEvent`, erreurs de base, VO transverses (`Id`, `Money` en XAF entiers, `TimeRange`, `PhoneNumber`) — uniquement s'ils servent ≥ 3 modules |
+| `application/`             | `TransactionalCommandBus`, `DomainEventSubscriber`, `Clock` (port), `IdGenerator` (port), `SqlReader` (port) + gabarit `sql`, `RealtimePublisher` (port)                                                             |
+| `infrastructure/database/` | `TypeOrmModule` (config), `TransactionHost` (adaptateur TypeORM), `TypeOrmSqlReader` (token `READ_DB`, lit dans la transaction en cours s'il y en a une), vérification des migrations au démarrage                       |
+| `infrastructure/events/`   | `DomainEventDispatcher`, `OutboxRepository`, `OutboxRelay`, `ProcessedEvents`                                                                                                                                              |
+| `infrastructure/security/` | `AuthGuard` (deny-by-default), `@Public()`, `PermissionsGuard`, `@RequiresPermission()`, `@RequiresSystemRole()`, `@CurrentActor()`, session (PostgreSQL), CSRF, contexte CLS (user, salon actif, requestId)           |
+| `infrastructure/http/`     | `ApiResponse<T>`, intercepteur de réponse, `DomainExceptionFilter`                                                                                                                                                            |
+| `infrastructure/config/`   | `ConfigModule` validé par schéma Zod au démarrage (fail-fast)                                                                                                                                                                 |
+| `infrastructure/realtime/` | adaptateur SSE du port `RealtimePublisher`                                                                                                                                                                                       |
 
 Création pas à pas du socle : `docs/checklists.md` § Socle.
 
@@ -449,11 +454,11 @@ Création pas à pas du socle : `docs/checklists.md` § Socle.
 
 ### I.7. Tests backend
 
-| Niveau | Dossier / suffixe | Dépendances | Ce qu'il prouve |
-|---|---|---|---|
-| Unit | `tests/unit/*.test.ts` | aucune I/O, repositories in-memory (`tests/fakes/`) | les règles métier du cas d'usage |
-| Intégration | `tests/integration/*.int.test.ts` | **Testcontainers** (PostgreSQL 17) | le branchement d'un adapter réel (repository TypeORM, contrainte d'exclusion, adaptateur de paiement contre un faux serveur) |
-| E2E | `tests/e2e/*.e2e.test.ts` | app Nest complète + Testcontainers + `supertest` | un parcours métier HTTP de bout en bout |
+| Niveau       | Dossier / suffixe                   | Dépendances                                          | Ce qu'il prouve                                                                                                               |
+| ------------ | ----------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Unit         | `tests/unit/*.test.ts`            | aucune I/O, repositories in-memory (`tests/fakes/`) | les règles métier du cas d'usage                                                                                            |
+| Intégration | `tests/integration/*.int.test.ts` | **Testcontainers** (PostgreSQL 17)              | le branchement d'un adapter réel (repository TypeORM, contrainte d'exclusion, adaptateur de paiement contre un faux serveur) |
+| E2E          | `tests/e2e/*.e2e.test.ts`         | app Nest complète + Testcontainers + `supertest`   | un parcours métier HTTP de bout en bout                                                                                      |
 
 - Vitest avec des **projects** (`unit`, `integration`, `e2e`) dans un seul `vitest.config.ts` ; décorateurs et `emitDecoratorMetadata` transformés par SWC (`unplugin-swc`), indispensable à TypeORM et à la DI Nest.
 - Unit : `new Handler(new InMemoryXRepository(...), fixedClock)` — pas de `Test.createTestingModule`, pas de mock framework.
