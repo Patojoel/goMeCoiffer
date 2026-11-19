@@ -125,7 +125,7 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Renommer `typeorm-user-sessions` en adaptateur ; le contrat `SignUpCodeSent` (réutilisé par UC-003) en `CodeSent`.
 - Limites de débit en dur sur l'inscription et la réinitialisation (celles de la connexion sont configurables) ;
   `HOUR_MS` dupliqué.
-- Commentaires trop longs à raccourcir ; CLAUDE.md annonce ESLint alors qu'il n'existe que oxlint.
+- Commentaires trop longs à raccourcir.
 - Doublons à surveiller (factoriser à la 3e occurrence) : « vérifier le code » (inscription, réinitialisation),
   « remplacer le défi » (deux demandes de code).
 - Temps de réponse comparable (D-019) non mesurable avec le faux fournisseur SMS : à mesurer avec le vrai.

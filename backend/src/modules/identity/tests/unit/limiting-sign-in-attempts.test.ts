@@ -24,7 +24,7 @@ const check = (attempts: SignInAttempt[], now: Date, over: { known?: boolean; ad
     attempts,
     fromKnownDevice: over.known ?? false,
     now,
-  });
+  }).block;
 
 const BURST = ['10:00:00', '10:00:10', '10:00:20', '10:00:30', '10:00:40'];
 
@@ -195,7 +195,11 @@ describe('Limiting the failed sign-ins from one network address', () => {
 });
 
 describe('Lifting the blocks of a phone number after a password reset', () => {
-  const reset = (time: string): SignInAttempt => ({ ...success(time), networkAddress: '', passwordReset: true });
+  const reset = (time: string): SignInAttempt => ({
+    ...success(time),
+    networkAddress: '',
+    passwordReset: true,
+  });
   const twentyDaily = () =>
     Array.from({ length: 20 }, (_, i) => failure(`09:${String(10 + i).padStart(2, '0')}:00`, {}));
 
@@ -212,7 +216,10 @@ describe('Lifting the blocks of a phone number after a password reset', () => {
   });
 
   it('counts again the failures entered after the reset', () => {
-    const attempts = [reset('09:56:00'), ...failures(['09:57:00', '09:57:10', '09:57:20', '09:57:30', '09:57:40'])];
+    const attempts = [
+      reset('09:56:00'),
+      ...failures(['09:57:00', '09:57:10', '09:57:20', '09:57:30', '09:57:40']),
+    ];
 
     expect(check(attempts, at('10:00:00'))).toEqual({ reason: 'PHONE_SHORT', minutes: 13 });
   });

@@ -6,8 +6,10 @@ import { firstValueFrom, take, timeout, toArray } from 'rxjs';
 import type { DataSource } from 'typeorm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { REALTIME_PUBLISHER, type RealtimePublisher } from '../../application/ports.js';
+import { RefuseAfterCommit } from '../../application/refuse-after-commit.js';
 import { TransactionalCommandBus } from '../../application/transactional-command-bus.js';
 import type { DomainEvent, IntegrationEvent } from '../../domain/domain-event.js';
+import { InvalidValueError } from '../../domain/errors.js';
 import { DomainEventDispatcher } from '../../infrastructure/events/domain-event-dispatcher.js';
 import { OutboxRelay } from '../../infrastructure/events/outbox-relay.js';
 import { SseRealtimePublisher } from '../../infrastructure/realtime/sse-realtime.publisher.js';
@@ -55,6 +57,7 @@ class WriteNoteHandler implements ICommandHandler<WriteNote> {
       [noteId],
     );
     this.realtime.publishToSalon('salon-1', { type: 'NOTE_WRITTEN', payload: { noteId } });
+    if (text === 'refused-after-commit') throw new RefuseAfterCommit(new InvalidValueError('refusal'));
     await this.events.dispatch(
       share
         ? [new NoteWritten(noteId, text, at), new NoteShared(noteId, at)]
@@ -109,6 +112,13 @@ describe('Writing through the transactional command bus', () => {
       'subscriber refuses',
     );
     expect(await notes('n-refused')).toBe(0);
+  });
+
+  it('keeps the writes of a command that refuses after commit, and raises the business error', async () => {
+    await expect(bus.execute(new WriteNote('n-kept', 'refused-after-commit', false))).rejects.toBeInstanceOf(
+      InvalidValueError,
+    );
+    expect(await notes('n-kept')).toBe(1);
   });
 
   it('lets no integration event out of a command that failed', async () => {

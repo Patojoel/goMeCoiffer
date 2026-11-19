@@ -101,6 +101,7 @@ Le rapport donne la liste des règles et, pour chacune, son test et le message d
   la reproduit ; une divergence trouvée se corrige dans le fake.
 - Données via **builders** (`tests/builders/`) avec valeurs par défaut surchargeables.
 - Erreur métier → `await expect(…).rejects.toThrow(SlotNoLongerAvailableError)` ou assertion sur le `code`.
+- Refus enregistré (`RefuseAfterCommit`, D-034) → `await expect(handler.execute(cmd)).rejects.toMatchObject({ refusal: expect.any(OtpIncorrectError) })`, puis assertion sur ce qui est resté dans le fake (l'essai compté) ; en intégration, vérifier les lignes restées en base.
 
 ### 2. Intégration — `tests/integration/*.int.test.ts`
 - **Rôle : prouver que le branchement avec l'extérieur est correct**, sur la vraie dépendance : repository

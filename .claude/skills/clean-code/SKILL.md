@@ -66,6 +66,7 @@ au-delà de **~15 %** de lignes de commentaire est suspect.
 - Immuabilité par défaut : `readonly`, `as const`, `ReadonlyArray`, pas de mutation de paramètre.
 - TypeScript strict : pas de `any` (`unknown` + garde), pas de `!` non justifié hors entités TypeORM, unions discriminées plutôt que booléens multiples, `satisfies` pour les tables de constantes.
 - Pas de `null` et `undefined` mélangés pour le même sens : choisir et s'y tenir dans un module.
+- **Corps de route HTTP** : un `if`, un `try`, un `new`, un `?:` ou un cast y est un smell (D-034) → mapper de requête, use case (`RefuseAfterCommit`) ou répondeur.
 
 ## Spécifique front (React)
 

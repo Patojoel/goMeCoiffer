@@ -19,6 +19,43 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-19 — Contrôleurs sans logique (D-034) et corrections de la revue d'architecture
+
+- **Quoi** : la construction des commandes et les effets HTTP quittent les contrôleurs. Le contrat HTTP ne change
+  pas.
+  - **Mappers de requête** : fonctions pures qui transforment la requête en commande ou en query.
+  - **Use case** : toute l'orchestration. Un refus enregistré est levé par `RefuseAfterCommit` : le bus commite,
+    puis lève l'erreur.
+  - **Répondeur** : session, cookie d'appareil, jeton CSRF et résumé de session.
+  - **Contrôleurs** : réduits à `execute(to<UseCase>(…))`, suivi au besoin du répondeur.
+  - Corrections 🟡 de la revue d'architecture :
+    - règles métier sorties de `SignInHandler` (`assessSignIn` dit si un blocage s'audite ; `KnownDevice` ignore
+      lui-même un appareil non reconnu) ;
+    - fabrique de domaine pour la marque de réinitialisation ;
+    - rotation des jetons d'appareil en fonctions pures du domaine ;
+    - deux trous de `pnpm arch` bouchés ;
+    - exception « une commande, plusieurs agrégats » documentée.
+- **Pourquoi** : demande du user (aucune logique dans le contrôleur), conception d'`archi-reviewer` validée (D-034).
+- **Périmètre** :
+  - socle : `RefuseAfterCommit`, `TransactionalCommandBus` ;
+  - module `identity` :
+    - 4 contrôleurs, 7 mappers, 1 répondeur, trackers nommés ;
+    - handlers `SignIn`, `ResetPassword`, `ConfirmSignUp`, `SignOut` et `GetMySession` (read model = contrat,
+      plus de cast) ;
+  - `.dependency-cruiser.cjs` : règle `controller-builds-no-command`, imports `type` vérifiés dans le domaine,
+    bibliothèques HTTP interdites dans `application/` ;
+  - règles du projet :
+    - `CLAUDE.md` ;
+    - skills `hexagonal`, `nest-stack`, `ddd`, `clean-code`, `tdd` ;
+    - agents `backend-builder`, `archi-reviewer`, `query-perf`, `security-reviewer` ;
+    - `docs/checklists.md`, `docs/domains.md`.
+- **Vérification** : mode light, revue `archi-reviewer` demandée par le user.
+  - Nouvelle règle `pnpm arch` vue rouge sur l'ancien code (9 violations), puis verte.
+  - Grep des corps de route vide.
+  - Tests E2E inchangés et verts : c'est la preuve que le contrat HTTP est identique.
+  - Nouveau test d'intégration du refus après commit, vu rouge puis vert.
+- **Suites** : suggestions 🟠 de la revue au backlog.
+
 ### 2026-11-19 — UC-003 Réinitialiser son mot de passe (backend)
 
 - **Quoi** : un membre du personnel qui a oublié son mot de passe le remplace grâce à un code reçu par SMS, puis il

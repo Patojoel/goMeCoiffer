@@ -6,6 +6,7 @@ import { RequestPasswordResetCodeHandler } from '../../application/commands/requ
 import { ResetPassword } from '../../application/commands/reset-password/reset-password.command.js';
 import { ResetPasswordHandler } from '../../application/commands/reset-password/reset-password.handler.js';
 import type { ResetPasswordResponse } from '../../application/commands/reset-password/reset-password.response.js';
+import { RefuseAfterCommit } from '../../../../shared/application/refuse-after-commit.js';
 import { KnownDeviceRegistry } from '../../application/services/known-device-registry.js';
 import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
 import { KnownDevice } from '../../domain/aggregates/known-device.js';
@@ -118,14 +119,10 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
       }),
     );
   const paul = () => users.all().find((u) => u.id === PAUL_ID)!;
-  const refusalCode = (response: ResetPasswordResponse) =>
-    response.status === 'REFUSED' ? response.refusal.code : null;
 
   describe('refusals', () => {
     it('refuses a code nobody asked for, the same way for any number', async () => {
-      const response = await confirm('482913');
-
-      expect(refusalCode(response)).toBe('OTP_NO_LONGER_VALID');
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_NO_LONGER_VALID' } });
       expect(paul().passwordHash).toBe('argon:Bastos-Fade-2026');
     });
 
@@ -140,16 +137,14 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
 
         await expect(confirm('482913', { password })).rejects.toMatchObject({ code });
         expect(challenges.all()[0]).toMatchObject({ attempts: 0, status: 'ACTIVE' });
-        expect(await confirm('482913')).toMatchObject({ status: 'PASSWORD_RESET' });
+        expect(await confirm('482913')).toMatchObject({ userId: PAUL_ID });
       },
     );
 
     it('refuses a wrong code, counts the attempt, and keeps the password', async () => {
       await receiveCode(PAUL);
 
-      const response = await confirm('111111');
-
-      expect(response).toMatchObject({ status: 'REFUSED', refusal: { code: 'OTP_INCORRECT' } });
+      await expect(confirm('111111')).rejects.toMatchObject({ refusal: { code: 'OTP_INCORRECT' } });
       expect(challenges.all()[0]).toMatchObject({ attempts: 1, status: 'ACTIVE' });
       expect(paul().passwordHash).toBe('argon:Bastos-Fade-2026');
       expect(paul().credentialsVersion).toBe(1);
@@ -159,21 +154,22 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
       await receiveCode(PAUL);
       clock.set(at('10:04:59'));
 
-      expect(await confirm('482913')).toMatchObject({ status: 'PASSWORD_RESET' });
+      expect(await confirm('482913')).toMatchObject({ userId: PAUL_ID });
     });
 
     it('refuses the code at the very second it expires', async () => {
       await receiveCode(PAUL);
       clock.set(at('10:05:00'));
 
-      expect(refusalCode(await confirm('482913'))).toBe('OTP_EXPIRED');
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_EXPIRED' } });
     });
 
     it('refuses the right code after 5 wrong ones', async () => {
       await receiveCode(PAUL);
-      for (const wrong of ['100001', '100002', '100003', '100004', '100005']) await confirm(wrong);
+      for (const wrong of ['100001', '100002', '100003', '100004', '100005'])
+        await expect(confirm(wrong)).rejects.toBeInstanceOf(RefuseAfterCommit);
 
-      expect(refusalCode(await confirm('482913'))).toBe('OTP_ATTEMPTS_EXHAUSTED');
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_ATTEMPTS_EXHAUSTED' } });
       expect(paul().passwordHash).toBe('argon:Bastos-Fade-2026');
     });
 
@@ -182,9 +178,7 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
       clock.advanceMinutes(1);
       await receiveCode(PAUL);
 
-      const response = await confirm('482913');
-
-      expect(response).toMatchObject({ status: 'REFUSED', refusal: { code: 'OTP_INCORRECT' } });
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_INCORRECT' } });
     });
 
     it('refuses a sign-up code for a password reset', async () => {
@@ -198,7 +192,7 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
         }),
       );
 
-      expect(refusalCode(await confirm('482913'))).toBe('OTP_NO_LONGER_VALID');
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_NO_LONGER_VALID' } });
     });
 
     it.each([
@@ -207,9 +201,9 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
     ])('never lets any code choose a password for %s', async (_label, phone) => {
       await receiveCode(phone);
 
-      const response = await confirm('482913', { phone });
-
-      expect(response).toMatchObject({ status: 'REFUSED', refusal: { code: 'OTP_INCORRECT' } });
+      await expect(confirm('482913', { phone })).rejects.toMatchObject({
+        refusal: { code: 'OTP_INCORRECT' },
+      });
       expect(users.all().filter((u) => u.passwordHash === `argon:${NEW_PASSWORD}`)).toEqual([]);
     });
   });
@@ -218,7 +212,8 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
     sms.outage = true;
     for (let round = 0; round < 2; round++) {
       await receiveCode(PAUL);
-      for (const wrong of ['100001', '100002', '100003', '100004', '100005']) await confirm(wrong);
+      for (const wrong of ['100001', '100002', '100003', '100004', '100005'])
+        await expect(confirm(wrong)).rejects.toBeInstanceOf(RefuseAfterCommit);
       clock.advanceMinutes(1);
     }
 
@@ -234,7 +229,7 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
     it('replaces the password, bumps the credentials version and verifies the number at that instant', async () => {
       const response = await confirm('482913');
 
-      expect(response).toMatchObject({ status: 'PASSWORD_RESET', userId: PAUL_ID, credentialsVersion: 2 });
+      expect(response).toMatchObject({ userId: PAUL_ID, credentialsVersion: 2 });
       expect(paul()).toMatchObject({
         passwordHash: `argon:${NEW_PASSWORD}`,
         credentialsVersion: 2,
@@ -245,13 +240,13 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
     it('does not compare the new password with the current one', async () => {
       const response = await confirm('482913', { password: 'Bastos-Fade-2026' });
 
-      expect(response).toMatchObject({ status: 'PASSWORD_RESET' });
+      expect(response).toMatchObject({ userId: PAUL_ID });
     });
 
     it('uses the code only once', async () => {
       await confirm('482913');
 
-      expect(refusalCode(await confirm('482913'))).toBe('OTP_NO_LONGER_VALID');
+      await expect(confirm('482913')).rejects.toMatchObject({ refusal: { code: 'OTP_NO_LONGER_VALID' } });
     });
 
     it('closes every session of this user and of nobody else', async () => {
@@ -265,7 +260,7 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
     });
 
     it('closes the open realtime streams of this user after a reset, and only then', async () => {
-      await confirm('111111');
+      await expect(confirm('111111')).rejects.toBeInstanceOf(RefuseAfterCommit);
       expect(realtime.closedUsers).toEqual([]);
 
       await confirm('482913');
@@ -291,7 +286,7 @@ describe('Resetting a forgotten password with a code received by SMS', () => {
           attempts: await history.recentAttempts(PhoneNumber.parse(PAUL), '41.202.10.1', now),
           fromKnownDevice: false,
           now,
-        });
+        }).block;
       expect(await assess(at('10:02:00'))).toMatchObject({ reason: 'PHONE_SHORT' });
 
       await confirm('482913');

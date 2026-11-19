@@ -10,10 +10,9 @@ export class TypeOrmUserSessions implements UserSessions {
 
   async closeAllOf(userId: string): Promise<number> {
     // Le pilote pg renvoie `[lignes, nombre]` pour un DELETE passé à `query`.
-    const result = (await this.txHost.tx.query(`DELETE FROM sessions WHERE sess->>'userId' = $1`, [userId])) as [
-      unknown,
-      number,
-    ];
+    const result = (await this.txHost.tx.query(`DELETE FROM sessions WHERE sess->>'userId' = $1`, [
+      userId,
+    ])) as [unknown, number];
     return result[1];
   }
 }

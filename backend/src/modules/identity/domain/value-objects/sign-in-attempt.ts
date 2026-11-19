@@ -12,3 +12,8 @@ export interface SignInAttempt {
    */
   readonly passwordReset?: boolean;
 }
+
+/** Marque posée par une réinitialisation : sans adresse réseau ni appareil, donc sans effet sur leurs compteurs. */
+export function passwordResetMark(phone: string, now: Date): SignInAttempt {
+  return { phone, networkAddress: '', at: now, succeeded: true, fromKnownDevice: false, passwordReset: true };
+}

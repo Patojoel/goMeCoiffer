@@ -1,45 +1,33 @@
 import { Body, Controller, HttpCode, Inject, Post, Req, Res } from '@nestjs/common';
-import { QueryBus } from '@nestjs/cqrs';
 import { Throttle } from '@nestjs/throttler';
 import {
-  type RequestPasswordResetCode as RequestPasswordResetCodeBody,
+  type RequestPasswordResetCode,
   RequestPasswordResetCodeSchema,
-  type ResetPassword as ResetPasswordBody,
+  type ResetPassword,
   ResetPasswordSchema,
-  type SessionSummary,
   type SignedIn,
   type SignUpCodeSent,
 } from '@gomecoiffer/contracts';
 import type { Request, Response } from 'express';
-import { CLOCK, type Clock } from '../../../../shared/application/ports.js';
 import { TransactionalCommandBus } from '../../../../shared/application/transactional-command-bus.js';
 import { APP_CONFIG, type AppConfig } from '../../../../shared/infrastructure/config/app-config.module.js';
-import { openAuthenticatedSession } from '../../../../shared/infrastructure/security/authenticated-session.js';
 import { Public } from '../../../../shared/infrastructure/security/decorators.js';
-import {
-  CSRF_PROTECTION,
-  type CsrfProtection,
-} from '../../../../shared/infrastructure/security/http-security.js';
-import { UnauthenticatedError } from '../../../../shared/infrastructure/security/security-errors.js';
-import { RequestPasswordResetCode } from '../../application/commands/request-password-reset-code/request-password-reset-code.command.js';
-import { ResetPassword } from '../../application/commands/reset-password/reset-password.command.js';
-import { GetMySession } from '../../application/queries/get-my-session/get-my-session.query.js';
-import { readDeviceTokens, setDeviceCookie } from './device-cookie.js';
+import { AuthenticatedSessionResponder } from './authenticated-session.responder.js';
+import { toRequestPasswordResetCode } from './mappers/request-password-reset-code.request-mapper.js';
+import { toResetPassword } from './mappers/reset-password.request-mapper.js';
 
 const HOUR_MS = 3_600_000;
 
 /**
  * UC-003 — mot de passe oublié. Publique : la preuve d'identité est le code reçu par SMS ; le jeton CSRF reste
- * exigé. La commande décide ; cette couche ouvre la session neuve (connexion automatique, D-031).
+ * exigé. La commande décide ; le répondeur ouvre la session neuve (connexion automatique, D-031).
  */
 @Controller('public/auth/password-reset')
 @Public()
 export class PasswordResetController {
   constructor(
     private readonly commands: TransactionalCommandBus,
-    private readonly queries: QueryBus,
-    @Inject(CSRF_PROTECTION) private readonly csrf: CsrfProtection,
-    @Inject(CLOCK) private readonly clock: Clock,
+    private readonly responder: AuthenticatedSessionResponder,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
@@ -48,35 +36,20 @@ export class PasswordResetController {
   @HttpCode(202)
   @Throttle({ default: { limit: 30, ttl: HOUR_MS } })
   requestCode(
-    @Body({ schema: RequestPasswordResetCodeSchema }) body: RequestPasswordResetCodeBody,
+    @Body({ schema: RequestPasswordResetCodeSchema }) body: RequestPasswordResetCode,
   ): Promise<SignUpCodeSent> {
-    return this.commands.execute(new RequestPasswordResetCode(body.phone));
+    return this.commands.execute(toRequestPasswordResetCode(body));
   }
 
   @Post()
   @HttpCode(200)
   @Throttle({ default: { limit: 60, ttl: HOUR_MS } })
   async reset(
-    @Body({ schema: ResetPasswordSchema }) body: ResetPasswordBody,
+    @Body({ schema: ResetPasswordSchema }) body: ResetPassword,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignedIn> {
-    const result = await this.commands.execute(
-      new ResetPassword({
-        phone: body.phone,
-        code: body.code,
-        newPassword: body.newPassword,
-        deviceTokens: readDeviceTokens(req, this.config),
-      }),
-    );
-    // Levé après le commit : l'essai de code raté reste compté.
-    if (result.status === 'REFUSED') throw result.refusal;
-
-    await openAuthenticatedSession(req, result, this.clock.now());
-    setDeviceCookie(res, result.deviceTokens, this.config);
-    const csrfToken = this.csrf.generateCsrfToken(req, res, { overwrite: true });
-    const session = await this.queries.execute(new GetMySession(result.userId, null));
-    if (!session) throw new UnauthenticatedError();
-    return { csrfToken, session: session as SessionSummary };
+    const result = await this.commands.execute(toResetPassword(body, req, this.config));
+    return this.responder.signedIn(req, res, result);
   }
 }

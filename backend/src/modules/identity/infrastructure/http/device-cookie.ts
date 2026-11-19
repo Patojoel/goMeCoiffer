@@ -4,8 +4,8 @@ import {
   cookieName,
   securityCookieOptions,
 } from '../../../../shared/infrastructure/security/http-security.js';
-import { MAX_DEVICE_TOKENS } from '../../application/services/known-device-registry.js';
 import { KNOWN_DEVICE_LIFETIME_DAYS } from '../../domain/aggregates/known-device.js';
+import { MAX_DEVICE_TOKENS } from '../../domain/services/device-cookie-tokens.js';
 
 const DEVICE_COOKIE_BASE = 'gmc.device';
 /** 32 octets en base64url : tout autre morceau est ignoré (un jeton choisi par un tiers n'est jamais repris). */
@@ -29,11 +29,11 @@ export function readDeviceTokens(req: Request, config: AppConfig): string[] {
  * compteur, pour qu'un tiers de même adresse (NAT d'opérateur, Wi-Fi du salon) ne le prive pas de connexion.
  * Un cookie forgé n'y gagne rien : sans appareil reconnu, la politique d'essais par numéro et par adresse s'applique.
  */
-export function rateLimitTracker(req: Request): string {
+export function rateLimitTracker(req: { readonly cookies?: unknown; readonly ip?: unknown }): string {
   const cookies = req.cookies as Record<string, unknown> | undefined;
   const raw = cookies?.[`__Host-${DEVICE_COOKIE_BASE}`] ?? cookies?.[DEVICE_COOKIE_BASE];
   const [first] = parseDeviceCookie(raw);
-  return first ? `device:${first}` : `ip:${req.ip ?? 'unknown'}`;
+  return first ? `device:${first}` : `ip:${String(req.ip ?? 'unknown')}`;
 }
 
 export function setDeviceCookie(res: Response, tokens: readonly string[], config: AppConfig): void {

@@ -99,7 +99,9 @@ export class RequestPasswordResetCodeHandler implements ICommandHandler<RequestP
     } catch (error) {
       const type = error instanceof Error ? error.name : typeof error;
       const errorCode = (error as { code?: unknown } | null)?.code;
-      this.logger.warn(`SMS de réinitialisation non envoyé (${type}${typeof errorCode === 'string' ? ` ${errorCode}` : ''})`);
+      this.logger.warn(
+        `SMS de réinitialisation non envoyé (${type}${typeof errorCode === 'string' ? ` ${errorCode}` : ''})`,
+      );
     }
   }
 }

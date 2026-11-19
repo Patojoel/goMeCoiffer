@@ -8,6 +8,7 @@ import {
   REALTIME_PUBLISHER,
   type RealtimePublisher,
 } from '../../../../../shared/application/ports.js';
+import { RefuseAfterCommit } from '../../../../../shared/application/refuse-after-commit.js';
 import { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
 import { OtpPurpose } from '../../../domain/enums/otp-purpose.enum.js';
 import { OtpNoLongerValidError } from '../../../domain/exceptions/otp-no-longer-valid.error.js';
@@ -25,6 +26,7 @@ import {
 } from '../../../domain/repositories/write/sign-in-attempt.repository.js';
 import { USER_REPOSITORY, type UserRepository } from '../../../domain/repositories/write/user.repository.js';
 import { NewPassword } from '../../../domain/value-objects/new-password.js';
+import { passwordResetMark } from '../../../domain/value-objects/sign-in-attempt.js';
 import { KnownDeviceRegistry } from '../../services/known-device-registry.js';
 import { ResetPassword } from './reset-password.command.js';
 import type { ResetPasswordResponse } from './reset-password.response.js';
@@ -58,26 +60,19 @@ export class ResetPasswordHandler implements ICommandHandler<ResetPassword> {
     const now = this.clock.now();
 
     const challenge = await this.challenges.findActive(phone, OtpPurpose.PASSWORD_RESET);
-    if (!challenge) return { status: 'REFUSED', refusal: new OtpNoLongerValidError() };
+    if (!challenge) throw new RefuseAfterCommit(new OtpNoLongerValidError());
     const verification = challenge.verify(cmd.code, now, this.hasher);
     await this.challenges.save(challenge);
-    if (!verification.accepted) return { status: 'REFUSED', refusal: verification.refusal };
+    if (!verification.accepted) throw new RefuseAfterCommit(verification.refusal);
 
     const user = await this.users.findByPhone(phone);
-    if (!user) return { status: 'REFUSED', refusal: new OtpNoLongerValidError() };
+    if (!user) throw new RefuseAfterCommit(new OtpNoLongerValidError());
     user.resetPassword(await this.passwords.hash(password), now);
     await this.users.save(user);
 
     const sessionsClosed = await this.sessions.closeAllOf(user.id);
     this.realtime.closeStreamsOfUser(user.id);
-    await this.attempts.add({
-      phone: phone.value,
-      networkAddress: '',
-      at: now,
-      succeeded: true,
-      fromKnownDevice: false,
-      passwordReset: true,
-    });
+    await this.attempts.add(passwordResetMark(phone.value, now));
     await this.devices.revokeAllOf(user.id, now);
     const found = await this.devices.find(cmd.deviceTokens, user.id);
     const deviceTokens = await this.devices.recognizeAfterSuccess(found, cmd.deviceTokens, user.id, now);
@@ -85,11 +80,6 @@ export class ResetPasswordHandler implements ICommandHandler<ResetPassword> {
     const trace = { subjectType: 'user', subjectId: user.id, actorUserId: user.id, occurredAt: now };
     await this.audit.record({ ...trace, action: 'PASSWORD_RESET', details: { sessionsClosed } });
     await this.audit.record({ ...trace, action: 'USER_SIGNED_IN', details: { knownDevice: false } });
-    return {
-      status: 'PASSWORD_RESET',
-      userId: user.id,
-      credentialsVersion: user.credentialsVersion,
-      deviceTokens,
-    };
+    return { userId: user.id, credentialsVersion: user.credentialsVersion, deviceTokens };
   }
 }

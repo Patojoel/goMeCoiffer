@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { RefuseAfterCommit } from '../../../../shared/application/refuse-after-commit.js';
 import { InvalidValueError } from '../../../../shared/domain/errors.js';
 import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
@@ -115,7 +116,7 @@ describe('Signing up as a salon owner', () => {
       for (let round = 0; round < 2; round++) {
         await requestCode.execute(new RequestSignUpCode(MIREILLE));
         for (const wrong of ['000001', '000002', '000003', '000004', '000005'])
-          await confirm.execute(owner(wrong));
+          await expect(confirm.execute(owner(wrong))).rejects.toBeInstanceOf(RefuseAfterCommit);
         advance(60);
       }
 
@@ -167,7 +168,7 @@ describe('Signing up as a salon owner', () => {
     beforeEach(() => requestCode.execute(new RequestSignUpCode(MIREILLE)));
 
     it('refuses when no code was requested for this number', async () => {
-      const result = await confirm.execute(
+      const refused = confirm.execute(
         new ConfirmSignUp({
           phone: PAUL,
           code: '482913',
@@ -176,16 +177,13 @@ describe('Signing up as a salon owner', () => {
           password: 'Akwa-Tresses-27',
         }),
       );
-      expect(result).toMatchObject({ status: 'REFUSED', refusal: { code: 'OTP_NO_LONGER_VALID' } });
+      await expect(refused).rejects.toMatchObject({ refusal: { code: 'OTP_NO_LONGER_VALID' } });
     });
 
     it('refuses a wrong code, keeps counting the attempts and creates no account', async () => {
-      await confirm.execute(owner('000000'));
+      await expect(confirm.execute(owner('000000'))).rejects.toBeInstanceOf(RefuseAfterCommit);
 
-      const second = await confirm.execute(owner('000001'));
-
-      expect(second).toMatchObject({
-        status: 'REFUSED',
+      await expect(confirm.execute(owner('000001'))).rejects.toMatchObject({
         refusal: { message: 'Code incorrect. Il vous reste 3 essais.' },
       });
       expect(users.all()).toEqual([]);
@@ -193,18 +191,16 @@ describe('Signing up as a salon owner', () => {
 
     it('refuses a code used after its 5 minutes', async () => {
       advance(5 * 60 + 1);
-      expect(await confirm.execute(owner('482913'))).toMatchObject({
-        status: 'REFUSED',
+      await expect(confirm.execute(owner('482913'))).rejects.toMatchObject({
         refusal: { code: 'OTP_EXPIRED' },
       });
     });
 
     it('refuses even the right code after 5 wrong attempts', async () => {
       for (const wrong of ['000001', '000002', '000003', '000004', '000005'])
-        await confirm.execute(owner(wrong));
+        await expect(confirm.execute(owner(wrong))).rejects.toBeInstanceOf(RefuseAfterCommit);
 
-      expect(await confirm.execute(owner('482913'))).toMatchObject({
-        status: 'REFUSED',
+      await expect(confirm.execute(owner('482913'))).rejects.toMatchObject({
         refusal: { code: 'OTP_ATTEMPTS_EXHAUSTED' },
       });
     });
@@ -213,11 +209,10 @@ describe('Signing up as a salon owner', () => {
       advance(60);
       await requestCode.execute(new RequestSignUpCode(MIREILLE));
 
-      expect(await confirm.execute(owner('482913'))).toMatchObject({
-        status: 'REFUSED',
+      await expect(confirm.execute(owner('482913'))).rejects.toMatchObject({
         refusal: { message: 'Code incorrect. Il vous reste 4 essais.' },
       });
-      expect(await confirm.execute(owner('105377'))).toMatchObject({ status: 'SIGNED_UP' });
+      expect(await confirm.execute(owner('105377'))).toMatchObject({ outcome: 'CREATED' });
     });
 
     it('keeps the code usable when the password is refused, so no new SMS is needed', async () => {
@@ -226,7 +221,6 @@ describe('Signing up as a salon owner', () => {
       });
 
       expect(await confirm.execute(owner('482913'))).toMatchObject({
-        status: 'SIGNED_UP',
         outcome: 'CREATED',
       });
     });
@@ -234,7 +228,7 @@ describe('Signing up as a salon owner', () => {
     it('creates the owner account with a verified number, a hashed password and no role', async () => {
       const result = await confirm.execute(owner('482913'));
 
-      expect(result).toMatchObject({ status: 'SIGNED_UP', outcome: 'CREATED', credentialsVersion: 1 });
+      expect(result).toMatchObject({ outcome: 'CREATED', credentialsVersion: 1 });
       expect(users.all()).toEqual([
         expect.objectContaining({
           phone: MIREILLE_E164,
@@ -268,7 +262,6 @@ describe('Signing up as a salon owner', () => {
       const result = await confirm.execute(owner('482913'));
 
       expect(result).toMatchObject({
-        status: 'SIGNED_UP',
         outcome: 'COMPLETED',
         credentialsVersion: 1,
         userId: '0195f000-0000-7000-8000-00000000c0de',

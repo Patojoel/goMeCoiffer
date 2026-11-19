@@ -138,7 +138,7 @@ describe('Storing what a password reset changes, in PostgreSQL', () => {
         attempts: await history.recentAttempts(PAUL, '41.202.10.1', NOW),
         fromKnownDevice: false,
         now: NOW,
-      });
+      }).block;
     expect(await assess()).toMatchObject({ reason: 'PHONE_SHORT' });
 
     await attempts.add({
@@ -204,11 +204,11 @@ describe('Storing what a password reset changes, in PostgreSQL', () => {
         }),
       );
 
-    const results = await Promise.all([confirm(), confirm()]);
+    const results = await Promise.allSettled([confirm(), confirm()]);
 
-    expect(results.map((r) => r.status).sort()).toEqual(['PASSWORD_RESET', 'REFUSED']);
-    expect(results.find((r) => r.status === 'REFUSED')).toMatchObject({
-      refusal: { code: 'OTP_NO_LONGER_VALID' },
+    expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
+    expect(results.find((r) => r.status === 'rejected')).toMatchObject({
+      reason: { code: 'OTP_NO_LONGER_VALID' },
     });
     const [row] = await db.query(`SELECT credentials_version AS v FROM users WHERE phone = $1`, [
       phone.value,

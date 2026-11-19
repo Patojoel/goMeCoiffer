@@ -136,13 +136,11 @@ describe('A staff member who forgot the password chooses a new one with a code r
     const typedCodes = [];
     for (const typed of people)
       typedCodes.push(
-        await t
-          .browser()
-          .post('/api/public/auth/password-reset', {
-            phone: typed,
-            code: '000000',
-            newPassword: NEW_PASSWORD,
-          }),
+        await t.browser().post('/api/public/auth/password-reset', {
+          phone: typed,
+          code: '000000',
+          newPassword: NEW_PASSWORD,
+        }),
       );
 
     expect(asked.map((r) => r.status)).toEqual([202, 202, 202]);
@@ -234,7 +232,9 @@ describe('A staff member who forgot the password chooses a new one with a code r
     await reset(tablet, paul.typed, code);
 
     expect((await whoAmI(tablet)).body.data.userId).toBe(paul.id);
-    const mireilleSessions = await db.query(`SELECT 1 FROM sessions WHERE sess->>'userId' = $1`, [mireille.id]);
+    const mireilleSessions = await db.query(`SELECT 1 FROM sessions WHERE sess->>'userId' = $1`, [
+      mireille.id,
+    ]);
     expect(mireilleSessions).toHaveLength(0);
   });
 
@@ -248,7 +248,6 @@ describe('A staff member who forgot the password chooses a new one with a code r
     await reset(t.browser(), paul.typed, code);
 
     expect((await signIn(t.browser(), paul.typed, NEW_PASSWORD)).status).toBe(200);
-
   });
 
   it('forgets the previously recognised devices and recognises the browser of the reset', async () => {
@@ -338,13 +337,16 @@ describe('A staff member who forgot the password chooses a new one with a code r
       new Promise<{ ended: () => boolean; hangUp: () => void }>((resolve, reject) => {
         let ended = false;
         const request = http
-          .get({ host: '127.0.0.1', port, path: '/api/salon/realtime/stream', headers: { cookie } }, (res) => {
-            res.resume();
-            res.on('end', () => (ended = true));
-            res.on('close', () => (ended = true));
-            expect(res.statusCode).toBe(200);
-            resolve({ ended: () => ended, hangUp: () => request.destroy() });
-          })
+          .get(
+            { host: '127.0.0.1', port, path: '/api/salon/realtime/stream', headers: { cookie } },
+            (res) => {
+              res.resume();
+              res.on('end', () => (ended = true));
+              res.on('close', () => (ended = true));
+              expect(res.statusCode).toBe(200);
+              resolve({ ended: () => ended, hangUp: () => request.destroy() });
+            },
+          )
           .on('error', reject);
       });
     await t.app.listen(0);

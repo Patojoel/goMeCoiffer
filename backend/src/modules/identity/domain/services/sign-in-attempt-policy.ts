@@ -22,18 +22,23 @@ interface Assessment {
   readonly now: Date;
 }
 
+export interface SignInAssessment {
+  readonly block: SignInBlock | null;
+  /** Un blocage visant un numéro laisse une trace d'audit ; celui d'une adresse partagée (NETWORK) n'en laisse pas. */
+  readonly auditable: boolean;
+}
+
+export function assessSignIn(assessment: Assessment): SignInAssessment {
+  const block = blockFor(assessment);
+  return { block, auditable: block !== null && block.reason !== 'NETWORK' };
+}
+
 /**
  * Règles de blocage de la connexion (D-025, RG-002-04 à -09), seulement contre les appareils non reconnus,
  * et seulement sur les échecs saisis depuis des appareils non reconnus. Le blocage de 24 h l'emporte sur celui
  * de 15 minutes : il annonce l'attente la plus longue.
  */
-export function assessSignIn({
-  phone,
-  networkAddress,
-  attempts,
-  fromKnownDevice,
-  now,
-}: Assessment): SignInBlock | null {
+function blockFor({ phone, networkAddress, attempts, fromKnownDevice, now }: Assessment): SignInBlock | null {
   if (fromKnownDevice) return null;
   const countedFailures = attempts.filter((a) => !a.succeeded && !a.fromKnownDevice);
   const ageMs = (a: SignInAttempt) => now.getTime() - a.at.getTime();

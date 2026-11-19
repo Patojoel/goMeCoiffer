@@ -1,6 +1,7 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AUDIT_TRAIL, type AuditTrail, CLOCK, type Clock } from '../../../../../shared/application/ports.js';
+import { RefuseAfterCommit } from '../../../../../shared/application/refuse-after-commit.js';
 import { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
 import type { User } from '../../../domain/aggregates/user.js';
 import { InvalidCredentialsError } from '../../../domain/exceptions/invalid-credentials.error.js';
@@ -58,8 +59,8 @@ export class SignInHandler implements ICommandHandler<SignIn> {
         now,
       });
 
-    const block = assess(history);
-    if (block) return { status: 'REFUSED', refusal: new SignInTemporarilyBlockedError(block) };
+    const { block } = assess(history);
+    if (block) throw new RefuseAfterCommit(new SignInTemporarilyBlockedError(block));
 
     const passwordHash = user?.passwordHash ?? null;
     const correct = await this.passwords.verify(cmd.password, passwordHash);
@@ -73,10 +74,9 @@ export class SignInHandler implements ICommandHandler<SignIn> {
     await this.attempts.add(attempt);
 
     if (!correct || !user || !passwordHash) {
-      if (device && fromKnownDevice) await this.devices.recordFailure(device, now);
-      const blockedNow = assess([...history, attempt]);
-      if (user && blockedNow && blockedNow.reason !== 'NETWORK') await this.traceBlock(user, now);
-      return { status: 'REFUSED', refusal: new InvalidCredentialsError() };
+      if (device) await this.devices.recordFailure(device, now);
+      if (user && assess([...history, attempt]).auditable) await this.traceBlock(user, now);
+      throw new RefuseAfterCommit(new InvalidCredentialsError());
     }
     return this.signedIn(user, passwordHash, cmd, found, fromKnownDevice, now);
   }
@@ -102,7 +102,7 @@ export class SignInHandler implements ICommandHandler<SignIn> {
       occurredAt: now,
       details: { knownDevice: fromKnownDevice },
     });
-    return { status: 'SIGNED_IN', userId: user.id, credentialsVersion: user.credentialsVersion, deviceTokens };
+    return { userId: user.id, credentialsVersion: user.credentialsVersion, deviceTokens };
   }
 
   private traceBlock(user: User, now: Date): Promise<void> {

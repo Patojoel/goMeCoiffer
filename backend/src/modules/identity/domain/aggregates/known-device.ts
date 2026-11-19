@@ -66,7 +66,9 @@ export class KnownDevice extends AggregateRoot {
     this.state.tokenHash = tokenHash;
   }
 
+  /** Un échec saisi depuis un appareil qui n'est plus reconnu ne compte pas : seuls les appareils reconnus se révoquent. */
   recordFailure(now: Date): void {
+    if (!this.isRecognizedAt(now)) return;
     this.state.failedAttempts += 1;
     if (this.state.failedAttempts >= KNOWN_DEVICE_MAX_FAILURES) this.state.revokedAt = now;
   }

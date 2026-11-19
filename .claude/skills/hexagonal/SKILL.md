@@ -16,15 +16,19 @@ description: Architecture hexagonale (ports & adapters) + CQRS de GoMeCoiffer, b
   - `ports/` : `<x>.port.ts`, passerelles externes (SMS, paiement, hachage, générateur de code) + token ;
   - `services/` : services de domaine sans état ; `messages/` : textes métier envoyés à l'utilisateur (SMS).
 - **`application/`** — CQRS :
-  - `commands/<use-case>/` : **3 fichiers** — `<use-case>.command.ts` (`extends Command<<UseCase>Response>`), `<use-case>.handler.ts` (`@CommandHandler`, dépendances par constructeur via tokens) et `<use-case>.response.ts` (type `readonly` de ce que renvoie la commande, y compris l'étape suivante décidée par le métier). Le contrôleur ne fabrique pas la réponse : il n'y ajoute que ce qui relève de HTTP (jeton CSRF). Le handler **orchestre** ; les règles vivent dans le domaine et **c'est l'agrégat qui enregistre ses événements**.
+  - `commands/<use-case>/` : **3 fichiers** — `<use-case>.command.ts` (`extends Command<<UseCase>Response>`), `<use-case>.handler.ts` (`@CommandHandler`, dépendances par constructeur via tokens) et `<use-case>.response.ts` (type `readonly` de ce que renvoie la commande, y compris l'étape suivante décidée par le métier et ce que la session doit porter). Un refus qui doit rester enregistré est levé par `throw new RefuseAfterCommit(erreur)` (le bus commite puis lève) : la réponse n'a jamais de branche `REFUSED`. Le handler **orchestre** ; les règles vivent dans le domaine et **c'est l'agrégat qui enregistre ses événements**.
   - `queries/<use-case>/` : `<use-case>.query.ts` (`extends Query<R>`) + `<use-case>.handler.ts` (`@QueryHandler`, **SQL pur** exécuté par le port `SqlReader`) + `<use-case>.read-model.ts` (types `readonly`). Skill [sql-query].
   - `read-repositories/` : `sql-<x>.ts`, implémentation `@Injectable()` d'un port `domain/repositories/read`, SQL pur via `SqlReader` (dans une commande, la lecture passe par la transaction en cours). Testée en intégration (Testcontainers).
+  - `services/` : orchestration partagée par au moins 2 handlers du module, sans règle métier (les règles restent dans `domain/services`).
   - `subscribers/` : adaptateurs d'événement, **handler cible injecté**, sans logique (skill [ddd] §10).
 - **`infrastructure/`** — adapters :
   - `persistence/orm-entities/` : `<x>.orm-entity.ts` (`@Entity`), une entité par fichier ;
   - `persistence/typeorm-repositories/` : `typeorm-<x>.repository.ts` (implémente un port `domain/repositories/write`, passe par `TransactionHost`) ;
   - `persistence/mappers/` : `<x>.mapper.ts`, seulement quand la conversion ne tient pas dans `restore()` / `snapshot()` de l'agrégat.
-  - `http/` : `<x>.controller.ts` (contrôleur mince, schémas de `@gomecoiffer/contracts`).
+  - `http/` (D-034) :
+    - `<x>.controller.ts` : schémas de `@gomecoiffer/contracts`, garde et protections ; corps de route = `execute(to<UseCase>(…))` puis éventuellement `responder.x(…)`, rien d'autre ;
+    - `mappers/<use-case>.request-mapper.ts` : fonction pure `to<UseCase>(body | params | query, req?, actor?, config?)` → commande ou query ; seul code HTTP qui importe un `*.command.ts` / `*.query.ts` ;
+    - `<x>.responder.ts` : `@Injectable()` des effets de transport après le commit (session, cookies, jeton CSRF, corps du contrat, lecture par `QueryBus`), seulement s'il y en a.
   - `<passerelle>/` : adapters externes (ex. `payments/infrastructure/aggregator/`, `identity/infrastructure/sms/`), couche de traduction + adapter `fake` pour local et test.
   - `<module>.module.ts` : câblage Nest (`providers: [{ provide: BOOKING_REPOSITORY, useClass: TypeOrmBookingRepository }]`, handlers, contrôleurs).
 - **`tests/`** — `unit/`, `integration/`, `e2e/`, `builders/`, `fakes/`. Voir skill [tdd].
@@ -32,22 +36,24 @@ description: Architecture hexagonale (ports & adapters) + CQRS de GoMeCoiffer, b
 ### Flux d'une requête d'écriture
 ```
 HTTP → Guards (Auth, CSRF, Permissions, salon actif) → Controller (validation Standard Schema)
-  → new <UseCase>(actor.activeSalonId, actor.userId, …)
+  → to<UseCase>(body, req?, actor)                // mapper de requête : construit la commande
   → TransactionalCommandBus.execute(cmd)          // transaction CLS + événements + outbox
   → Handler → Aggregate → Repository TypeORM (tx) → DomainEventDispatcher
-  → commit → afterCommit (OutboxRelay, SSE) → ApiResponse<T>
+  → commit → afterCommit (OutboxRelay, SSE)       // RefuseAfterCommit : commit, puis l'erreur métier est levée
+  → [responder.x(req, res, résultat)]             // session, cookies, jeton CSRF, corps du contrat
+  → ApiResponse<T>
 ```
 
 ### Flux d'une requête de lecture
 ```
-HTTP → Guards → Controller → QueryBus.execute(new <UseCase>Query(actor.activeSalonId, …))
+HTTP → Guards → Controller → QueryBus.execute(to<UseCase>Query(params, actor))
   → QueryHandler (application/) : sql`…` → SqlReader (READ_DB) → read model readonly → ApiResponse<T>
 ```
 
 ### Règles
 1. **Sens des dépendances** : infrastructure → application → domain. Jamais l'inverse. `application/` n'importe jamais `typeorm` (le port `SqlReader` et le gabarit `sql` viennent de `shared/application`).
 2. **Transaction** : un contrôleur, un webhook ou une tâche planifiée passe **toujours** par `TransactionalCommandBus` ; jamais `CommandBus` brut, jamais un handler injecté, jamais `dataSource.transaction()`.
-3. **Contrôleur mince** : extrait les entrées validées et l'acteur, construit la commande/query, appelle le bus. Aucune logique métier, aucun accès repository.
+3. **Contrôleur sans logique (D-034)** : le mapper de requête construit la commande ou la query, le bus l'exécute, le répondeur applique les effets HTTP. Dans un corps de route : ni `if`, `try`, `new`, `?:`, cast, `req.session`, `res.cookie`, `generateCsrfToken`, ni accès repository. Les trackers `@Throttle` sont des fonctions nommées. `pnpm arch` (`controller-builds-no-command`) interdit à un contrôleur d'importer une commande ou une query. Exemptés : contrôleurs techniques du socle.
 4. **Câblage** : chaque port est lié à son adapter dans le `<module>.module.ts` par un token (`Symbol`) déclaré à côté de son interface dans `domain/`. Pas de `@Injectable()` dans `domain/`.
 5. **Écritures** : repository TypeORM derrière un port `repositories/write` ; entité TypeORM distincte de l'agrégat ; verrou optimiste explicite. Un repository d'écriture **charge et sauve** des agrégats (plus un verrou si besoin) : une lecture qui ne rend pas d'agrégat va dans un repository de lecture.
 6. **Lectures** : SQL pur, jamais l'ORM — `application/queries` pour un écran (**testée en E2E uniquement**, rapport d'analyse avec index réels, skill [sql-query]) ; `application/read-repositories` pour une lecture utile à une commande (testée en intégration). Paramètres liés par le gabarit `sql`, résultats `readonly`, CTE filtrées à l'entrée.
@@ -69,6 +75,7 @@ HTTP → Guards → Controller → QueryBus.execute(new <UseCase>Query(actor.act
 - [ ] Chaque fichier est-il dans la bonne couche ?
 - [ ] Sens des dépendances respecté (`pnpm arch` vert) ?
 - [ ] Écriture via `TransactionalCommandBus` depuis le contrôleur / webhook / tâche ?
+- [ ] Commande construite par un mapper de requête, effets HTTP dans un répondeur, refus enregistré par `RefuseAfterCommit`, corps de route sans `if` / `new` / cast (D-034) ?
 - [ ] Port lié à son adapter par token dans le module Nest ?
 - [ ] Query = SQL pur dans `application/`, `SqlReader`, read models `readonly`, rapport d'index ?
 - [ ] Changement de schéma → migration TypeORM relue + `docs/migrations-history.md` ?

@@ -6,10 +6,7 @@ module.exports = {
       comment: 'domain/ n’importe que shared/domain : ni NestJS, ni TypeORM, ni application, ni infrastructure.',
       severity: 'error',
       from: { path: '^backend/src/(modules/[^/]+|shared)/domain/' },
-      to: {
-        pathNot: ['^backend/src/(modules/[^/]+|shared)/domain/'],
-        dependencyTypesNot: ['type-only'],
-      },
+      to: { pathNot: ['^backend/src/(modules/[^/]+|shared)/domain/'] },
     },
     {
       name: 'domain-no-framework',
@@ -22,7 +19,20 @@ module.exports = {
       comment: 'application/ n’importe jamais typeorm, HTTP ni infrastructure : le SQL passe par SqlReader.',
       severity: 'error',
       from: { path: '^backend/src/(modules/[^/]+|shared)/application/' },
-      to: { path: ['node_modules/(typeorm|pg|express)/', '^backend/src/(modules/[^/]+|shared)/infrastructure/'] },
+      to: {
+        path: [
+          'node_modules/(typeorm|pg|express|express-session|csrf-csrf|connect-pg-simple|@nestjs/(typeorm|platform-express))/',
+          '^backend/src/(modules/[^/]+|shared)/infrastructure/',
+        ],
+      },
+    },
+    {
+      name: 'controller-builds-no-command',
+      comment:
+        'Un contrôleur ne construit ni commande ni query : le mapper requête → commande (http/mappers/) est le seul fichier HTTP à les importer.',
+      severity: 'error',
+      from: { path: '^backend/src/modules/[^/]+/infrastructure/http/.+\\.controller\\.ts$' },
+      to: { path: '^backend/src/modules/[^/]+/application/(commands|queries)/.+\\.(command|query)\\.ts$' },
     },
     {
       name: 'no-cross-module-infrastructure',

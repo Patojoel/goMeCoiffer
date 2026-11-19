@@ -34,6 +34,7 @@ import {
   HmacSecretHasher,
 } from './crypto/secrets.js';
 import { AuthController } from './http/auth.controller.js';
+import { AuthenticatedSessionResponder } from './http/authenticated-session.responder.js';
 import { PasswordResetController } from './http/password-reset.controller.js';
 import { SessionController } from './http/session.controller.js';
 import { SignUpController } from './http/sign-up.controller.js';
@@ -58,6 +59,7 @@ import { LoggingSmsSender } from './sms/logging-sms-sender.js';
     PurgeSignInAttemptsHandler,
     GetMySessionHandler,
     KnownDeviceRegistry,
+    AuthenticatedSessionResponder,
     PurgeSignInAttemptsTask,
     { provide: USER_REPOSITORY, useClass: TypeOrmUserRepository },
     { provide: USER_SESSIONS, useClass: TypeOrmUserSessions },

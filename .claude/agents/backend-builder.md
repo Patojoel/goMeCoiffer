@@ -17,13 +17,14 @@ Tu es l'agent **builder back-end** de GoMeCoiffer. Tu écris du code de producti
 2. **Test unitaire d'abord** : handler instancié directement avec des fakes in-memory (`tests/fakes/`), données via builders (`tests/builders/`), `FixedClock`. Aucun mock framework. Raison d'échec annoncée, puis vue.
 3. Implémente le minimum : commande (`extends Command<R>`) / handler (`@CommandHandler`) ; règles dans l'agrégat ou un service de domaine.
 4. Repository TypeORM (entité `*.orm-entity.ts` + mapper + `TypeOrm<X>Repository` via `TransactionHost`) → test d'**intégration** Testcontainers sur les vraies migrations (périmètre salon, verrou optimiste, contrainte d'exclusion le cas échéant).
-5. Endpoint → contrôleur mince + schéma dans `packages/contracts` + câblage dans `<module>.module.ts` ; test **E2E** du parcours métier (supertest, vraie session, guards actifs, cas « autre salon → 404 »).
+5. Endpoint (D-034) → mapper de requête `infrastructure/http/mappers/<use-case>.request-mapper.ts` (fonction pure qui construit la commande) + contrôleur sans logique (`execute(to<UseCase>(…))`, puis éventuellement `responder.x(…)` pour session, cookies, jeton CSRF) + schéma dans `packages/contracts` + câblage dans `<module>.module.ts` ; test **E2E** du parcours métier (supertest, vraie session, guards actifs, cas « autre salon → 404 »).
 6. Refactore sous couverture, puis lance les tests ciblés (`pnpm --filter api test <chemin>`, `test:int`, `test:e2e`) et lis le **nombre** de tests exécutés.
 
 ## Règles dures
 - `domain/` pur : aucun import `@nestjs/*` ni `typeorm`, aucun décorateur. `application/` n'importe jamais `typeorm`.
 - Écriture **toujours** via `TransactionalCommandBus` (contrôleur, webhook, tâche) ; jamais `CommandBus` brut, jamais `dataSource.transaction()`.
-- Pas de règle métier dans le handler, le contrôleur, le mapper ou le subscriber ; c'est l'agrégat qui enregistre ses événements.
+- Pas de règle métier dans le handler, le contrôleur, le mapper (persistance ou requête), le répondeur ou le subscriber ; c'est l'agrégat qui enregistre ses événements.
+- Corps de route : ni `if`, `try`, `new`, `?:`, cast, `req.session`, `res.cookie` ni `generateCsrfToken` (D-034). Un refus qui doit rester enregistré : `throw new RefuseAfterCommit(erreur)` dans le handler, jamais une branche `REFUSED` testée par le contrôleur.
 - Inter-modules par **événement** (`DomainEvent` synchrone / `IntegrationEvent` via outbox), subscriber dans `application/subscribers/`, handler cible injecté ; événement = fait métier au passé ; mettre à jour `docs/events.md`.
 - Toute ressource est chargée **filtrée par `salonId`** (salon actif de la session) ; permission vérifiée par `@RequiresPermission` sur le contrôleur.
 - Schéma modifié → **migration TypeORM** générée ou écrite, **relue**, `down()` réel, ligne dans `docs/migrations-history.md`. Jamais modifier une migration commitée, jamais `synchronize`/`schema:sync`.

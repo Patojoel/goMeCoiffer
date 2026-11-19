@@ -163,7 +163,10 @@ describe('Requesting a password reset code', () => {
     const forPaul = await request(PAUL).catch((error: Error) => error);
     const forNobody = await request(NOBODY).catch((error: Error) => error);
 
-    expect(forPaul).toMatchObject({ code: 'OTP_RESEND_TOO_SOON', message: expect.stringContaining('30 secondes') });
+    expect(forPaul).toMatchObject({
+      code: 'OTP_RESEND_TOO_SOON',
+      message: expect.stringContaining('30 secondes'),
+    });
     expect(forPaul).toEqual(forNobody);
     expect(challenges.all().filter((c) => c.phone === PAUL_E164)).toHaveLength(1);
   });
@@ -184,7 +187,7 @@ describe('Requesting a password reset code', () => {
     Logger.overrideLogger({ log: capture, warn: capture, error: capture, debug: capture, verbose: capture });
     sms.failure = Object.assign(new Error('refused for +237699001122 : GoMeCoiffer ... est 482913.'), {
       code: 'PROVIDER_REJECTED',
-      stack: "Error: refused for +237699001122 : 482913 at provider",
+      stack: 'Error: refused for +237699001122 : 482913 at provider',
     });
 
     try {
@@ -195,6 +198,7 @@ describe('Requesting a password reset code', () => {
 
     expect(logged.length).toBeGreaterThan(0);
     expect(logged.join('')).toContain('PROVIDER_REJECTED');
-    for (const secret of ['699001122', '482913', 'refused', 'provider']) expect(logged.join('')).not.toContain(secret);
+    for (const secret of ['699001122', '482913', 'refused', 'provider'])
+      expect(logged.join('')).not.toContain(secret);
   });
 });
