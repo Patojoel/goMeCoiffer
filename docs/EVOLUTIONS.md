@@ -19,6 +19,44 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-19 — UC-004 Créer son organisation et son premier salon (backend)
+
+- **Quoi** : un utilisateur connecté crée en une seule action son organisation, son premier salon et son
+  appartenance « propriétaire ». Le salon est non publié et utilisable tout de suite. La session est régénérée avec ce
+  salon comme salon actif.
+  - Le résumé de session liste maintenant les salons et le rôle de l'utilisateur, et conduit à « ouvrir son salon ».
+  - La vraie résolution des droits (`SqlActorRights`) remplace `NoRightsYet`.
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-004 (lot 1, PRD §7 étape 2), décisions du user D-035 à D-038 (Q14 inversée : session
+  régénérée en devenant propriétaire).
+- **Périmètre** :
+  - **Nouveau module `organizations`** :
+    - agrégats `Organization`, `Salon` et `SalonMembership` ;
+    - événements `OrganizationFounded` et `SalonRegistered` ;
+    - commande `CreateOrganization` et route `POST /api/salon/organizations`, avec mapper, répondeur
+      `OwnerSessionResponder` et contrôleur sans logique (D-034) ;
+    - `SqlActorRights` : droits protégés du propriétaire (fonds, abonnement, gestion des salons) accordés seulement au
+      propriétaire réel de l'organisation, jamais sur le seul texte du rôle.
+  - **`identity`** : `GetMySession` lit les salons et le rôle (rapport d'index : index partiel des appartenances
+    actives, 0,35 ms).
+  - **Socle** : `regenerateSessionOnSalon`, qui garde l'instant de connexion et la version des identifiants.
+  - **Migration** `OrganizationsFoundation` :
+    - unicité « une organisation par propriétaire » ;
+    - contrôles en base sur la ville (12 villes), le type et le rôle ;
+    - `down` testé.
+  - **Seed de démo** : Mireille propriétaire de « Go Beauty Akwa », Paul sans organisation. Il refuse de tourner hors
+    local et test, en production, avec SSL, ou vers un hôte non local.
+  - **Contrat** : `organizations.ts`.
+- **Vérification** : mode **light**, agents `use-case-writer`, `backend-builder` et `security-reviewer`.
+  - Suite complète verte.
+  - Mutations volontaires vues rouges : unicité, régénération de session, instant de connexion prolongé, version des
+    identifiants, isolation par salon actif et par utilisateur, appartenance révoquée, compte client léger, droits
+    protégés liés au propriétaire réel.
+  - Revue sécurité : rien de critique. Le point à corriger (droits protégés liés à un simple texte de rôle) est
+    traité, avec deux durcissements : contrôles en base et garde-fou du seed. Le reste est au backlog.
+- **Suites** : écran de création (front), rôles et permissions figés par UC-008, UC-005 « ouvrir et changer de salon »
+  (voir `docs/BACKLOG.md`).
+
 ### 2026-11-19 — Contrôleurs sans logique (D-034) et corrections de la revue d'architecture
 
 - **Quoi** : la construction des commandes et les effets HTTP quittent les contrôleurs. Le contrat HTTP ne change

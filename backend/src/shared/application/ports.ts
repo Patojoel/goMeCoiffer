@@ -67,7 +67,7 @@ export interface Actor {
 export const ACTOR_RIGHTS = Symbol('ACTOR_RIGHTS');
 /**
  * Droits d'un utilisateur, relus à chaque requête : appartenance au salon actif, permissions dans ce salon,
- * rôles système. Fourni par le module des comptes (lot 1).
+ * rôles système. Implémenté par le module `organizations` (SqlActorRights) et lié au token dans son module Nest.
  */
 export interface ActorRights {
   resolve(

@@ -115,6 +115,22 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   UC-002) ; modifie D-025, décision du user.
 - Seed de démo d'un compte du personnel pour se connecter en local (non fait).
 
+## Organisations et salon actif (UC-004, revue sécurité du 19/11)
+
+- **Écran « créer mon organisation » (front de UC-004)** : non fait (back seul). Contrat prêt
+  (`CreateOrganizationSchema`, `OrganizationCreatedSchema`, `CITIES`). Un seul envoi à la fois ; sur
+  `ORGANIZATION_ALREADY_EXISTS`, relire `GET /api/salon/session` plutôt qu'afficher une erreur (un double clic peut
+  finir en 409 avec l'ancien cookie de session, déjà détruit : 401 puis reconnexion).
+- Session régénérée : une requête en vol qui sauve l'ancienne session après la régénération peut la recréer (sans
+  salon actif ; il faut déjà détenir l'identifiant). Marquer la rotation (`rotatedTo`) et refuser une session marquée,
+  ou ne sauver que si la session existe encore.
+- Flux SSE `salon:<id>` : fermer les flux d'un utilisateur quand son appartenance change ou est révoquée (UC-005 /
+  UC-008) ; aujourd'hui seule la réinitialisation du mot de passe les ferme.
+- Seed : sortir le dossier `seed/` de l'image de production.
+- « Autre salon → 404 » à rejouer en E2E avec UC-005 (aujourd'hui couvert en intégration sur `ActorRights`).
+- Le champ `role` et le catalogue de permissions sont provisoires jusqu'à UC-008.
+- Repositories d'`identity` : toujours sans `dispatch(pullEvents())` (ceux d'`organizations` le font).
+
 ## Revue d'architecture du 19/11 : suggestions 🟠 non traitées
 
 - `RequestSignUpCode` envoie le SMS dans la transaction (si le commit échoue, le code part sans être enregistré) :

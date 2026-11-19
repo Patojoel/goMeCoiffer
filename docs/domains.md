@@ -12,7 +12,7 @@ Référence des modules de `backend/src/modules/`, de leurs commandes et de leur
 | Module | Responsabilité | Agrégats (prévus) | PRD | HTTP | État |
 |---|---|---|---|---|---|
 | `identity` | Comptes, connexion, session, défis SMS (OTP), réinitialisation | `User`, `OtpChallenge`, `KnownDevice` | §3, §7 étape 1, §16 | `/api/public/sign-up/*`, `/api/public/auth`, `/api/salon/session` | en cours (UC-001 et UC-002 livrés côté back) |
-| `organizations` | Organisation, salons, publication, appartenances, rôles salon et permissions, salon actif, onboarding | `Organization`, `Salon`, `SalonMembership`, `SalonRoleSet` | §3, §5, §6, §7, F07 | `/api/salon/*` | prévu |
+| `organizations` | Organisation, salons, publication, appartenances, rôles salon et permissions, salon actif, onboarding | `Organization`, `Salon`, `SalonMembership`, `SalonRoleSet` | §3, §5, §6, §7, F07 | `/api/salon/organizations` | en cours (UC-004 livré côté back) |
 | `catalog` | Prestations, catégories, prix, durées, statut actif | `SalonService` | §7 étape 3, F07 | `/api/salon/services`, lecture publique | prévu |
 | `staff` | Intervenants, spécialités, prestations autorisées, horaires, pauses, indisponibilités et blocages temporaires | `StaffMember`, `WorkingSchedule`, `Unavailability` | §5.3, §5.5, §7 étapes 4-5, F02, BR-07 | `/api/salon/staff` | prévu |
 | `booking` | Réservations (cycle de vie), planning, client sur place, reprogrammations, disponibilités (lecture) | `Booking`, `RescheduleProposal` | F02, F03, F05, F06, BR-01…BR-03, BR-07…BR-09, BR-11, BR-12 | `/api/public/*`, `/api/salon/bookings` | prévu |
@@ -30,6 +30,7 @@ Référence des modules de `backend/src/modules/`, de leurs commandes et de leur
 | `identity` | `RequestPasswordResetCode` — demander un code de réinitialisation ; défi enregistré pour tout numéro (même réponse, mêmes limites par motif `PASSWORD_RESET`), SMS seulement pour un compte avec mot de passe, **envoyé après la réponse** (`AfterCommit.registerDetached`) ; une panne est seulement journalisée, la demande compte toujours (D-033) | `POST /api/public/auth/password-reset/code` | publique, CSRF, 30/h par IP | UC-003 |
 | `identity` | `ResetPassword` — réinitialiser le mot de passe (code + nouveau mot de passe) ; `User.resetPassword` (version des identifiants +1), sessions de l'utilisateur fermées, marque `password_reset` (lève les blocages du numéro), appareils révoqués puis appareil courant reconnu, audit `PASSWORD_RESET`, flux SSE de l'utilisateur fermés après le commit ; refus levé par `RefuseAfterCommit` ; le répondeur HTTP ouvre la session neuve | `POST /api/public/auth/password-reset` | publique, CSRF, 60/h par IP | UC-003 |
 | `identity` | `SignOut` — tracer la déconnexion (`userId` `null` sans session : rien à tracer ; le répondeur HTTP détruit la session et efface les cookies ; idempotent) | `POST /api/public/auth/sign-out` | publique, CSRF | UC-002 |
+| `organizations` | `CreateOrganization` — fonder son organisation et son premier salon (nom, type, ville, quartier, repère, téléphone) ; `Organization.found` vérifie compte du personnel et organisation unique puis crée organisation, salon non publié (`Africa/Douala`) et appartenance `OWNER` ; audit ×2 ; événements `OrganizationFounded`, `SalonRegistered` ; le répondeur HTTP régénère la session (même instant de connexion et version des identifiants), pose le salon actif et renvoie le nouveau jeton CSRF | `POST /api/salon/organizations` (201) | `@AuthenticatedOnly()`, CSRF | UC-004 |
 | `identity` | `PurgeSignInAttempts` — oublier l'historique des essais de plus de 48 h (tâche horaire, `TransactionalCommandBus`) | aucune (`@Interval`) | — | UC-002 |
 
 **Module modèle provisoire** : `identity`, à reproduire pour les modules suivants :
@@ -43,7 +44,7 @@ Référence des modules de `backend/src/modules/`, de leurs commandes et de leur
   logique, trackers `@Throttle` nommés (`rate-limit-trackers.ts`) ;
 - fakes in-memory et tests unit / intégration / E2E.
 
-**Exceptions « une commande, plusieurs agrégats »** (skill `ddd` §5) : `SignIn` (compte, historique des essais,
+**Exceptions « une commande, plusieurs agrégats »** (skill `ddd` §5) : `CreateOrganization` (`Organization`, `Salon`, `SalonMembership`, RG-004-03 et RG-004-16 : jamais d'organisation sans salon ni de salon sans propriétaire) ; `SignIn` (compte, historique des essais,
 appareil reconnu) et `ResetPassword` (défi, compte, essais, appareils, sessions, flux temps réel, audit), justifiées
 par D-025 et D-031 : la sécurité du compte doit changer d'un bloc, sans état intermédiaire.
 
@@ -53,4 +54,12 @@ Format d'une ligne : `module` | query | route | permission | UC | tables lues.
 
 | Module | Query | Route | Permission | UC | Tables lues |
 |---|---|---|---|---|---|
-| `identity` | `GetMySession` — résumé de session : nom, salons, rôles système, étape suivante (D-027) ; ni téléphone ni e-mail | `GET /api/salon/session` | `@AuthenticatedOnly()` | UC-002 | `users` (clé primaire) ; appartenances et rôles système à ajouter avec UC-004/005/008 |
+| `identity` | `GetMySession` — résumé de session : nom, salons, rôles système, étape suivante (D-027) ; ni téléphone ni e-mail | `GET /api/salon/session` | `@AuthenticatedOnly()` | UC-002, UC-004 | `users` (clé primaire), `salon_memberships` (index partiel des appartenances actives), `salons` (clé primaire) ; rôles système à ajouter avec UC-008 |
+
+## Droits de l'acteur (socle)
+
+`ActorRights` est implémenté par `SqlActorRights` (`organizations/application/read-repositories`), lié au token `ACTOR_RIGHTS` par `OrganizationsModule` (importé par `AppModule`) : le socle ne dépend d'aucun module et `pnpm arch` reste vert. Appartenance active au salon actif, permissions du rôle, `credentialsVersion` toujours renvoyée, rôles système vides jusqu'à UC-008.
+
+- **Droits protégés du propriétaire** (`payout-accounts:manage`, `subscription:manage`, `organization:manage-salons`) : accordés seulement si l'utilisateur est le propriétaire réel de l'organisation (`organizations.owner_user_id`), jamais sur le seul texte `role = 'OWNER'`. Le rôle `OWNER` ne naît que de `Organization.found` ; `grantCollaboratorRole` le refuse (`OWNER_ROLE_RESERVED`).
+- **Rôles salon** (provisoires, figés par UC-008) : `OWNER`, `SALON_ADMIN`, `HAIRDRESSER`, `FINANCE_MANAGER`, `PRACTITIONER` (PRD §5), contrôlés en base (`CHECK`).
+- **Seed de démo** (`backend/src/database/seed/`) : refuse de tourner hors `APP_ENV` local ou test, avec `NODE_ENV=production`, avec SSL, ou vers un hôte de base non local (`seed-guard.ts`).
