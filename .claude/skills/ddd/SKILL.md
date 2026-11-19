@@ -62,6 +62,7 @@ description: "Conventions DDD (Domain-Driven Design) de GoMeCoiffer (NestJS + Ty
 - **Racine seul point d'entrée** ; référence aux autres agrégats **par id**, jamais par champ objet.
 - **Création par factory statique** qui valide (`Booking.reserveWithOnlinePayment(...)`, `Booking.reserveAtSalon(...)`, `Booking.recordWalkIn(...)`).
 - **Mutation par méthode métier** nommée par l'intention (`confirm()`, `start()`, `complete()`, `markNoShow()`, `cancel()`), jamais par setter. Transitions de statut interdites → erreur métier nommée.
+- **State Pattern (> 3 statuts)** : dès qu'un agrégat possède **plus de 3 statuts** (`Invitation` : 4 statuts `PENDING | ACCEPTED | CANCELLED | EXPIRED` ; `OtpChallenge` : 4 statuts `ACTIVE | CONSUMED | EXPIRED | SUPERSEDED` ; `Booking` : 7 statuts `PENDING_PAYMENT | CONFIRMED | IN_PROGRESS | COMPLETED | NO_SHOW | CANCELLED | EXPIRED`), ses transitions et gardes d'état passent par le **State Pattern** (table d'objets d'état immuables ou classes d'état dédiées par statut, porteurs des transitions autorisées et levant l'erreur métier sur toute transition interdite) plutôt que par des `if / switch` dispersés dans les méthodes de l'agrégat. En dessous de 4 statuts (ex. `ACTIVE | REVOKED`), une simple garde dans l'agrégat suffit.
 - **Lecture par `snapshot()`** (objet `readonly`). **Aucune décision** ne se prend sur un snapshot dans un handler : un `if` sur un champ du snapshot est une règle sortie de l'agrégat.
 - **`AggregateRoot`** s'étend quand l'agrégat publie des événements ; **c'est l'agrégat qui enregistre** (`this.record(...)`) dans sa méthode métier, jamais le handler.
 - **Reconstitution** (`static restore(props)`) : ne rejoue aucune règle de création.
@@ -142,6 +143,7 @@ Une règle du domaine a son erreur **nommée par l'intention**, **une par fichie
 
 - [ ] Code en anglais, commentaires en français, terme pris dans le tableau §1 ?
 - [ ] L'agrégat protège un invariant réel ; une règle qui demande d'autres instances est dans un service ?
+- [ ] Agrégat à **plus de 3 statuts** modélisé avec le **State Pattern** (transitions et gardes encapsulées par état) ?
 - [ ] Une transaction = un agrégat, ou exception §5 justifiée et documentée ?
 - [ ] Aucune règle métier dans le handler ; l'agrégat enregistre ses événements ?
 - [ ] `domain/` pur (ni NestJS, ni TypeORM, ni `application/`, ni `infrastructure/`) ?

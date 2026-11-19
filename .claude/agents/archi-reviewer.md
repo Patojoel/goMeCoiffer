@@ -15,6 +15,7 @@ Charge `CLAUDE.md`, `docs/domains.md`, `docs/events.md`, `docs/checklists.md` et
 **DDD**
 - `domain/` pur (aucun `@nestjs/*`, `typeorm`, décorateur, HTTP, SDK externe) ?
 - Agrégat étend `AggregateRoot` s'il publie, invariants garantis à la construction, transitions de statut dans l'agrégat, pas de setter public ?
+- **State Pattern (> 3 statuts)** : tout agrégat ayant **plus de 3 statuts** (`Invitation`, `OtpChallenge`, `Booking`…) délègue-t-il ses transitions et gardes à un **State Pattern** plutôt qu'à des `if / switch` dispersés ?
 - Références inter-agrégats par id ; une commande = un agrégat modifié (ou exception documentée) ; inter-modules par événement ?
 - Vocabulaire du tableau `ddd` §1 respecté ; spécialité jamais utilisée comme rôle de sécurité ?
 
@@ -29,8 +30,9 @@ Charge `CLAUDE.md`, `docs/domains.md`, `docs/events.md`, `docs/checklists.md` et
 - Repository via `txHost.tx` (pas `@InjectRepository` ni `dataSource.manager` hors transaction) ; chargement filtré par `salonId` ; verrou optimiste explicite ; `23P01` traduit ; événements dispatchés dans `save()` ?
 - Pas de relation `eager`/`cascade`/lazy qui charge ou écrit dans le dos de l'agrégat ?
 
-**Migrations**
+**Migrations & Indexation**
 - Changement d'entité → migration présente, relue (aucun `DROP` inattendu), `down()` réel, ligne dans `docs/migrations-history.md` ? Le nom de table/colonne de l'entité correspond-il à la migration ?
+- **Indexation en base de données** : chaque clause `WHERE`, `JOIN`, `ORDER BY` et contrainte d'unicité métier des repositories d'écriture, `read-repositories`, tâches planifiées et `QueryHandlers` est-elle couverte par un index PostgreSQL explicite dans les migrations (composite, unique partiel, partiel) ?
 - Migration déjà commitée modifiée (`git log --follow`) → **bloquant**. `synchronize: true` où que ce soit → **bloquant**.
 - Contrainte d'exclusion de non-chevauchement et index uniques partiels (proposition active unique) présents quand le module les exige ?
 

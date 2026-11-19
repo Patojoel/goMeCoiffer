@@ -1,0 +1,37 @@
+{
+  "brand": "GoMeCoiffer",
+  "tagline": "Réserve ton coiffeur, sans attendre",
+  "deck_title": "identité finale",
+  "brief": "Marketplace et logiciel de réservation pour la coiffure, le barbering et la beauté au Cameroun. Le logo doit parler aux clients urbains sur mobile comme aux propriétaires de salon : fiable, rapide, chaleureux, africain et contemporain.",
+  "adjectives": ["fiable", "rapide", "chaleureux", "africain contemporain", "simple"],
+  "criteria": "Réussite : se distingue des clichés du secteur (ciseaux, silhouettes, rose et or), lisible à 16 px, fonctionne en une couleur, porte le nom GoMe.",
+  "mockups": ["signage", "app-icon", "website", "business-card", "social", "tshirt"],
+  "nav": ["Trouver un salon", "Pour les salons", "Se connecter"],
+  "brand_color": "#D2603A",
+  "tile_color": "#17213B",
+  "greyscale": false,
+  "final": true,
+  "designer": "GoMeCoiffer",
+  "concepts": [
+    {
+      "name": "G-boucle + m en exposant",
+      "symbol": "../masters/gomecoiffer-symbol.svg",
+      "lockup": "../masters/gomecoiffer-horizontal.svg",
+      "stacked": "../masters/gomecoiffer-stacked.svg",
+      "avatar": "../masters/gomecoiffer-symbol.svg",
+      "symbol_on_tile": "../masters/gomecoiffer-symbol-reversed.svg",
+      "symbol_on_dark": "../masters/gomecoiffer-symbol-reversed.svg",
+      "lockup_on_dark": "../masters/gomecoiffer-horizontal-reversed.svg",
+      "stacked_on_dark": "../masters/gomecoiffer-stacked-reversed.svg",
+      "stacked_on_tile": "../masters/gomecoiffer-stacked-reversed.svg",
+      "idea": "Le G de GoMe s'enroule en boucle de cheveu crépu, et le m en exposant fait lire « G puissance m » : GoMe.",
+      "rationale": [
+        "La boucle évoque les cheveux de la clientèle sans dessiner d'outil de coiffure",
+        "L'exposant porte le nom (GoMe) et donne un clin d'œil mémorable",
+        "Bleu nuit pour la fiabilité, terre cuite pour la chaleur : loin du rose et or du secteur",
+        "Version simplifiée (G seul) pour les favicons à 16 px"
+      ]
+    }
+  ],
+  "recommendation": "Direction retenue. Fichiers maîtres, variantes une couleur, icônes web et guide d'usage livrés dans brand/logo/."
+}

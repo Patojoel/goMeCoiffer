@@ -159,6 +159,7 @@ Isolation par défaut `READ COMMITTED` ; les invariants de concurrence reposent 
 - Pas de glob (ESM, tests sous Vitest) : **registres** `src/database/entities.ts` et `src/database/migrations.ts`, lus par `dataSourceOptions(config)` (app, CLI, tests).
 - `migration:create <Nom>` écrit la migration et l'ajoute au registre ; `migration:generate src/database/migrations/<Nom>` compile puis diffe les entités (ajouter ensuite la migration au registre) ; `migration:run|revert|show` passent par `dist/database/cli.js`.
 - Générer, **relire** chaque instruction, compléter à la main ce que TypeORM ne sait pas faire (`CREATE EXTENSION btree_gist`, `EXCLUDE USING gist`, index partiels `WHERE deleted_at IS NULL`, index d'expression). `down()` réel.
+- **Indexation systématique en base de données** : chaque nouvelle table ou nouvelle requête (repository d'écriture, `read-repository` ou `QueryHandler`) doit définir dans la migration TypeORM les **index couvrant toutes ses clauses `WHERE`, `JOIN`, `ORDER BY` et contraintes d'unicité** (index composites dans l'ordre du préfixe le plus sélectif, index uniques partiels `WHERE status = 'PENDING'` / `WHERE status = 'ACTIVE'`, index partiels pour les tâches planifiées de purge). Aucun scan séquentiel sur une colonne de filtre ou de jointure.
 - Jamais `schema:sync`, `schema:drop`, `synchronize: true`, `dropSchema: true` (hook de garde).
 
 ## Tests
