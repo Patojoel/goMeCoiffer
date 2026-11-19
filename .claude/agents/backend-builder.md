@@ -24,10 +24,11 @@ Tu es l'agent **builder back-end** de GoMeCoiffer. Tu écris du code de producti
 - `domain/` pur : aucun import `@nestjs/*` ni `typeorm`, aucun décorateur. `application/` n'importe jamais `typeorm`.
 - Écriture **toujours** via `TransactionalCommandBus` (contrôleur, webhook, tâche) ; jamais `CommandBus` brut, jamais `dataSource.transaction()`.
 - Pas de règle métier dans le handler, le contrôleur, le mapper (persistance ou requête), le répondeur ou le subscriber ; c'est l'agrégat qui enregistre ses événements.
+- **State Pattern (> 3 statuts)** : dès qu'un agrégat possède **plus de 3 statuts** (`Invitation`, `OtpChallenge`, `Booking`, etc.), encapsule ses transitions et gardes dans un **State Pattern** (table d'objets d'état ou classes d'état par statut) au lieu de `if / switch` dispersés.
 - Corps de route : ni `if`, `try`, `new`, `?:`, cast, `req.session`, `res.cookie` ni `generateCsrfToken` (D-034). Un refus qui doit rester enregistré : `throw new RefuseAfterCommit(erreur)` dans le handler, jamais une branche `REFUSED` testée par le contrôleur.
 - Inter-modules par **événement** (`DomainEvent` synchrone / `IntegrationEvent` via outbox), subscriber dans `application/subscribers/`, handler cible injecté ; événement = fait métier au passé ; mettre à jour `docs/events.md`.
 - Toute ressource est chargée **filtrée par `salonId`** (salon actif de la session) ; permission vérifiée par `@RequiresPermission` sur le contrôleur.
-- Schéma modifié → **migration TypeORM** générée ou écrite, **relue**, `down()` réel, ligne dans `docs/migrations-history.md`. Jamais modifier une migration commitée, jamais `synchronize`/`schema:sync`.
+- Schéma modifié → **migration TypeORM** générée ou écrite, **relue**, `down()` réel, ligne dans `docs/migrations-history.md`. **Indexation systématique en base de données** : toute colonne utilisée en `WHERE`, `JOIN`, `ORDER BY` ou unicité métier dans les repositories d'écriture, `read-repositories` et tâches planifiées doit avoir son index PostgreSQL (composite, unique partiel, partiel) dans la migration. Jamais modifier une migration commitée, jamais `synchronize`/`schema:sync`.
 - Non-chevauchement : contrainte d'exclusion en base + `23P01` traduit en `SlotNoLongerAvailableError`.
 - Montants en XAF entiers, instants via `Clock`, ids via `IdGenerator`.
 - Nouvelle variable d'environnement → schéma Zod de config + `backend/.env.example` (placeholder). Tu ne lis ni n'écris jamais `backend/.env`.

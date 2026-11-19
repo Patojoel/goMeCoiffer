@@ -30,10 +30,48 @@ interface InvitationState {
   version: number;
 }
 
+interface InvitationStatusBehavior {
+  isPendingAt(state: Readonly<InvitationState>, now: Date): boolean;
+  expireIfDue(state: InvitationState, now: Date): boolean;
+  cancel(state: InvitationState, now: Date): void;
+}
+
+const terminalInvitationStatus: InvitationStatusBehavior = {
+  isPendingAt: () => false,
+  expireIfDue: () => false,
+  cancel: () => {
+    throw new InvitationNoLongerPendingError();
+  },
+};
+
+const INVITATION_STATUS_BEHAVIORS: Record<InvitationStatus, InvitationStatusBehavior> = {
+  PENDING: {
+    isPendingAt: (state, now) => now < state.expiresAt,
+    expireIfDue(state, now) {
+      if (now < state.expiresAt) return false;
+      state.status = InvitationStatus.EXPIRED;
+      state.endedAt = state.expiresAt;
+      return true;
+    },
+    cancel(state, now) {
+      if (now >= state.expiresAt) throw new InvitationNoLongerPendingError();
+      state.status = InvitationStatus.CANCELLED;
+      state.endedAt = now;
+    },
+  },
+  ACCEPTED: terminalInvitationStatus,
+  CANCELLED: terminalInvitationStatus,
+  EXPIRED: terminalInvitationStatus,
+};
+
 /** Invitation d'une personne à rejoindre un salon avec un rôle ; elle ne donne aucun accès (l'acceptation est UC-007). */
 export class Invitation extends AggregateRoot {
   private constructor(private readonly state: InvitationState) {
     super();
+  }
+
+  private get behavior(): InvitationStatusBehavior {
+    return INVITATION_STATUS_BEHAVIORS[this.state.status];
   }
 
   static issue(input: {
@@ -89,21 +127,16 @@ export class Invitation extends AggregateRoot {
 
   /** En attente tant que l'échéance n'est pas atteinte : à l'instant exact de l'échéance, elle est expirée. */
   isPendingAt(now: Date): boolean {
-    return this.state.status === InvitationStatus.PENDING && now < this.state.expiresAt;
+    return this.behavior.isPendingAt(this.state, now);
   }
 
   /** Constate l'expiration d'une invitation échue ; `true` si l'état a changé. */
   expireIfDue(now: Date): boolean {
-    if (this.state.status !== InvitationStatus.PENDING || now < this.state.expiresAt) return false;
-    this.state.status = InvitationStatus.EXPIRED;
-    this.state.endedAt = this.state.expiresAt;
-    return true;
+    return this.behavior.expireIfDue(this.state, now);
   }
 
   cancel(cancelledByUserId: string, now: Date): void {
-    if (!this.isPendingAt(now)) throw new InvitationNoLongerPendingError();
-    this.state.status = InvitationStatus.CANCELLED;
-    this.state.endedAt = now;
+    this.behavior.cancel(this.state, now);
     this.record(new InvitationCancelled(this.state.id, this.state.salonId, cancelledByUserId, now));
   }
 

@@ -19,7 +19,7 @@ description: Conventions des lectures (QueryHandlers) et performance SQL Postgre
 
 1. **CTE filtrées dès l'entrée** sur le périmètre (`salon_id`, `staff_id`, plage de dates) — jamais un scan global filtré plus tard.
 2. **Projection minimale** — pas de `SELECT *` ; pas de donnée personnelle non nécessaire à l'écran (BR-11).
-3. **Indexation** — toute colonne de `WHERE` / `JOIN` / `ORDER BY` sur une table volumineuse s'appuie sur un index. Index composite : ordre selon le préfixe le plus à gauche (`(salon_id, starts_at)` pour le planning du jour).
+3. **Indexation systématique (lectures et écritures)** — toute colonne de `WHERE` / `JOIN` / `ORDER BY` (dans un `QueryHandler`, un `read-repository` ou un repository d'écriture) s'appuie sur un index PostgreSQL créé par migration TypeORM. Index composite : ordre selon le préfixe le plus à gauche (`(salon_id, starts_at)` pour le planning du jour) ; index partiels (`WHERE status = 'PENDING'`, `WHERE deleted_at IS NULL`) dès qu'un filtre vise un sous-ensemble stable.
 4. **Pas de N+1 ni d'agrégation JS en O(n²)** — agréger en SQL (`json_agg`, `array_agg`, `DISTINCT ON`, `LATERAL`).
 5. **Sargabilité** — pas de fonction sur une colonne indexée dans le `WHERE` (`lower(name)`, `starts_at::date`) sans index d'expression ; filtrer une journée par plage `[début, fin)` calculée dans le fuseau du salon.
 6. **Pagination** par clé (keyset) pour les listes longues (réservations, transactions) ; `LIMIT/OFFSET` seulement sur de petits volumes.

@@ -24,7 +24,7 @@ et fake in-memory interchangeables. Ne les rejoue pas — traque seulement ce qu
 
 Applique un pattern **uniquement** si tu peux nommer la force présente. **Un pattern non justifié EST un
 smell.** Ceux qui collent au code : **Factory statique** (`Booking.reserveAtSalon(...)`) · **Value Object**
-(`Money`, `TimeRange`, `PhoneNumber`) · **Décorateur** (`TransactionalCommandBus`) · **Observer** (subscribers) ·
+(`Money`, `TimeRange`, `PhoneNumber`) · **State Pattern** (obligatoire dès qu'un agrégat a **plus de 3 statuts** : `Invitation`, `OtpChallenge`, `Booking`, etc. — chaque état encapsule ses transitions permises et refuse les autres) · **Décorateur** (`TransactionalCommandBus`) · **Observer** (subscribers) ·
 **Adapter / couche de traduction** (agrégateur de paiement, SMS) · **Builder** (tests). Pas de catalogue GoF.
 
 ## Garde-fous anti-overengineering (le cœur)
