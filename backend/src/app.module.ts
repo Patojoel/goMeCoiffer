@@ -21,6 +21,7 @@ import { contractValidationPipe } from './shared/infrastructure/http/validation.
 import { safeError } from './shared/infrastructure/logging/safe-error.js';
 import { AuthGuard, CsrfGuard, PermissionsGuard } from './shared/infrastructure/security/guards.js';
 import { IdentityModule } from './modules/identity/infrastructure/identity.module.js';
+import { OrganizationsModule } from './modules/organizations/infrastructure/organizations.module.js';
 import { SharedModule } from './shared/infrastructure/shared.module.js';
 
 const REDACTED = [
@@ -85,6 +86,7 @@ export class AppModule {
         ]),
         SharedModule,
         IdentityModule,
+        OrganizationsModule,
       ],
       providers: [
         { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -21,3 +21,19 @@ export async function openAuthenticatedSession(
   req.session.activeSalonId = null;
   await promisify((done) => req.session.save(done));
 }
+
+/**
+ * Changement de privilèges sans nouvelle connexion (devenir propriétaire, D-037) : nouvel identifiant de session,
+ * mais l'utilisateur, l'instant de connexion, la version des identifiants et la dernière activité sont conservés —
+ * la durée absolue n'est pas prolongée et une réinitialisation du mot de passe ferme toujours cette session.
+ */
+export async function regenerateSessionOnSalon(req: Request, activeSalonId: string): Promise<void> {
+  const { userId, credentialsVersion, authenticatedAt, lastActivityAt } = req.session;
+  await promisify((done) => req.session.regenerate(done));
+  req.session.userId = userId;
+  req.session.credentialsVersion = credentialsVersion;
+  req.session.authenticatedAt = authenticatedAt;
+  req.session.lastActivityAt = lastActivityAt;
+  req.session.activeSalonId = activeSalonId;
+  await promisify((done) => req.session.save(done));
+}

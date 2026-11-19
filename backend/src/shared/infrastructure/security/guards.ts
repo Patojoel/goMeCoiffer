@@ -7,10 +7,7 @@ import {
   type ActorRights,
   CLOCK,
   type Clock,
-  READ_DB,
-  type SqlReader,
 } from '../../application/ports.js';
-import { sql } from '../../application/sql.js';
 import { APP_CONFIG, type AppConfig } from '../config/app-config.module.js';
 import { CSRF_PROTECTION, type CsrfProtection } from './http-security.js';
 import {
@@ -134,22 +131,5 @@ export class PermissionsGuard implements CanActivate {
     if (systemRole && !actor.systemRoles.has(systemRole))
       throw new ForbiddenError('Action réservée à l’équipe GoMeCoiffer.');
     return true;
-  }
-}
-
-/** Remplacé par le module des comptes (lot 1) : d'ici là, aucun droit n'est accordé, mais la version des identifiants est lue. */
-@Injectable()
-export class NoRightsYet implements ActorRights {
-  constructor(@Inject(READ_DB) private readonly db: SqlReader) {}
-
-  async resolve(userId: string) {
-    const account = await this.db.maybeOne<{ credentialsVersion: number }>(sql`
-      SELECT u.credentials_version AS "credentialsVersion" FROM users u WHERE u.id = ${userId}`);
-    return {
-      isMember: false,
-      permissions: [],
-      systemRoles: [],
-      credentialsVersion: account?.credentialsVersion ?? null,
-    };
   }
 }

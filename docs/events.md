@@ -8,7 +8,10 @@ post-commit via l'outbox, livrés au moins une fois) avec leurs subscribers. Rè
 
 | Événement | Nature | `type` (intégration) | Émis par (agrégat) | Subscribers (module → handler) | Même transaction justifiée ? |
 |---|---|---|---|---|---|
-| _aucun_ | | | | | |
+| `OrganizationFounded` | domaine | — | `Organization.found` | aucun à ce stade | sans objet |
+| `SalonRegistered` | domaine | — | `Salon.register` | aucun à ce stade (lot 7 : activation, essai) ; UC-008 pourra y brancher la recopie des rôles | sans objet |
+
+Les repositories d'écriture d'`organizations` remettent `pullEvents()` au `DomainEventDispatcher` dans `add` (dans la transaction). Les repositories d'`identity` ne le font pas encore (voir backlog).
 
 ## Événements prévus par le PRD (non codés)
 

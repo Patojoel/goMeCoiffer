@@ -1,13 +1,18 @@
-import type { DataSource } from 'typeorm';
+import { loadConfig } from '../../shared/infrastructure/config/app-config.module.js';
 import dataSource from '../data-source.js';
+import { identitySeeder } from './identity.seed.js';
+import { organizationsSeeder } from './organizations.seed.js';
+import { seedRefusal } from './seed-guard.js';
+import type { Seeder } from './seeder.js';
 
-/** Un seeder par module, idempotent (rejouable sans doublon). Ajouté avec chaque donnée affichée. */
-export interface Seeder {
-  readonly name: string;
-  run(dataSource: DataSource): Promise<void>;
-}
+/** Dans l'ordre des dépendances : les comptes avant les organisations. */
+const SEEDERS: Seeder[] = [identitySeeder, organizationsSeeder];
 
-const SEEDERS: Seeder[] = [];
+const refusedBy = seedRefusal(loadConfig());
+if (refusedBy)
+  throw new Error(
+    `Seed de démonstration refusé (condition : ${refusedBy}) : il crée des comptes au mot de passe connu.`,
+  );
 
 await dataSource.initialize();
 try {
@@ -17,7 +22,6 @@ try {
     await seeder.run(dataSource);
     console.log(`seed : ${seeder.name}`);
   }
-  if (!SEEDERS.length) console.log('Aucune donnée de démo à semer pour l’instant.');
 } finally {
   await dataSource.destroy();
 }
