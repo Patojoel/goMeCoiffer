@@ -221,7 +221,7 @@ backend/src/
       unit/  integration/  e2e/  builders/  fakes/   # fakes = repositories in-memory
 ```
 
-Modules prévus (détail et état dans `docs/domains.md`) : `identity` (comptes, session, OTP), `organizations` (organisation, salons, appartenances, rôles et permissions salon), `catalog` (prestations), `staff` (intervenants, spécialités, prestations autorisées, horaires, indisponibilités), `booking` (réservations, reprogrammations), `payments` (paiements en ligne et au salon), `subscriptions` (abonnements SaaS), `platform` (administration GoMeCoiffer). Les disponibilités (F02) sont une **lecture** (`booking/application/queries`) recalculée depuis horaires, indisponibilités et réservations, et revalidée côté écriture à la confirmation.
+Modules prévus (détail et état dans `docs/domains.md`) : `identity` (comptes, session, OTP), `organizations` (organisation, salons, appartenances, rôles et permissions salon), `catalog` (prestations), `staff` (intervenants, spécialités, prestations autorisées, horaires, indisponibilités), `booking` (réservations, reprogrammations), `payments` (paiements en ligne et au salon), `subscriptions` (abonnements SaaS), `platform` (administration GoMeCoiffer), `reviews` (avis et notes des réservations terminées, réponses, modération — F09, D-059). Les disponibilités (F02) sont une **lecture** (`booking/application/queries`) recalculée depuis horaires, indisponibilités et réservations, et revalidée côté écriture à la confirmation.
 
 Règles de dépendance (vérifiées par `pnpm arch`) :
 

@@ -270,10 +270,17 @@ puis back et front en parallèle.
    d'abonnement, suspension/rétablissement, période de grâce, incidents de paiement, indicateurs.
 8. **Tableau de bord du salon** (F07) : réservations du jour, en cours, professionnels disponibles, prochains
    rendez-vous, paiements du jour.
+9. **Avis et notes** (F09, D-059, ajouté au MVP le 20/11) : avis d'une réservation terminée (note du salon et du
+   professionnel, commentaire), réponse et signalement par le salon, modération par l'administration, moyennes et
+   tri « Mieux notés » sur la marketplace, écran « Avis clients » du back-office. Peut démarrer dès que le lot 4
+   produit des réservations « Prestation terminée » ; nouveau module backend `reviews`. Prévoir dès le lot 3 la
+   place de la note sur la carte et la fiche du salon, et dès le lot 4 le lien « Laisser un avis » dans « Mes
+   réservations ». Au démarrage : compléter le catalogue des permissions de UC-008 avec le module « Avis clients »
+   (consulter, répondre, signaler), ses défauts par rôle et une migration pour les salons existants.
 
 ## Hors MVP (PRD §14) — ne rien préparer
 
-Notifications « coiffeur libre », marketing automatisé, fidélité, abonnements clients, avis et notes, chat,
+Notifications « coiffeur libre », marketing automatisé, fidélité, abonnements clients, chat,
 sponsoring opérationnel, commission automatique, stock, paie, comptabilité, franchises, multi-intervenants,
 application mobile native, IA, cabines et équipements partagés.
 

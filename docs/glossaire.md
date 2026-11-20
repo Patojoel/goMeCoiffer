@@ -71,3 +71,7 @@ Vocabulaire du PRD, à employer **mot pour mot** dans les use cases et les écra
 | Administrateur Finance Plateforme | Rôle système dédié aux abonnements SaaS, à la facturation plateforme, aux commissions éventuelles et aux rapprochements financiers. | PRD §4, UC-012 |
 | Attribution / retrait d'un rôle système | Action réservée à un Super Administrateur (hors soi-même) pour donner ou retirer un rôle système à un compte du personnel existant ; le retrait ferme immédiatement toutes les sessions et flux en direct de la personne. | PRD §4, §13, UC-012 |
 | Initialisation du premier Super Administrateur | Commande d'exploitation exécutée hors HTTP par l'exploitant GoMeCoiffer pour attribuer le premier rôle Super Administrateur à un compte du personnel existant (idempotente). | UC-012 |
+| Avis | Retour d'un client sur une réservation « Prestation terminée » : une note du salon, une note du professionnel (1 à 5) et un commentaire facultatif ; un seul par réservation, dans les 14 jours. Le salon ne le modifie ni ne le supprime. | PRD F09, D-059 |
+| Note moyenne | Moyenne des notes des avis publiés d'un salon ou d'un professionnel ; affichée seulement à partir de 3 avis publiés. | PRD F09, D-059 |
+| Réponse du salon | Réponse publique unique du salon à un avis. | PRD F09, D-059 |
+| Avis signalé / masqué | Avis que le salon a signalé comme abusif ; seule l'administration GoMeCoiffer peut le masquer (il ne compte plus dans les moyennes) ou le rétablir, avec une trace. | PRD F09, D-059 |

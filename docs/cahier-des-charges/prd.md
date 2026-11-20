@@ -1,7 +1,7 @@
 
 # GoMeCoiffer — Product Requirements Document
 
-**Version :** 1.0 — MVP
+**Version :** 1.1 — MVP (20/11/2026 : avis et notes intégrés au MVP, fiche F09, décision D-059)
 **Statut :** Proposition de périmètre fonctionnel
 **Marché initial :** Cameroun
 **Utilisateurs :** Clients, propriétaires de salons, administrateurs, professionnels de beauté et personnel financier
@@ -53,6 +53,7 @@ Destinée aux clients :
 - Découvrir les professionnels et leurs spécialités.
 - Consulter les disponibilités en temps réel.
 - Réserver, payer et gérer ses rendez-vous.
+- Consulter les notes et avis, et noter le salon et le professionnel après une prestation terminée.
 
 ### B. Back-office des établissements
 
@@ -64,6 +65,7 @@ Destiné aux propriétaires et collaborateurs autorisés :
 - Consulter et traiter les rendez-vous.
 - Suivre les paiements.
 - Configurer les rôles et permissions.
+- Consulter les avis reçus, y répondre et signaler un avis abusif.
 
 ### C. Administration GoMeCoiffer
 
@@ -74,6 +76,7 @@ Réservée à l'exploitant de la plateforme :
 - Activer ou suspendre des salons.
 - Superviser les paiements et incidents.
 - Administrer la visibilité des salons dans la marketplace.
+- Modérer les avis signalés (masquer ou rétablir).
 
 **Règle d'architecture :** les rôles système ne sont pas des rôles salon. Les autorisations sont évaluées dans leur propre périmètre.
 
@@ -235,6 +238,7 @@ Le propriétaire peut personnaliser les droits des rôles de son établissement.
 | Personnel             | Consulter, inviter, gérer                       |
 | Finances              | Consulter, déclarer un encaissement, exporter   |
 | Paramètres salon     | Consulter, modifier                              |
+| Avis clients          | Consulter, répondre, signaler                    |
 | Rôles et permissions | Administrer                                      |
 
 ### Fonctionnement attendu
@@ -355,6 +359,7 @@ Fonctionnalités :
 - Catalogue des prestations et tarifs.
 - Liste des professionnels.
 - Affichage des prochains créneaux disponibles.
+- Note moyenne et nombre d'avis du salon (carte et fiche) et de ses professionnels (fiche), derniers avis sur la fiche, tri « Mieux notés » dans la recherche (F09).
 
 Critères d'acceptation :
 
@@ -363,7 +368,7 @@ Critères d'acceptation :
 - Un salon sans disponibilité est présenté comme tel.
 - Les informations visibles proviennent du salon concerné.
 
-Hors MVP : avis, notes, chat, recommandations IA et carte de fidélité.
+Hors MVP : chat, recommandations IA et carte de fidélité. Les avis et notes font partie du MVP (F09).
 
 ### F02 — Disponibilités en temps réel
 
@@ -550,6 +555,40 @@ Fonctions :
 
 En cas d'abonnement expiré, le comportement doit être explicitement défini : suspension des nouvelles réservations publiques après une période de grâce, sans effacement des données ni disparition des réservations déjà confirmées.
 
+### F09 — Avis et notes
+
+**Priorité : P1 — inclus dans le MVP, après le cycle central** (dépend de F03 et de F05 : une réservation doit pouvoir passer à « Prestation terminée »)
+
+**Objectif :** aider le client à choisir un salon et un professionnel grâce aux avis de clients réellement servis, et donner au salon un retour sur la qualité de ses prestations.
+
+Fonctionnalités :
+
+- Après une réservation passée à « Prestation terminée », le client peut laisser un avis : une note de 1 à 5 pour le salon, une note de 1 à 5 pour le professionnel qui a réalisé la prestation, et un commentaire facultatif.
+- Un seul avis par réservation, déposé dans les 14 jours qui suivent la fin de la prestation.
+- Le salon peut publier une réponse publique, une seule par avis.
+- Le salon peut signaler un avis abusif (insultes, données personnelles, contenu sans rapport avec la prestation). Seule l'administration GoMeCoiffer peut masquer un avis signalé ou le rétablir.
+- La marketplace affiche la note moyenne et le nombre d'avis du salon (carte de résultat et fiche) et de chaque professionnel (fiche du salon), ainsi que les derniers avis publiés, et propose un tri « Mieux notés » dans la recherche.
+- Une note moyenne n'est affichée qu'à partir de 3 avis publiés ; en dessous, le nombre d'avis seul est montré.
+- Le back-office montre au salon ses avis, ses notes moyennes et celles de chaque professionnel.
+
+Règles :
+
+- Le salon ne peut ni modifier ni supprimer un avis, ni choisir les avis affichés.
+- Un avis reste rattaché au salon et au professionnel de la réservation notée, même si le professionnel quitte ensuite le salon.
+- Un avis masqué ne compte plus dans les moyennes. Le masquage et le rétablissement sont tracés (auteur, date, motif).
+- L'avis public ne montre aucune donnée personnelle du client au-delà de son prénom et de l'initiale de son nom ; jamais son numéro.
+- Les avis ne sont accessibles qu'à travers des réservations terminées : aucun avis sans rendez-vous réel.
+
+Critères d'acceptation :
+
+- Un client sans prestation terminée dans le salon ne peut pas laisser d'avis.
+- Un même rendez-vous ne donne lieu qu'à un seul avis, et plus aucun après 14 jours.
+- Un salon ne peut pas faire disparaître un avis négatif.
+- Les moyennes affichées n'incluent que les avis publiés, et n'apparaissent qu'à partir de 3 avis.
+- Le tri « Mieux notés » ne place pas devant un salon qui n'a pas encore 3 avis publiés.
+
+À préciser dans les use cases : modification de son avis par le client, délai de réponse du salon, permissions par défaut du module « Avis clients », absence de réservation client sans compte (lien sécurisé).
+
 ---
 
 ## 9. Règles métier de réservation
@@ -689,8 +728,9 @@ Entités principales :
 | RescheduleProposal         | Proposition de nouvel horaire                 |
 | Payment                    | Transaction et état de paiement              |
 | Subscription               | Abonnement de l'établissement                |
+| Review                     | Avis d'une réservation terminée : notes du salon et du professionnel, commentaire, réponse du salon, signalement et état de modération |
 
-Les modifications sensibles de permissions, de réservations et de paiements doivent conserver une trace d'audit.
+Les modifications sensibles de permissions, de réservations et de paiements, ainsi que le masquage ou le rétablissement d'un avis, doivent conserver une trace d'audit.
 
 ---
 
@@ -733,11 +773,11 @@ Aucun microservice, broker Kafka ou RabbitMQ n'est nécessaire pour le MVP.
 ### Marketplace
 
 1. Accueil / Recherche.
-2. Résultats des salons.
-3. Fiche d'un salon.
+2. Résultats des salons (avec note moyenne et tri « Mieux notés »).
+3. Fiche d'un salon (avec notes et derniers avis).
 4. Choix prestation, professionnel et créneau.
 5. Confirmation et paiement.
-6. Mes réservations / Reprogrammation.
+6. Mes réservations / Reprogrammation / Laisser un avis.
 
 ### Back-office salon
 
@@ -747,6 +787,7 @@ Aucun microservice, broker Kafka ou RabbitMQ n'est nécessaire pour le MVP.
 4. Prestations.
 5. Paiements simples.
 6. Paramètres, permissions et abonnement.
+7. Avis clients (consulter, répondre, signaler).
 
 ### Administration plateforme
 
@@ -754,6 +795,7 @@ Aucun microservice, broker Kafka ou RabbitMQ n'est nécessaire pour le MVP.
 2. Gestion des salons et organisations.
 3. Abonnements et transactions.
 4. Gestion des administrateurs.
+5. Avis signalés (modération).
 
 Une seule interface de gestion peut regrouper plusieurs écrans grâce à des onglets, tiroirs et formulaires. Il n'est pas nécessaire de multiplier les pages pour chaque action.
 
@@ -767,7 +809,6 @@ Fonctionnalités explicitement reportées :
 - Campagnes marketing automatisées.
 - Programme de fidélité.
 - Abonnements clients.
-- Avis et notes des salons.
 - Chat interne.
 - Sponsoring payant opérationnel.
 - Commission automatique sans prestataire compatible.
@@ -798,6 +839,7 @@ Les premiers indicateurs doivent mesurer la résolution du problème central.
 | Taux d'absences clients           | Qualité opérationnelle                                  |
 | Taux de reprogrammation réussie  | Efficacité du parcours simplifié                        |
 | Conversion visite → réservation | Utilité de la marketplace                                |
+| Taux d'avis et note moyenne       | Satisfaction des clients et confiance dans la marketplace |
 | Salons actifs chaque semaine      | Adoption du back-office                                   |
 | Renouvellement d'abonnement       | Valeur commerciale du SaaS                                |
 
