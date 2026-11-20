@@ -29,6 +29,12 @@ export class PhoneNumber {
     return `${n[0]} ${n.slice(1, 3)} •• •• ${n.slice(7)}`;
   }
 
+  /** Affichage restreint : seuls le premier et les deux derniers chiffres restent lisibles (6 •• •• •• 33). */
+  maskedToEnds(): string {
+    const n = this.national;
+    return `${n[0]} •• •• •• ${n.slice(7)}`;
+  }
+
   equals(other: PhoneNumber): boolean {
     return this.value === other.value;
   }

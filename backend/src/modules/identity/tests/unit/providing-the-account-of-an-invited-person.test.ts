@@ -89,13 +89,17 @@ describe('Providing the account of a person who accepts an invitation', () => {
     expect(audit.entries).toEqual([]);
   });
 
-  it('returns a staff account unchanged, without asking anything', async () => {
-    const before = users.all().find((u) => u.id === PAUL_ID);
+  it('returns a staff account without asking anything, and dates the phone proof at the instant the number was proven', async () => {
+    const before = users.all().find((u) => u.id === PAUL_ID)!;
 
     const account = await provide(PAUL, null);
 
     expect(account).toEqual({ userId: PAUL_ID, credentialsVersion: 1, created: false });
-    expect(users.all().find((u) => u.id === PAUL_ID)).toEqual(before);
+    expect(users.all().find((u) => u.id === PAUL_ID)).toEqual({
+      ...before,
+      phoneVerifiedAt: PROVEN_AT,
+      version: before.version + 1,
+    });
     expect(audit.entries).toEqual([]);
   });
 

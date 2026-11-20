@@ -46,6 +46,8 @@ export class InviteeAccountProvider implements InviteeAccounts {
     const existing = await this.users.findByPhone(phone);
     if (existing?.isStaffAccount) {
       if (details) throw new AccountStateChangedError();
+      existing.recordPhoneProof(provenAt);
+      await this.users.save(existing);
       return { userId: existing.id, credentialsVersion: existing.credentialsVersion, created: false };
     }
     if (!details) throw new AccountStateChangedError();

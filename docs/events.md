@@ -9,10 +9,16 @@ post-commit via l'outbox, livrés au moins une fois) avec leurs subscribers. Rè
 | Événement | Nature | `type` (intégration) | Émis par (agrégat) | Subscribers (module → handler) | Même transaction justifiée ? |
 |---|---|---|---|---|---|
 | `OrganizationFounded` | domaine | — | `Organization.found` | aucun à ce stade | sans objet |
-| `SalonRegistered` | domaine | — | `Salon.register` | aucun à ce stade (lot 7 : activation, essai) ; UC-008 pourra y brancher la recopie des rôles | sans objet |
+| `SalonRegistered` | domaine | — | `Salon.register` | `organizations` → `WhenSalonRegistered` (`InitializeSalonRolesHandler`, même transaction : recopie les permissions par défaut des 4 rôles, D-038 / UC-008) | oui (jamais de salon sans ses 4 réglages de rôle par défaut, RG-008-05) |
+| `RolePermissionsAdjusted` | domaine | — | `RolePermissions.adjustPermissions` (UC-008) | aucun à ce stade ; identifiants (`salonId`, `adjustedByUserId`), rôle et codes ajoutés/retirés seulement, jamais nom ni numéro | sans objet |
 | `CollaboratorInvited` | domaine | — | `Invitation.issue` | aucun à ce stade ; identifiants et rôle seulement, jamais nom ni numéro | sans objet |
 | `InvitationCancelled` | domaine | — | `Invitation.cancel` | aucun à ce stade | sans objet |
 | `InvitationAccepted` | domaine | — | `Invitation.accept` (UC-007) | aucun à ce stade (UC-008 : équipe et planning) ; identifiants (invitation, salon, compte) et rôle seulement, jamais nom ni numéro | sans objet |
+| `CollaboratorRoleChanged` | domaine | — | `SalonMembership.changeRole` (UC-011) | aucun à ce stade ; identifiants, ancien et nouveau rôle seulement, jamais nom ni numéro (le signal SSE `salon` est publié par le handler après le commit) | sans objet |
+| `CollaboratorRemoved` | domaine | — | `SalonMembership.revoke` (UC-011) | aucun à ce stade ; identifiants et rôle au retrait seulement | sans objet |
+| `CollaboratorReinstated` | domaine | — | `SalonMembership.reinstate` (UC-011, via `AcceptInvitation`) | aucun à ce stade ; identifiants et rôle seulement | sans objet |
+| `SystemRoleGranted` | domaine | — | `PlatformAdmin.grant` (UC-012) | aucun à ce stade ; identifiants, rôle système et instant, jamais nom ni numéro | sans objet |
+| `SystemRoleRevoked` | domaine | — | `PlatformAdmin.revoke` (UC-012) | aucun à ce stade ; sessions et flux SSE du compte fermés par le handler (port, après commit) | sans objet |
 
 Les repositories d'écriture d'`organizations` remettent `pullEvents()` au `DomainEventDispatcher` dans `add` (dans la transaction). Les repositories d'`identity` ne le font pas encore (voir backlog).
 

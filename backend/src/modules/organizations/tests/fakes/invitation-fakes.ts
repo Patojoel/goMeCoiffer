@@ -235,7 +235,15 @@ export class FakeAfterCommit {
   }
 
   async commit() {
-    await Promise.all(this.pending.splice(0).map((callback) => callback()));
+    await Promise.all(
+      this.pending.splice(0).map(async (callback) => {
+        try {
+          await callback();
+        } catch {
+          // Comme AfterCommit.safely() : une panne post-commit est journalisée, jamais propagée.
+        }
+      }),
+    );
   }
 
   asAfterCommit() {

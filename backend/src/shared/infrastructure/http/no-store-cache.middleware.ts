@@ -7,6 +7,10 @@ export function noStorePrivateRoutes(req: Request, res: Response, next: NextFunc
     req.path.startsWith('/api/salon/') ||
     req.path === '/api/admin' ||
     req.path.startsWith('/api/admin/') ||
+    req.path === '/api/client' ||
+    req.path.startsWith('/api/client/') ||
+    req.path === '/api/public/client' ||
+    req.path.startsWith('/api/public/client/') ||
     req.path === '/api/public/invitations' ||
     req.path.startsWith('/api/public/invitations/')
   ) {

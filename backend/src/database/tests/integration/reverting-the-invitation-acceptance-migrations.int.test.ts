@@ -26,6 +26,11 @@ describe('The migrations of the invitation acceptance', () => {
   it('removes the proofs table, then the acceptance column and index, when reverted, and restores them when replayed', async () => {
     expect([await proofsTable(), await acceptedByColumn(), await pendingPhoneIndex()]).toEqual([true, true, true]);
 
+    await db.undoLastMigration(); // plateforme, gestion d'équipe et nom de salon unique d'abord
+    await db.undoLastMigration();
+    await db.undoLastMigration();
+    await db.undoLastMigration(); // puis IdentityHolderSince + OrganizationsSalonRolePermissions
+    await db.undoLastMigration();
     await db.undoLastMigration();
     expect([await proofsTable(), await acceptedByColumn()]).toEqual([false, true]);
     await db.undoLastMigration();

@@ -24,6 +24,7 @@ describe('A signed-in user reads their session summary', () => {
       password: PASSWORD,
       acceptedTerms: true,
     });
+    browser.useCsrfToken(res.body.data.csrfToken as string);
     return res.body.data.userId as string;
   }
 
@@ -58,10 +59,48 @@ describe('A signed-in user reads their session summary', () => {
       user: { id: userId, name: 'Mireille Ndongo' },
       activeSalonId: null,
       salons: [],
+      permissions: [],
       systemRoles: [],
       nextStep: 'CREATE_ORGANIZATION',
     });
     expect(SessionSummarySchema.safeParse(res.body.data).success).toBe(true);
+  });
+
+  it('includes only the permissions of the user role in the active salon, and none without an active salon (T23)', async () => {
+    const ownerBrowser = t.browser();
+    await signUp(ownerBrowser, '6 70 00 00 51', '+237670000051', 'Mireille Ndongo');
+    const created = await ownerBrowser.post('/api/salon/organizations', {
+      name: 'Go Beauty Akwa',
+      type: 'MIXED',
+      city: 'Douala',
+      district: 'Akwa',
+      landmark: 'Face à la pharmacie du Centre',
+      phone: '6 99 88 77 66',
+    });
+    const salonId = created.body.data.salonId as string;
+
+    const awaBrowser = t.browser();
+    const awaId = await signUp(awaBrowser, '6 70 00 00 52', '+237670000052', 'Awa Tchoua');
+    await db.query(
+      `INSERT INTO salon_memberships (id, salon_id, user_id, role, status, granted_at, version)
+       VALUES (gen_random_uuid(), $1, $2, 'HAIRDRESSER', 'ACTIVE', now(), 1)`,
+      [salonId, awaId],
+    );
+
+    const beforeOpen = await awaBrowser.get('/api/salon/session');
+    expect(beforeOpen.status).toBe(200);
+    expect(beforeOpen.body.data.activeSalonId).toBeNull();
+    expect(beforeOpen.body.data.permissions).toEqual([]);
+
+    const opened = await awaBrowser.post('/api/salon/session/active-salon', { salonId });
+    expect(opened.status).toBe(200);
+    awaBrowser.useCsrfToken(opened.body.data.csrfToken);
+
+    const afterOpen = await awaBrowser.get('/api/salon/session');
+    expect(afterOpen.status).toBe(200);
+    expect(afterOpen.body.data.activeSalonId).toBe(salonId);
+    expect(afterOpen.body.data.permissions).toEqual(['bookings:view-own', 'availability:edit-own']);
+    expect(SessionSummarySchema.safeParse(afterOpen.body.data).success).toBe(true);
   });
 
   it('never exposes the phone number nor the e-mail address', async () => {

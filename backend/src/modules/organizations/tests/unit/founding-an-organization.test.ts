@@ -139,6 +139,9 @@ describe('Founding an organization with its first salon', () => {
         role: 'OWNER',
         status: 'ACTIVE',
         grantedAt: NOW,
+        revokedAt: null,
+        revokedByUserId: null,
+        reinstatedAt: null,
         version: 0,
       });
     });

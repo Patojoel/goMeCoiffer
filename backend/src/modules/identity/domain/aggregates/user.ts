@@ -3,6 +3,9 @@ import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { AccountAlreadyRegisteredError } from '../exceptions/account-already-registered.error.js';
 import { NoPasswordToResetError } from '../exceptions/no-password-to-reset.error.js';
 
+export const PHONE_HOLDER_GAP_DAYS = 180;
+const DAY_MS = 86_400_000;
+
 interface UserState {
   id: string;
   phone: string;
@@ -11,6 +14,8 @@ interface UserState {
   /** Empreinte argon2id ; absente pour un compte client léger (D-018). */
   passwordHash: string | null;
   phoneVerifiedAt: Date | null;
+  /** Début de la titularité présumée du numéro : avancé après plus de 180 jours sans preuve (D-053, RG-009-06). */
+  holderSince?: Date | null;
   termsAcceptedAt: Date | null;
   createdAt: Date;
   /** Augmentée à chaque changement d'identifiants : une session ouverte avec une version périmée est refusée (D-031). */
@@ -47,6 +52,7 @@ export class User extends AggregateRoot {
       email: input.email,
       passwordHash: input.passwordHash,
       phoneVerifiedAt: input.now,
+      holderSince: input.now,
       termsAcceptedAt: input.now,
       createdAt: input.now,
       credentialsVersion: 1,
@@ -63,6 +69,24 @@ export class User extends AggregateRoot {
       email: null,
       passwordHash: input.passwordHash,
       phoneVerifiedAt: input.provenAt,
+      holderSince: input.provenAt,
+      termsAcceptedAt: input.now,
+      createdAt: input.now,
+      credentialsVersion: 1,
+      version: 0,
+    });
+  }
+
+  /** Compte client léger créé dès la vérification du numéro par code SMS : ni nom, ni e-mail, ni mot de passe (RG-009-05). */
+  static registerClient(input: { id: string; phone: PhoneNumber; now: Date }): User {
+    return new User({
+      id: input.id,
+      phone: input.phone.value,
+      name: null,
+      email: null,
+      passwordHash: null,
+      phoneVerifiedAt: input.now,
+      holderSince: input.now,
       termsAcceptedAt: input.now,
       createdAt: input.now,
       credentialsVersion: 1,
@@ -71,7 +95,11 @@ export class User extends AggregateRoot {
   }
 
   static restore(state: Readonly<UserState>): User {
-    return new User({ ...state });
+    return new User({
+      ...state,
+      holderSince:
+        state.holderSince === undefined ? (state.phoneVerifiedAt ?? state.createdAt) : state.holderSince,
+    });
   }
 
   get id(): string {
@@ -91,6 +119,27 @@ export class User extends AggregateRoot {
     return this.state.credentialsVersion;
   }
 
+  get holderSince(): Date | null {
+    return this.state.holderSince ?? null;
+  }
+
+  /**
+   * Date la dernière preuve de possession du numéro ; après plus de 180 jours sans preuve, avance `holderSince` à cet
+   * instant pour ne pas exposer l'ancien historique client d'un numéro recyclé (D-053, RG-009-06).
+   */
+  recordPhoneProof(now: Date, gapDays = PHONE_HOLDER_GAP_DAYS): void {
+    const lastProof = this.state.phoneVerifiedAt;
+    if (
+      lastProof === null ||
+      now.getTime() - lastProof.getTime() > gapDays * DAY_MS ||
+      this.state.holderSince === null ||
+      this.state.holderSince === undefined
+    ) {
+      this.state.holderSince = now;
+    }
+    this.state.phoneVerifiedAt = now;
+  }
+
   /** Un compte client léger n'a pas de mot de passe à réinitialiser : aucun code ne lui est envoyé (D-018). */
   get canResetPassword(): boolean {
     return this.state.passwordHash !== null;
@@ -103,7 +152,7 @@ export class User extends AggregateRoot {
   resetPassword(newHash: string, now: Date): void {
     if (!this.canResetPassword) throw new NoPasswordToResetError();
     this.state.passwordHash = newHash;
-    this.state.phoneVerifiedAt = now;
+    this.recordPhoneProof(now);
     this.state.credentialsVersion += 1;
   }
 
@@ -123,7 +172,7 @@ export class User extends AggregateRoot {
     this.state.name = details.name;
     this.state.email = details.email;
     this.state.passwordHash = details.passwordHash;
-    this.state.phoneVerifiedAt = details.now;
+    this.recordPhoneProof(details.now);
     this.state.termsAcceptedAt = details.now;
   }
 
@@ -137,7 +186,7 @@ export class User extends AggregateRoot {
     if (this.isStaffAccount) throw new AccountAlreadyRegisteredError();
     this.state.name = details.name;
     this.state.passwordHash = details.passwordHash;
-    this.state.phoneVerifiedAt = details.provenAt;
+    this.recordPhoneProof(details.provenAt);
     this.state.termsAcceptedAt = details.now;
   }
 

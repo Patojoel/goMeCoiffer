@@ -4,10 +4,14 @@ import { SseRealtimePublisher } from '../../infrastructure/realtime/sse-realtime
 import type { AfterCommit } from '../../application/after-commit.js';
 import {
   openAuthenticatedSession,
+  openClientSession,
   regenerateSessionOnSalon,
 } from '../../infrastructure/security/authenticated-session.js';
 import { RotationSafePgStore } from '../../infrastructure/security/rotation-safe-session-store.js';
-import { UnauthenticatedError } from '../../infrastructure/security/security-errors.js';
+import {
+  StaffSignInRequiredError,
+  UnauthenticatedError,
+} from '../../infrastructure/security/security-errors.js';
 
 /** Requête fabriquée à la main : `regenerate` vide la session, `save` ne fait rien ; le magasin dit si la ligne existait. */
 const requestWith = (stillStored: boolean, data: Record<string, unknown> = {}) => {
@@ -52,6 +56,23 @@ describe('Rotating the session of a signed-in user', () => {
     expect(rotated.session.freshlyIssued).toBeUndefined();
     expect(signedIn.session.freshlyIssued).toBeUndefined();
     expect(signedIn.session.userId).toBe('u1');
+    expect(signedIn.session.kind).toBe('STAFF');
+  });
+
+  it('opens a client session with kind CLIENT, no active salon, and refuses to rotate a client session onto a salon', async () => {
+    const req = requestWith(true);
+
+    await openClientSession(req, { userId: 'u-client', credentialsVersion: 1 }, new Date(1000), 168);
+
+    expect(req.session).toMatchObject({
+      kind: 'CLIENT',
+      userId: 'u-client',
+      credentialsVersion: 1,
+      authenticatedAt: 1000,
+      lastActivityAt: 1000,
+      activeSalonId: null,
+    });
+    await expect(regenerateSessionOnSalon(req, 'salon-1')).rejects.toThrow(StaffSignInRequiredError);
   });
 });
 

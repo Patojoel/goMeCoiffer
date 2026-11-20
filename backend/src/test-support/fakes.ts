@@ -23,10 +23,20 @@ export class SequentialIdGenerator implements IdGenerator {
 
 /** Droits fixés par le test : `rights[userId][salonId]` = permissions, `systemRoles[userId]` = rôles système. */
 export class GrantedRights implements ActorRights {
+  private readonly credentialsVersions: Record<string, number | null> = {};
+
   constructor(
     private readonly rights: Record<string, Record<string, readonly string[]>> = {},
     private readonly systemRoles: Record<string, readonly string[]> = {},
   ) {}
+
+  setCredentialsVersion(userId: string, version: number): void {
+    this.credentialsVersions[userId] = version;
+  }
+
+  forgetAccount(userId: string): void {
+    this.credentialsVersions[userId] = null;
+  }
 
   async resolve(userId: string, activeSalonId: string | null) {
     const inSalon = activeSalonId ? this.rights[userId]?.[activeSalonId] : undefined;
@@ -34,7 +44,7 @@ export class GrantedRights implements ActorRights {
       isMember: inSalon !== undefined,
       permissions: inSalon ?? [],
       systemRoles: this.systemRoles[userId] ?? [],
-      credentialsVersion: 1,
+      credentialsVersion: userId in this.credentialsVersions ? this.credentialsVersions[userId]! : 1,
     };
   }
 }

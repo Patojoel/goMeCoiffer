@@ -71,6 +71,11 @@ export const EnvSchema = z
     /** Sessions portant un rôle système : plus courtes (D-026). */
     SYSTEM_SESSION_TTL_HOURS: int.positive().default(2),
     SYSTEM_SESSION_MAX_AGE_HOURS: int.positive().default(12),
+    /** Session client ouverte par code SMS : 7 jours sans activité, 30 jours au plus (D-054, RG-009-11). */
+    CLIENT_SESSION_TTL_HOURS: int.positive().default(168),
+    CLIENT_SESSION_MAX_AGE_HOURS: int.positive().default(720),
+    /** Délai sans preuve du numéro au-delà duquel un numéro est présumé recyclé (D-053, RG-009-06). */
+    PHONE_HOLDER_GAP_DAYS: int.positive().default(180),
     COOKIE_SECURE: bool.default(false),
     CSRF_SECRET: secret(32),
 

@@ -7,6 +7,7 @@ import {
   CsrfInvalidError,
   ForbiddenError,
   RequestValidationError,
+  StaffSignInRequiredError,
   UnauthenticatedError,
 } from '../security/security-errors.js';
 
@@ -40,7 +41,11 @@ export class DomainExceptionFilter implements ExceptionFilter {
     if (error instanceof RequestValidationError)
       return [400, { status: 'ERROR', code: error.code, message: error.message, errors: error.errors }];
     if (error instanceof UnauthenticatedError) return fail(401, error.code, error.message);
-    if (error instanceof ForbiddenError || error instanceof CsrfInvalidError)
+    if (
+      error instanceof ForbiddenError ||
+      error instanceof CsrfInvalidError ||
+      error instanceof StaffSignInRequiredError
+    )
       return fail(403, error.code, error.message);
     if (error instanceof NotFoundError) return fail(404, 'NOT_FOUND', 'Ressource introuvable.');
     if (error instanceof ConflictError) return fail(409, error.code, error.message);

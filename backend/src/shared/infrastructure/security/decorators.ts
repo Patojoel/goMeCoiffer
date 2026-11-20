@@ -24,6 +24,10 @@ export const AUTHENTICATED_ONLY = 'gmc:authenticated-only';
 /** Déclare qu'une route de /api/salon/* n'exige qu'une session (ex. flux SSE) : sans marqueur, l'API refuse de démarrer. */
 export const AuthenticatedOnly = () => SetMetadata(AUTHENTICATED_ONLY, true);
 
+export const CLIENT_AREA = 'gmc:client-area';
+/** Espace client (/api/client/*, D-055) : accessible avec une session client (code SMS) ou une session du personnel. */
+export const ClientArea = () => SetMetadata(CLIENT_AREA, true);
+
 export type ActorRequest = Request & { actor?: Actor };
 
 export const CurrentActor = createParamDecorator((_: unknown, ctx: ExecutionContext): Actor => {

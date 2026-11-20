@@ -42,6 +42,7 @@ export class ConfirmSignUpHandler implements ICommandHandler<ConfirmSignUp> {
     const phone = PhoneNumber.parse(cmd.phone);
     // Mot de passe vérifié avant le code : un refus ici ne consomme ni essai ni code (E8).
     const password = NewPassword.create(cmd.password, phone, this.commonPasswords);
+    await this.challenges.lockSendingFor(phone);
     const now = this.clock.now();
 
     const challenge = await this.challenges.findActive(phone, OtpPurpose.SIGN_UP);

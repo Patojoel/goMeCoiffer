@@ -19,6 +19,67 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-20 — UC-010 Ajouter un salon, UC-011 Gérer l'équipe, UC-012 Rôles système (backend)
+
+- **Quoi** :
+  - **UC-010** : le propriétaire réel de l'organisation ajoute un salon (nom unique dans l'organisation,
+    appartenance « Propriétaire » créée sur le nouveau salon, rôles initialisés, salon ouvert dans une session
+    régénérée) ; 20 ajouts par heure et par compte.
+  - **UC-011** : liste de l'équipe du salon actif (sans téléphone), changement de rôle et retrait d'un collaborateur
+    (propriétaire intouchable, pas d'auto-gestion, jamais plus de droits que soi, verrou optimiste), effet immédiat
+    (droits relus, flux en direct du membre retiré fermés sur ce salon) ; réintégration seulement par une nouvelle
+    invitation acceptée, qui réactive la même appartenance.
+  - **UC-012** : nouveau module `platform` : un Super Administrateur attribue et retire les rôles système
+    (`/api/admin/platform-roles`), jamais à lui-même, jamais le dernier Super Administrateur, jamais à un compte
+    client ; retrait = sessions fermées et version des identifiants incrémentée ; liste des administrateurs avec
+    numéro masqué (`6 •• •• •• 33`) ; CLI `platform:bootstrap-super-admin` pour le premier Super Administrateur
+    (refusée s'il en existe un, sauf `--recovery`, opérateur système tracé dans l'audit).
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-010, UC-011, UC-012 (lot 1), décisions du user D-056 à D-058.
+- **Périmètre** : `organizations` (commandes `AddSalonToOrganization`, `ChangeCollaboratorRole`,
+  `RemoveCollaborator`, query `ListSalonTeam`, `TeamManagementPolicy`, événements `CollaboratorRoleChanged`,
+  `CollaboratorRemoved`, `CollaboratorReinstated`) ; `platform` (commandes `BootstrapSuperAdmin`,
+  `GrantSystemRole`, `RevokeSystemRole`, query `ListPlatformAdmins`, événements `SystemRoleGranted`,
+  `SystemRoleRevoked`) ; `identity` (ports `STAFF_ACCOUNT_LOOKUP`, `USER_SESSIONS_REVOKER`) ; socle
+  (`RealtimePublisher.closeUserStreamsInSalon`, fermetures de flux mémorisées 5 s, `PhoneNumber.maskedToEnds`) ;
+  migrations `OrganizationsSalonUniqueName`, `OrganizationsTeamManagement`, `PlatformAdminRoles` ; seed `platform` ;
+  contrat `platform.ts`.
+- **Vérification** : mode light. Code commencé par trois agents externes (Gemini) arrêtés avant la fin, puis intégré
+  par `backend-builder` (7 corrections : 6 tests en retard sur le code, CLI et seed non branchés) ; `query-perf`
+  (rapports d'index de `ListSalonTeam` et `ListPlatformAdmins` : aucun index à ajouter) ; `security-reviewer`
+  (0 critique, 1 important et 5 durcissements corrigés, 1 reporté au lot 4).
+  - Suite complète (`pnpm test`, couvre aussi D-055, UC-008 et UC-009) : backend 98 fichiers, 1 046 tests verts et
+    2 `todo` ; 1 fichier E2E interrompu par le plantage connu du worker Windows (aucune assertion rouge), relancé
+    seul : 20 verts ; frontend 8 fichiers, 36 verts. `lint` 0 erreur (3 avertissements anciens), `typecheck` vert,
+    `arch` 0 violation.
+- **Suites** (`docs/BACKLOG.md`, section « Salons, équipe et rôles système ») : écrans front ; signaux du flux salon
+  après une rétrogradation (avant le lot 4) ; mutation ; nettoyage des marques `@apres-UC-0xx`.
+
+---
+
+### 2026-11-20 — Séparation des espaces client/salon (D-055), UC-008 Permissions des rôles et UC-009 Espace client léger (backend)
+
+- **Quoi** :
+  - **Point d'ordre (D-055)** : séparation stricte entre l'espace client `/api/client/*` (`@ClientArea()`) et les espaces `/api/salon/*` et `/api/admin/*`. La session porte désormais un type `STAFF | CLIENT` ; une session `CLIENT` est refusée (403 `STAFF_SIGN_IN_REQUIRED`) partout hors `/api/client/*` (`@AuthenticatedOnly()` et SSE compris), tandis qu'une session `STAFF` accède aussi à `/api/client/*` sans code.
+  - **UC-008** : le propriétaire consulte (`GET /api/salon/roles`) et ajuste (`PUT /api/salon/roles/:role/permissions`) les 16 permissions ajustables des 4 rôles de collaborateur de son salon actif, avec recopie des valeurs par défaut à l'enregistrement du salon (`SalonRegistered`), vérification des 7 dépendances action → consultation, verrou optimiste par rôle, audit `ROLE_PERMISSIONS_ADJUSTED` sans PII, signal SSE `salon.role_permissions_changed` post-commit, et source unique des permissions (`SqlActorRights`, `SqlSalonRolePermissions` pour `RoleGrantPolicy` à l'invitation, et `GetMySession`).
+  - **UC-009** : un client prouve son numéro par code SMS (`POST /api/public/client/code`, `POST /api/public/client/session`, motif `CLIENT_LOGIN`, non-énumération) ; un compte client léger (sans nom, e-mail ni mot de passe) est créé ou le compte existant est retrouvé intact ; la session `CLIENT` dure 7 j sans activité / 30 j absolus, remplace toute session ouverte sur le navigateur (en fermant ses flux SSE) et respecte la version des identifiants ; le résumé `GET /api/client/session` n'expose que `{ kind, maskedPhone }` ; la titularité `holder_since` (180 jours, D-053) protège contre les numéros recyclés.
+  - Le frontend n'est pas fait.
+- **Pourquoi** : UC-008 et UC-009 (lot 1), décisions du user D-050 à D-055.
+- **Périmètre** :
+  - **Socle (`shared`)** : `@ClientArea()`, `StaffSignInRequiredError` (403 `STAFF_SIGN_IN_REQUIRED`), `SessionData.kind`, `openClientSession`, durées `CLIENT_SESSION_TTL_HOURS` / `CLIENT_SESSION_MAX_AGE_HOURS`, `PHONE_HOLDER_GAP_DAYS`, `RouteProtectionCheck`, `noStorePrivateRoutes` étendu à `/api/client/*` et `/api/public/client/*`, redaction Pino `'*.code'`.
+  - **Module `organizations` (UC-008)** : agrégat `RolePermissions`, VO `RolePermissionSet`, `permissionsOfMember`, `RoleGrantPolicy` dynamique fail-closed, commandes `AdjustRolePermissions` et `InitializeSalonRoles` (abonné `WhenSalonRegistered`), query `GetSalonRoles`, contrôleur `SalonRolesController` (D-034), `SqlSalonRolePermissions`, `SqlActorRights` mis à jour, événement `RolePermissionsAdjusted`.
+  - **Module `identity` (UC-009 + `GetMySession`)** : `User.registerClient`, `User.recordPhoneProof`, commandes `RequestClientCode` et `VerifyClientCode`, queries `GetMyClientSession` et `GetMySession` (+ `permissions` du salon actif), `ClientAccessController`, `ClientSessionController`, `ClientSessionResponder`.
+  - **Base & seed** : migrations `1795300000000-OrganizationsSalonRolePermissions.ts` et `1795300100000-IdentityHolderSince.ts` ; seed démo enrichi (réglages par défaut + Administrateur d'Akwa avec `finances:view`, 1 membre par rôle dans Akwa, compte client léger de démo).
+  - **Contrats (`packages/contracts`)** : `AdjustableSalonRoleSchema`, `AdjustablePermissionSchema`, `AdjustRolePermissionsSchema`, `RolePermissionsAdjustedSchema`, `SalonRolesSchema`, `DEFAULT_ROLE_PERMISSIONS`, `SessionSummarySchema.permissions`, `RequestClientCodeSchema`, `VerifyClientCodeSchema`, `ClientSessionSummarySchema`, `ClientSignedInSchema`.
+- **Vérification** : mode `light` ; agents `backend-builder` en parallèle (UC-008 et UC-009 après le point d'ordre D-055), revues `security-reviewer` sur UC-008 (0 critique, 2 à corriger + 2 durcissements appliqués) et UC-009/D-055 (0 critique, 2 à corriger + 2 durcissements appliqués).
+  - Unitaires backend : 42 fichiers, **554 passed | 2 todo** ; frontend : 8 fichiers, **36 passed**.
+  - Intégration backend : 19 fichiers, **117 passed**.
+  - E2E (D-055, UC-008, UC-009 et parcours liés) : 8 fichiers, **113 passed** (`adjusting-salon-role-permissions.e2e.test.ts` relancé isolément après crash natif Windows `0xC0000409` : 10/10 verts).
+  - Qualité : `pnpm lint` (0 erreur, 3 warnings préexistants), `pnpm typecheck` vert (`contracts`, `backend`, `frontend`), `pnpm arch` (0 violation sur 517 modules).
+- **Suites** (`docs/BACKLOG.md`) : écrans front UC-008 et UC-009 (lot 4) ; arbitrage D-053 sur `SignInHandler.recordPhoneProof` ; durcissements `ProveInvitationPhoneHandler` et plafond global SMS ; mutation testing Stryker (T29 / T26) et rejeu `@apres-UC-009` (T25).
+
+---
+
 ### 2026-11-20 — UC-007 Accepter une invitation (backend)
 
 - **Quoi** : la personne invitée rejoint l'équipe d'un salon depuis une page publique : elle demande un code SMS

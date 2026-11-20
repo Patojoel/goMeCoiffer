@@ -29,10 +29,11 @@ describe('Seeding the demo data', () => {
   it('can be replayed without duplicating anything', async () => {
     await seed();
 
-    expect(await countOf('users')).toBe(4);
+    expect(await countOf('users')).toBe(8);
     expect(await countOf('organizations')).toBe(2);
     expect(await countOf('salons')).toBe(3);
-    expect(await countOf('salon_memberships')).toBe(5);
+    expect(await countOf('salon_memberships')).toBe(9);
+    expect(await countOf('salon_role_permissions')).toBe(12);
     expect(await countOf('salon_invitations')).toBe(3);
   });
 

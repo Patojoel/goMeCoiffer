@@ -18,12 +18,13 @@ export const toAcceptInvitation = (
     invitationId,
     proofToken: readPhoneProofToken(req, config),
     details: body.details,
-    session: req.session?.userId
-      ? {
-          userId: req.session.userId,
-          credentialsVersion: req.session.credentialsVersion ?? null,
-          authenticatedAt: req.session.authenticatedAt ?? null,
-        }
-      : null,
+    session:
+      req.session?.userId && (req.session.kind ?? 'STAFF') === 'STAFF'
+        ? {
+            userId: req.session.userId,
+            credentialsVersion: req.session.credentialsVersion ?? null,
+            authenticatedAt: req.session.authenticatedAt ?? null,
+          }
+        : null,
     sessionMaxAgeHours: config.SESSION_MAX_AGE_HOURS,
   });

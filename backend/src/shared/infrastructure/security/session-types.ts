@@ -2,6 +2,8 @@ import 'express-session';
 
 declare module 'express-session' {
   interface SessionData {
+    /** Type de session (D-054, D-055) : `CLIENT` (code SMS, limitée à `/api/client/*`) ou `STAFF` (défaut). */
+    kind?: 'STAFF' | 'CLIENT';
     userId?: string;
     activeSalonId?: string | null;
     /** Version des identifiants du compte à l'ouverture de la session ; absente = version initiale (1). */

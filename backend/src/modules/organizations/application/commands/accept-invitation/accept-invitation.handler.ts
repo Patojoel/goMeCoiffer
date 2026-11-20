@@ -67,15 +67,30 @@ export class AcceptInvitationHandler implements ICommandHandler<AcceptInvitation
     const account = await this.accounts.provide({ proven: proof, details: cmd.details, now });
     invitation.accept(account.userId, now);
     await this.invitations.save(invitation);
-    await this.memberships.add(
-      SalonMembership.grantCollaboratorRole({
-        id: this.ids.next(),
+    const existing = (await this.memberships.findBySalonAndUser?.(invitation.salonId, account.userId)) ?? null;
+    if (existing) {
+      existing.reinstate({ role: invitation.role, now });
+      await this.memberships.save?.(existing);
+      await this.audit.record({
+        action: 'COLLABORATOR_REINSTATED',
+        subjectType: 'salon_membership',
+        subjectId: existing.id,
+        actorUserId: account.userId,
         salonId: invitation.salonId,
-        userId: account.userId,
-        role: invitation.role,
-        now,
-      }),
-    );
+        occurredAt: now,
+        details: { userId: account.userId, role: invitation.role, invitationId: invitation.id },
+      });
+    } else {
+      await this.memberships.add(
+        SalonMembership.grantCollaboratorRole({
+          id: this.ids.next(),
+          salonId: invitation.salonId,
+          userId: account.userId,
+          role: invitation.role,
+          now,
+        }),
+      );
+    }
     await this.audit.record({
       action: 'INVITATION_ACCEPTED',
       subjectType: 'salon_invitation',

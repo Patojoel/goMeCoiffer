@@ -292,6 +292,7 @@ export class InMemoryRealtime {
   closeStreamsOfUser(userId: string) {
     this.closedUsers.push(userId);
   }
+  closeUserStreamsInSalon() {}
 }
 
 /** Le « commit » est déclenché par le test : `commit()` exécute les actions enregistrées, comme le bus après le commit. */
@@ -321,7 +322,8 @@ export class InMemoryPhoneProofRepository implements PhoneProofRepository {
 
   async add(proof: PhoneProof) {
     const row = proof.snapshot();
-    if ([...this.rows.values()].some((r) => r.tokenHash === row.tokenHash)) throw new Error('token_hash déjà pris');
+    if ([...this.rows.values()].some((r) => r.tokenHash === row.tokenHash))
+      throw new Error('token_hash déjà pris');
     this.rows.set(row.id, row);
   }
 

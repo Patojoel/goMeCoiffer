@@ -14,6 +14,16 @@ export class ForbiddenError extends DomainError {
   }
 }
 
+/** Session client (ouverte par code SMS) sur un espace réservé aux salons ou à l'administration (D-054, D-055, RG-009-08). */
+export class StaffSignInRequiredError extends DomainError {
+  readonly code = 'STAFF_SIGN_IN_REQUIRED';
+  constructor() {
+    super(
+      'Cet espace est réservé aux salons. Connectez-vous avec votre mot de passe, ou créez votre compte salon.',
+    );
+  }
+}
+
 export class CsrfInvalidError extends DomainError {
   readonly code = 'CSRF_INVALID';
   constructor() {
