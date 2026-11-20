@@ -34,11 +34,8 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Textes des conditions d'utilisation et de la politique de confidentialité** à rédiger (acceptation obligatoire
   à l'inscription, D-022) ; d'ici là, l'écran pointe vers des pages provisoires. À fournir avant la production.
 - **Stockage des photos de salon** en prod (disque du serveur ou stockage objet).
-- **Numéros recyclés par les opérateurs (avant UC-009)** — revue sécurité UC-001 (C3), 18/11 : MTN et Orange
-  réattribuent les numéros inactifs ; le nouveau titulaire qui vérifie le numéro par SMS hériterait de l'historique
-  client de l'ancien (salons, dates, prestations), et l'inscription (RG-001-10) le figerait sous son mot de passe.
-  Options : détacher l'historique si le numéro n'a pas été vérifié depuis N mois, ou ne montrer que les
-  réservations postérieures à la dernière vérification. À trancher avant d'ouvrir les comptes clients légers.
+- ~~Numéros recyclés par les opérateurs~~ : **tranché le 20/11 par D-053** (« titulaire depuis », 180 jours),
+  appliqué par UC-009 (RG-009-06) et filtré par « Mes réservations » au lot 4.
 
 ## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
 
@@ -176,6 +173,21 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
   adaptateurs SMS existent (`identity`, `organizations`) : extraire l'envoi dans `shared` au 3e utilisateur (UC-009).
 - Nom de salon : liste blanche de caractères (pas de liens, `@`, suites de chiffres) à décider avant la publication
   sur la marketplace (lot 3) ; le SMS d'invitation, lui, ne le contient plus (D-046).
+
+## Use cases du lot 1 à rédiger ou aligner (20/11)
+
+- **À rédiger** (`use-case-writer`) : UC-010 « Ajouter un salon à son organisation » (D-041), UC-011 « Gérer
+  l'équipe du salon » (changement de rôle, retrait, réintégration par nouvelle invitation qui réactive la même
+  appartenance, fermeture des flux SSE ; reprend les `@apres-UC-008` sur le retrait), UC-012 « Attribuer et retirer
+  un rôle système » (module `platform` ; recommandation : le dernier Super Administrateur ne peut pas être retiré).
+  Recommandations provisoires dans UC-008 §18.
+- **UC-004 E6 / T26 à aligner sur D-054** : le compte client léger qui veut créer une organisation est refusé par la
+  protection d'espace (403 « Cet espace est réservé aux salons… ») avant le domaine ; le refus
+  `OWNER_ACCOUNT_REQUIRED` (422) reste en défense.
+- **UC-007 / RG-009-06** : l'acceptation d'une invitation par un compte existant doit aussi enregistrer la date de
+  preuve du numéro (`User.recordPhoneProof`), comme tout parcours qui prouve le numéro (`SignIn` compris).
+- **Ordre d'implémentation conseillé** : la protection d'espace (`/api/client/*`, type de session, D-055) avant la
+  première session client de UC-009.
 
 ## Revue d'architecture du 19/11 : suggestions 🟠 non traitées
 
