@@ -54,7 +54,7 @@ export class AuthController {
   @Post('sign-out')
   @HttpCode(200)
   async signOut(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<SignedOut> {
-    await this.commands.execute(toSignOut(req));
+    await this.commands.execute(toSignOut(req, this.config));
     return this.responder.signedOut(req, res);
   }
 }

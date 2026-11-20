@@ -9,23 +9,48 @@ import { RoleGrantPolicy } from '../../domain/services/role-grant-policy.js';
 import { AKWA_ID, anInvitation, BASTOS_ID, DAY_MS, NOW } from '../builders/invitation-builders.js';
 import { MIREILLE_ID } from '../builders/organization-builders.js';
 import { InMemoryInvitationRepository } from '../fakes/invitation-fakes.js';
-import { InMemoryAuditTrail } from '../fakes/organization-fakes.js';
+import {
+  InMemoryAuditTrail,
+  InMemorySalonRolePermissions,
+} from '../fakes/organization-fakes.js';
 
 const INVITATION_ID = '0195f000-0000-7000-8000-00000000d001';
+const OWNER_PERMISSIONS = [
+  'dashboard:view',
+  'bookings:view-own',
+  'bookings:view-all',
+  'bookings:manage',
+  'availability:edit-own',
+  'availability:manage-team',
+  'services:view',
+  'services:manage',
+  'staff:view',
+  'staff:invite',
+  'staff:manage',
+  'finances:view',
+  'finances:record-payment',
+  'finances:export',
+  'salon-settings:view',
+  'salon-settings:edit',
+  'roles:administer',
+];
 
 describe('Cancelling an invitation', () => {
   let invitations: InMemoryInvitationRepository;
+  let rolePermissions: InMemorySalonRolePermissions;
   let audit: InMemoryAuditTrail;
   let clock: FixedClock;
   let handler: CancelInvitationHandler;
 
   beforeEach(() => {
     invitations = new InMemoryInvitationRepository();
+    rolePermissions = new InMemorySalonRolePermissions().withDefaultsForSalon(AKWA_ID);
     audit = new InMemoryAuditTrail();
     clock = new FixedClock(new Date(NOW.getTime() + DAY_MS));
     handler = new CancelInvitationHandler(
       invitations,
-      new RoleGrantPolicy((role) => (role === 'FINANCE_MANAGER' ? ['finances:view'] : [])),
+      rolePermissions,
+      new RoleGrantPolicy(),
       audit,
       clock,
     );
@@ -36,7 +61,7 @@ describe('Cancelling an invitation', () => {
       new CancelInvitation(
         over.salonId ?? AKWA_ID,
         MIREILLE_ID,
-        over.permissions ?? ['staff:invite', 'finances:view'],
+        over.permissions ?? OWNER_PERMISSIONS,
         over.id ?? INVITATION_ID,
       ),
     );

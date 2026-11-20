@@ -13,17 +13,29 @@ export const DEMO_USERS = [
   { id: '0195f000-0000-7000-8000-000000000a04', phone: '+237670112233', name: 'Awa Tchoua' },
 ] as const;
 
-/** Comptes du personnel de démo, numéro vérifié ; clé d'idempotence : le numéro. */
+/** Compte client léger de démonstration (UC-009) : sans nom ni mot de passe, accès par code SMS. */
+export const DEMO_LIGHT_CLIENT = {
+  id: '0195f000-0000-7000-8000-000000000a05',
+  phone: '+237691234567',
+} as const;
+
+/** Comptes du personnel et client léger de démo, numéro vérifié ; clé d'idempotence : le numéro. */
 export const identitySeeder: Seeder = {
   name: 'identity',
   async run(dataSource: DataSource) {
     const passwordHash = await hash(DEMO_PASSWORD, ARGON2_OPTIONS);
     for (const user of DEMO_USERS)
       await dataSource.query(
-        `INSERT INTO users (id, phone, name, password_hash, phone_verified_at, terms_accepted_at, created_at, version)
-         VALUES ($1, $2, $3, $4, now(), now(), now(), 1)
+        `INSERT INTO users (id, phone, name, password_hash, phone_verified_at, holder_since, terms_accepted_at, created_at, version)
+         VALUES ($1, $2, $3, $4, now(), now(), now(), now(), 1)
          ON CONFLICT (phone) DO NOTHING`,
         [user.id, user.phone, user.name, passwordHash],
       );
+    await dataSource.query(
+      `INSERT INTO users (id, phone, name, password_hash, phone_verified_at, holder_since, terms_accepted_at, created_at, version)
+       VALUES ($1, $2, NULL, NULL, now(), now(), now(), now(), 1)
+       ON CONFLICT (phone) DO NOTHING`,
+      [DEMO_LIGHT_CLIENT.id, DEMO_LIGHT_CLIENT.phone],
+    );
   },
 };

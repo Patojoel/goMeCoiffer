@@ -6,6 +6,7 @@ import { ACTOR_RIGHTS, type Actor } from '../../application/ports.js';
 import { BusinessRuleViolation, NotFoundError } from '../../domain/errors.js';
 import {
   AuthenticatedOnly,
+  ClientArea,
   CurrentActor,
   Public,
   RequiresPermission,
@@ -34,6 +35,7 @@ const SignInSchema = z
     userId: z.uuid(),
     activeSalonId: z.uuid().nullable(),
     authenticatedAt: z.iso.datetime().optional(),
+    kind: z.enum(['STAFF', 'CLIENT']).optional(),
   })
   .strict();
 const ServiceSchema = z
@@ -46,6 +48,7 @@ const ServiceSchema = z
 class PublicProbeController {
   @Post('sign-in')
   signIn(@Body({ schema: SignInSchema }) body: z.infer<typeof SignInSchema>, @Req() req: Request) {
+    req.session.kind = body.kind ?? 'STAFF';
     req.session.userId = body.userId;
     req.session.activeSalonId = body.activeSalonId;
     req.session.authenticatedAt = body.authenticatedAt ? Date.parse(body.authenticatedAt) : Date.now();
@@ -97,6 +100,15 @@ class AdminProbeController {
   }
 }
 
+@Controller('client/probe')
+class ClientProbeController {
+  @Get('bookings')
+  @ClientArea()
+  bookings(@CurrentActor() actor: Actor) {
+    return { userId: actor.userId };
+  }
+}
+
 describe('HTTP conventions of the API', () => {
   let t: TestApp;
 
@@ -109,16 +121,33 @@ describe('HTTP conventions of the API', () => {
       { [PLATFORM_ADMIN]: ['SUPER_ADMIN'] },
     );
     t = await startTestApp({
-      controllers: [PublicProbeController, SalonProbeController, AdminProbeController],
+      controllers: [
+        PublicProbeController,
+        SalonProbeController,
+        AdminProbeController,
+        ClientProbeController,
+      ],
       overrides: [[ACTOR_RIGHTS, rights]],
     });
   });
   afterAll(() => t.close());
 
-  const signedIn = async (userId: string, activeSalonId: string | null, authenticatedAt?: string) => {
+  const signedIn = async (
+    userId: string,
+    activeSalonId: string | null,
+    authenticatedAt?: string,
+    kind: 'STAFF' | 'CLIENT' = 'STAFF',
+  ) => {
     const browser = t.browser();
     expect(
-      (await browser.post('/api/public/probe/sign-in', { userId, activeSalonId, authenticatedAt })).status,
+      (
+        await browser.post('/api/public/probe/sign-in', {
+          userId,
+          activeSalonId,
+          authenticatedAt,
+          kind,
+        })
+      ).status,
     ).toBe(201);
     return browser;
   };
@@ -224,7 +253,56 @@ describe('HTTP conventions of the API', () => {
     expect((await browser.get('/api/salon/probe/bookings')).status).toBe(401);
     expect((await browser.get('/api/salon/probe/whoami')).status).toBe(401);
   });
+
+  it('lets a CLIENT session access /api/client/* (with Cache-Control: no-store) and refuses /api/salon/* and /api/admin/* with 403 STAFF_SIGN_IN_REQUIRED', async () => {
+    const browser = await signedIn(MANAGER, null, undefined, 'CLIENT');
+
+    const clientRes = await browser.get('/api/client/probe/bookings');
+    expect(clientRes.status).toBe(200);
+    expect(clientRes.headers['cache-control']).toBe('no-store');
+    expect(clientRes.body.data).toEqual({ userId: MANAGER });
+
+    for (const path of [
+      '/api/salon/probe/whoami',
+      '/api/salon/probe/bookings',
+      '/api/admin/probe/platform',
+    ]) {
+      const res = await browser.get(path);
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({
+        status: 'ERROR',
+        code: 'STAFF_SIGN_IN_REQUIRED',
+        message:
+          'Cet espace est réservé aux salons. Connectez-vous avec votre mot de passe, ou créez votre compte salon.',
+      });
+    }
+  });
+
+  it('lets a STAFF session access /api/client/* without requiring an SMS code (RG-009-09)', async () => {
+    const browser = await signedIn(MANAGER, SALON_AKWA, undefined, 'STAFF');
+
+    const res = await browser.get('/api/client/probe/bookings');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ userId: MANAGER });
+  });
 });
+
+@Controller('client/leaky')
+class ClientRouteWithoutDecorator {
+  @Get()
+  list() {
+    return [];
+  }
+}
+
+@Controller('salon/client-decorator-outside-client')
+class ClientDecoratorOutsideClientSpace {
+  @Get()
+  @ClientArea()
+  list() {
+    return [];
+  }
+}
 
 @Controller('admin/leaky')
 class AdminRouteWithoutRole {
@@ -265,6 +343,12 @@ describe('Routes declared with a missing protection', () => {
   it.each([
     ['an administration route without system role', AdminRouteWithoutRole, /admin\/leaky/],
     ['a salon route without permission', SalonRouteWithoutPermission, /salon\/leaky/],
+    ['a client route without @ClientArea()', ClientRouteWithoutDecorator, /client\/leaky/],
+    [
+      '@ClientArea() used outside /api/client',
+      ClientDecoratorOutsideClientSpace,
+      /salon\/client-decorator-outside-client/,
+    ],
     ['a public route outside /api/public', PublicRouteOutsidePublicSpace, /bookings/],
     ['a write without CSRF outside /api/webhooks', CsrfSkippedOutsideWebhooks, /public\/leaky/],
   ])('prevent the API from starting: %s', async (_why, controller, route) => {

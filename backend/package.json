@@ -17,7 +17,8 @@
     "migration:show": "nest build && node dist/database/cli.js show",
     "migration:create": "node scripts/migration-create.mjs",
     "migration:generate": "nest build && typeorm migration:generate -d dist/database/data-source.js",
-    "db:seed": "nest build && node dist/database/seed/run-seed.js"
+    "db:seed": "nest build && node dist/database/seed/run-seed.js",
+    "platform:bootstrap-super-admin": "nest build && node dist/modules/platform/infrastructure/cli/bootstrap-super-admin.cli.js"
   },
   "dependencies": {
     "@gomecoiffer/contracts": "workspace:*",

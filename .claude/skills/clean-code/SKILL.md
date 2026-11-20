@@ -29,7 +29,7 @@ smell.** Ceux qui collent au code : **Factory statique** (`Booking.reserveAtSalo
 
 ## Garde-fous anti-overengineering (le cœur)
 
-- **YAGNI / KISS** — code le besoin d'aujourd'hui (le PRD liste ce qui est **hors MVP** : avis, fidélité, chat, commissions automatiques, multi-intervenants… ne rien préparer pour eux).
+- **YAGNI / KISS** — code le besoin d'aujourd'hui (le PRD liste ce qui est **hors MVP** (§14) : fidélité, chat, commissions automatiques, multi-intervenants… ne rien préparer pour eux).
 - **Règle de trois** — pas d'abstraction avant la **3e** occurrence réelle ; deux cas similaires ≠ abstraction.
 - **Test décisif** — avant d'abstraire : peux-tu nommer le **2e usage concret et présent** ? Non → inline.
 - **Interfaces** — un **port** (repository, passerelle externe, horloge) garde une interface même à une seule implémentation (couture hexagonale, le fake de test est la 2e) ; une classe interne, NON.

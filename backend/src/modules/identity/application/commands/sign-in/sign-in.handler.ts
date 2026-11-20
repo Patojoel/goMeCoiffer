@@ -89,10 +89,11 @@ export class SignInHandler implements ICommandHandler<SignIn> {
     fromKnownDevice: boolean,
     now: Date,
   ): Promise<SignInResponse> {
+    user.recordPhoneProof(now);
     if (this.passwords.needsRehash(passwordHash)) {
       user.upgradePasswordHash(await this.passwords.rehash(cmd.password));
-      await this.users.save(user);
     }
+    await this.users.save(user);
     const deviceTokens = await this.devices.recognizeAfterSuccess(found, cmd.deviceTokens, user.id, now);
     await this.audit.record({
       action: 'USER_SIGNED_IN',

@@ -3,6 +3,7 @@ import { PATH_METADATA } from '@nestjs/common/constants.js';
 import { DiscoveryService, MetadataScanner, Reflector } from '@nestjs/core';
 import {
   AUTHENTICATED_ONLY,
+  CLIENT_AREA,
   IS_PUBLIC,
   REQUIRED_PERMISSION,
   REQUIRED_SYSTEM_ROLE,
@@ -54,11 +55,13 @@ export class RouteProtectionCheck implements OnModuleInit {
       return space === 'public' || space === 'webhooks'
         ? null
         : '@Public() hors de /api/public et /api/webhooks';
+    if (meta(CLIENT_AREA) && space !== 'client') return '@ClientArea() réservé à /api/client';
+    if (space === 'client') return meta(CLIENT_AREA) ? null : '@ClientArea() manquant';
     if (space === 'admin') return meta(REQUIRED_SYSTEM_ROLE) ? null : '@RequiresSystemRole() manquant';
     if (space === 'salon')
       return meta(REQUIRED_PERMISSION) || meta(AUTHENTICATED_ONLY)
         ? null
         : '@RequiresPermission() ou @AuthenticatedOnly() manquant';
-    return 'route hors des espaces /api/public, /api/salon, /api/admin, /api/webhooks';
+    return 'route hors des espaces /api/public, /api/salon, /api/admin, /api/client, /api/webhooks';
   }
 }

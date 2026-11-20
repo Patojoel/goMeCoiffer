@@ -15,4 +15,3 @@ export class SalonOrmEntity {
   @Column('timestamptz') createdAt!: Date;
   @Column('integer') version!: number;
 }
- 

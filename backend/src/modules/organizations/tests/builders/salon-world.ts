@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { DataSource } from 'typeorm';
+import { ADJUSTABLE_SALON_ROLES } from '../../domain/enums/permission.enum.js';
+import { defaultPermissionsOf } from '../../domain/value-objects/role-permission-set.js';
 
 export interface WorldSalon {
   readonly id: string;
@@ -8,11 +10,11 @@ export interface WorldSalon {
   readonly district: string;
 }
 
-/** Données du contexte de UC-005 insérées directement : organisation, salons et appartenances actives. */
+/** Données du contexte de UC-005/UC-008 insérées directement : organisation, salons, appartenances actives et réglages par défaut. */
 export class SalonWorld {
   constructor(private readonly db: DataSource) {}
 
-  /** Organisation d'un propriétaire, avec ses salons et son appartenance « Propriétaire » sur chacun (D-041). */
+  /** Organisation d'un propriétaire, avec ses salons, son appartenance « Propriétaire » et les 4 réglages par défaut (D-041, RG-008-05). */
   async organizationOf(
     ownerId: string,
     salons: ReadonlyArray<Pick<WorldSalon, 'name' | 'city' | 'district'>>,
@@ -31,9 +33,21 @@ export class SalonWorld {
         [id, organizationId, salon.name, salon.city, salon.district],
       );
       await this.membership(id, ownerId, 'OWNER');
+      await this.defaultRolePermissions(id);
       created.push({ id, ...salon });
     }
     return created;
+  }
+
+  async defaultRolePermissions(salonId: string): Promise<void> {
+    for (const role of ADJUSTABLE_SALON_ROLES) {
+      await this.db.query(
+        `INSERT INTO salon_role_permissions (salon_id, role, permissions, version, updated_at, updated_by)
+         VALUES ($1, $2, $3, 1, now(), NULL)
+         ON CONFLICT (salon_id, role) DO NOTHING`,
+        [salonId, role, [...defaultPermissionsOf(role)]],
+      );
+    }
   }
 
   async membership(salonId: string, userId: string, role: string): Promise<void> {

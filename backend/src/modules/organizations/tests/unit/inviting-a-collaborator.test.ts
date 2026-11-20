@@ -17,7 +17,10 @@ import {
   InMemoryInvitationNotifier,
   InMemoryInvitationRepository,
 } from '../fakes/invitation-fakes.js';
-import { InMemoryAuditTrail } from '../fakes/organization-fakes.js';
+import {
+  InMemoryAuditTrail,
+  InMemorySalonRolePermissions,
+} from '../fakes/organization-fakes.js';
 import {
   AKWA_ID,
   anInvitation,
@@ -29,7 +32,25 @@ import {
 } from '../builders/invitation-builders.js';
 import { MIREILLE_ID } from '../builders/organization-builders.js';
 
-const OWNER_PERMISSIONS = ['staff:invite', 'finances:view', 'bookings:manage'];
+const OWNER_PERMISSIONS = [
+  'dashboard:view',
+  'bookings:view-own',
+  'bookings:view-all',
+  'bookings:manage',
+  'availability:edit-own',
+  'availability:manage-team',
+  'services:view',
+  'services:manage',
+  'staff:view',
+  'staff:invite',
+  'staff:manage',
+  'finances:view',
+  'finances:record-payment',
+  'finances:export',
+  'salon-settings:view',
+  'salon-settings:edit',
+  'roles:administer',
+];
 const SMS_TEXT =
   'GoMeCoiffer : un salon vous invite à rejoindre son équipe comme Coiffeur / Coiffeuse / Barbier. ' +
   'Pour accepter avant le 26/11, ouvrez gomecoiffer.cm/rejoindre avec ce numéro. ' +
@@ -40,6 +61,7 @@ const phoneN = (n: number) => `+2376700000${String(n).padStart(2, '0')}`;
 describe('Inviting a collaborator into a salon', () => {
   let invitations: InMemoryInvitationRepository;
   let checks: InMemoryInvitationChecks;
+  let rolePermissions: InMemorySalonRolePermissions;
   let notifier: InMemoryInvitationNotifier;
   let audit: InMemoryAuditTrail;
   let afterCommit: FakeAfterCommit;
@@ -51,6 +73,9 @@ describe('Inviting a collaborator into a salon', () => {
     checks = new InMemoryInvitationChecks(invitations)
       .withSalon(AKWA_ID, 'Go Beauty Akwa')
       .withSalon(BASTOS_ID, 'Go Beauty Bastos');
+    rolePermissions = new InMemorySalonRolePermissions()
+      .withDefaultsForSalon(AKWA_ID)
+      .withDefaultsForSalon(BASTOS_ID);
     notifier = new InMemoryInvitationNotifier();
     audit = new InMemoryAuditTrail();
     afterCommit = new FakeAfterCommit();
@@ -58,7 +83,8 @@ describe('Inviting a collaborator into a salon', () => {
     handler = new InviteCollaboratorHandler(
       invitations,
       checks,
-      new RoleGrantPolicy((role) => (role === 'FINANCE_MANAGER' ? ['finances:view'] : [])),
+      rolePermissions,
+      new RoleGrantPolicy(),
       notifier,
       audit,
       afterCommit.asAfterCommit(),

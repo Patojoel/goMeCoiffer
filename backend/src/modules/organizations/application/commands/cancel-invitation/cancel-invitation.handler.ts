@@ -1,6 +1,11 @@
 import { Inject } from '@nestjs/common';
 import { CommandHandler, type ICommandHandler } from '@nestjs/cqrs';
 import { AUDIT_TRAIL, type AuditTrail, CLOCK, type Clock } from '../../../../../shared/application/ports.js';
+import type { InvitableSalonRole } from '../../../domain/enums/invitable-salon-role.enum.js';
+import {
+  SALON_ROLE_PERMISSIONS,
+  type SalonRolePermissions,
+} from '../../../domain/repositories/read/salon-role-permissions.read-repository.js';
 import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
@@ -14,6 +19,7 @@ import type { CancelInvitationResponse } from './cancel-invitation.response.js';
 export class CancelInvitationHandler implements ICommandHandler<CancelInvitation> {
   constructor(
     @Inject(INVITATION_REPOSITORY) private readonly invitations: InvitationRepository,
+    @Inject(SALON_ROLE_PERMISSIONS) private readonly rolePermissions: SalonRolePermissions,
     @Inject(RoleGrantPolicy) private readonly grants: RoleGrantPolicy,
     @Inject(AUDIT_TRAIL) private readonly audit: AuditTrail,
     @Inject(CLOCK) private readonly clock: Clock,
@@ -22,7 +28,10 @@ export class CancelInvitationHandler implements ICommandHandler<CancelInvitation
   async execute(cmd: CancelInvitation): Promise<CancelInvitationResponse> {
     const now = this.clock.now();
     const invitation = await this.invitations.getOfSalon(cmd.salonId, cmd.invitationId);
-    this.grants.assertCanGrant(cmd.authorPermissions, invitation.role);
+    this.grants.assertCanGrant(
+      cmd.authorPermissions,
+      await this.rolePermissions.permissionsOfRoleInSalon(cmd.salonId, invitation.role as InvitableSalonRole),
+    );
     invitation.cancel(cmd.authorUserId, now);
     await this.invitations.save(invitation);
     await this.audit.record({

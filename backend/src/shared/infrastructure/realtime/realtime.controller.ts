@@ -25,14 +25,12 @@ export class RealtimeController {
       map((message): MessageEvent => ({ type: 'message', data: message })),
     );
     const heartbeat = interval(HEARTBEAT_MS).pipe(map((): MessageEvent => ({ type: 'heartbeat', data: '' })));
-    return merge(messages, heartbeat).pipe(
-      takeUntil(
-        merge(
-          timer(MAX_STREAM_LIFETIME_MS),
-          this.publisher.closingOf(actor.userId),
-          this.publisher.closingOfSession(sessionId),
-        ),
-      ),
-    );
+    const closings = [
+      timer(MAX_STREAM_LIFETIME_MS),
+      this.publisher.closingOf(actor.userId),
+      this.publisher.closingOfSession(sessionId),
+      ...(actor.activeSalonId ? [this.publisher.closingOfUserInSalon(actor.userId, actor.activeSalonId)] : []),
+    ];
+    return merge(messages, heartbeat).pipe(takeUntil(merge(...closings)));
   }
 }

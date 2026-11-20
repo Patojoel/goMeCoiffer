@@ -12,12 +12,18 @@ import { APP_CONFIG, type AppConfig } from '../config/app-config.module.js';
 import { CSRF_PROTECTION, type CsrfProtection } from './http-security.js';
 import {
   type ActorRequest,
+  CLIENT_AREA,
   IS_PUBLIC,
   REQUIRED_PERMISSION,
   REQUIRED_SYSTEM_ROLE,
   SKIP_CSRF,
 } from './decorators.js';
-import { CsrfInvalidError, ForbiddenError, UnauthenticatedError } from './security-errors.js';
+import {
+  CsrfInvalidError,
+  ForbiddenError,
+  StaffSignInRequiredError,
+  UnauthenticatedError,
+} from './security-errors.js';
 
 const HOUR_MS = 3_600_000;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -59,9 +65,29 @@ export class AuthGuard implements CanActivate {
     const userId = req.session?.userId;
     if (!userId) throw new UnauthenticatedError();
 
-    // Durée absolue depuis la connexion : l'expiration glissante seule laisserait vivre un cookie volé.
     const now = this.clock.now().getTime();
     const authenticatedAt = req.session.authenticatedAt ?? 0;
+    const kind = req.session.kind ?? 'STAFF';
+
+    if (kind === 'CLIENT') {
+      await this.enforceClientSessionDurations(req, now, authenticatedAt);
+      if (!flag(this.reflector, CLIENT_AREA, ctx)) throw new StaffSignInRequiredError();
+      const { credentialsVersion } = await this.rights.resolve(userId, null);
+      if (credentialsVersion === null || credentialsVersion !== (req.session.credentialsVersion ?? 1))
+        await this.endSession(req);
+      req.session.lastActivityAt = now;
+      const actor: Actor = {
+        userId,
+        activeSalonId: null,
+        permissions: new Set(),
+        systemRoles: new Set(),
+      };
+      req.actor = actor;
+      this.cls.set(ACTOR_KEY, actor);
+      return true;
+    }
+
+    // Durée absolue depuis la connexion : l'expiration glissante seule laisserait vivre un cookie volé.
     if (now - authenticatedAt > this.config.SESSION_MAX_AGE_HOURS * HOUR_MS) await this.endSession(req);
 
     let activeSalonId = req.session.activeSalonId ?? null;
@@ -87,6 +113,19 @@ export class AuthGuard implements CanActivate {
     req.actor = actor;
     this.cls.set(ACTOR_KEY, actor);
     return true;
+  }
+
+  /** Session client : 7 jours sans activité et 30 jours après la vérification (D-054, RG-009-11). */
+  private async enforceClientSessionDurations(
+    req: ActorRequest,
+    now: number,
+    authenticatedAt: number,
+  ): Promise<void> {
+    const lastActivityAt = req.session.lastActivityAt ?? authenticatedAt;
+    const maxAgeHours = this.config.CLIENT_SESSION_MAX_AGE_HOURS ?? 720;
+    const ttlHours = this.config.CLIENT_SESSION_TTL_HOURS ?? 168;
+    if (now - authenticatedAt > maxAgeHours * HOUR_MS || now - lastActivityAt > ttlHours * HOUR_MS)
+      await this.endSession(req);
   }
 
   /** Session d'un utilisateur portant un rôle système : 2 h sans activité et 12 h après la connexion (D-026). */

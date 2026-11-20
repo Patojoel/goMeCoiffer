@@ -305,12 +305,12 @@ describe('Signing in with a phone number and a password', () => {
       expect((await signIn(PAUL, GOOD)).userId).toBe(PAUL_ID);
     });
 
-    it('leaves a hash with current settings as it is', async () => {
-      const before = (await users.findByPhone(PhoneNumber.parse(PAUL)))?.snapshot().version;
-
+    it('leaves a hash with current settings as it is and dates the phone proof at the sign-in instant', async () => {
       await signIn(PAUL, GOOD);
 
-      expect((await users.findByPhone(PhoneNumber.parse(PAUL)))?.snapshot().version).toBe(before);
+      const paul = (await users.findByPhone(PhoneNumber.parse(PAUL)))?.snapshot();
+      expect(paul?.passwordHash).toBe(`argon:${GOOD}`);
+      expect(paul?.phoneVerifiedAt).toEqual(at('10:00:00'));
     });
 
     it('does not strengthen anything after a wrong password', async () => {

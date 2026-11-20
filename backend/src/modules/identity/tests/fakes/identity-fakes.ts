@@ -11,6 +11,7 @@ import type { AuditEntry, AuditTrail } from '../../../../shared/application/port
 import { ConcurrencyConflictError } from '../../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import { OtpChallenge } from '../../domain/aggregates/otp-challenge.js';
+import { PhoneProof } from '../../domain/aggregates/phone-proof.js';
 import { User } from '../../domain/aggregates/user.js';
 import type { OtpPurpose } from '../../domain/enums/otp-purpose.enum.js';
 import { SmsDeliveryFailedError } from '../../domain/exceptions/sms-delivery-failed.error.js';
@@ -20,6 +21,8 @@ import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js'
 import type { SecretHasher } from '../../domain/ports/secret-hasher.port.js';
 import type { SmsSender } from '../../domain/ports/sms-sender.port.js';
 import type { UserSessions } from '../../domain/ports/user-sessions.port.js';
+import type { PendingInvitationsOfPhone } from '../../domain/repositories/read/pending-invitations-of-phone.read-repository.js';
+import type { PhoneProofRepository } from '../../domain/repositories/write/phone-proof.repository.js';
 import type { OtpSendHistory } from '../../domain/repositories/read/otp-send-history.read-repository.js';
 import type { OtpChallengeRepository } from '../../domain/repositories/write/otp-challenge.repository.js';
 import type { UserRepository } from '../../domain/repositories/write/user.repository.js';
@@ -289,6 +292,7 @@ export class InMemoryRealtime {
   closeStreamsOfUser(userId: string) {
     this.closedUsers.push(userId);
   }
+  closeUserStreamsInSalon() {}
 }
 
 /** Le « commit » est déclenché par le test : `commit()` exécute les actions enregistrées, comme le bus après le commit. */
@@ -310,5 +314,53 @@ export class FakeAfterCommit {
 
   asAfterCommit() {
     return this as unknown as AfterCommit;
+  }
+}
+
+export class InMemoryPhoneProofRepository implements PhoneProofRepository {
+  private readonly rows = new Map<string, ReturnType<PhoneProof['snapshot']>>();
+
+  async add(proof: PhoneProof) {
+    const row = proof.snapshot();
+    if ([...this.rows.values()].some((r) => r.tokenHash === row.tokenHash))
+      throw new Error('token_hash déjà pris');
+    this.rows.set(row.id, row);
+  }
+
+  async findByTokenHash(tokenHash: string) {
+    const row = [...this.rows.values()].find((r) => r.tokenHash === tokenHash);
+    return row ? PhoneProof.restore(row) : null;
+  }
+
+  async deleteByTokenHash(tokenHash: string) {
+    for (const row of this.rows.values()) if (row.tokenHash === tokenHash) this.rows.delete(row.id);
+  }
+
+  async deleteOfPhone(phone: PhoneNumber) {
+    for (const row of this.rows.values()) if (row.phone === phone.value) this.rows.delete(row.id);
+  }
+
+  async purgeExpiredAt(now: Date) {
+    const expired = [...this.rows.values()].filter((r) => r.expiresAt <= now);
+    for (const row of expired) this.rows.delete(row.id);
+    return expired.length;
+  }
+
+  all() {
+    return [...this.rows.values()];
+  }
+}
+
+/** Numéros qui ont une invitation en attente, déclarés par le test. */
+export class InMemoryPendingInvitations implements PendingInvitationsOfPhone {
+  private readonly phones = new Set<string>();
+
+  withPendingInvitation(phone: PhoneNumber): this {
+    this.phones.add(phone.value);
+    return this;
+  }
+
+  async existsFor(phone: PhoneNumber) {
+    return this.phones.has(phone.value);
   }
 }

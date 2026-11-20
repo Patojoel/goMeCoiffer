@@ -11,6 +11,7 @@ import {
 } from '../../../../shared/infrastructure/security/decorators.js';
 import { FixedClock } from '../../../../test-support/fakes.js';
 import { type Browser, startTestApp, type TestApp } from '../../../../test-support/test-app.js';
+import { PROTECTED_OWNER_RIGHTS, SALON_PERMISSIONS } from '../../domain/enums/permission.enum.js';
 import { sessionCookieOf, StaffAccounts } from '../builders/staff-accounts.js';
 
 @Controller('salon/probe-organizations')
@@ -92,6 +93,7 @@ describe('A signed-in user creates their organization and first salon', () => {
       salons: [
         { id: created.salonId, name: 'Go Beauty Akwa', role: 'OWNER', city: 'Douala', district: 'Akwa' },
       ],
+      permissions: [...SALON_PERMISSIONS, ...PROTECTED_OWNER_RIGHTS],
       systemRoles: [],
       nextStep: 'OPEN_SALON',
     });

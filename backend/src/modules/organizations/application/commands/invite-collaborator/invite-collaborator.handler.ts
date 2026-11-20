@@ -21,9 +21,14 @@ import {
   type InvitationChecks,
 } from '../../../domain/repositories/read/invitation-checks.read-repository.js';
 import {
+  SALON_ROLE_PERMISSIONS,
+  type SalonRolePermissions,
+} from '../../../domain/repositories/read/salon-role-permissions.read-repository.js';
+import {
   INVITATION_REPOSITORY,
   type InvitationRepository,
 } from '../../../domain/repositories/write/invitation.repository.js';
+import type { InvitableSalonRole } from '../../../domain/enums/invitable-salon-role.enum.js';
 import { dailyWindowStart, InvitationAdmission } from '../../../domain/services/invitation-admission.js';
 import { RoleGrantPolicy } from '../../../domain/services/role-grant-policy.js';
 import { InviteCollaborator } from './invite-collaborator.command.js';
@@ -36,6 +41,7 @@ export class InviteCollaboratorHandler implements ICommandHandler<InviteCollabor
   constructor(
     @Inject(INVITATION_REPOSITORY) private readonly invitations: InvitationRepository,
     @Inject(INVITATION_CHECKS) private readonly checks: InvitationChecks,
+    @Inject(SALON_ROLE_PERMISSIONS) private readonly rolePermissions: SalonRolePermissions,
     @Inject(RoleGrantPolicy) private readonly grants: RoleGrantPolicy,
     @Inject(INVITATION_NOTIFIER) private readonly notifier: InvitationNotifier,
     @Inject(AUDIT_TRAIL) private readonly audit: AuditTrail,
@@ -57,7 +63,10 @@ export class InviteCollaboratorHandler implements ICommandHandler<InviteCollabor
     await this.checks.lockSalon(cmd.salonId);
     const previous = await this.invitations.findPendingOfPhone(cmd.salonId, phone);
     if (previous?.expireIfDue(now)) await this.invitations.save(previous);
-    this.grants.assertCanGrant(cmd.authorPermissions, cmd.role);
+    this.grants.assertCanGrant(
+      cmd.authorPermissions,
+      await this.rolePermissions.permissionsOfRoleInSalon(cmd.salonId, cmd.role as InvitableSalonRole),
+    );
     InvitationAdmission.assertAdmissible({
       isActiveMember: await this.checks.isActiveMember(cmd.salonId, phone),
       hasPendingInvitation: previous?.isPendingAt(now) ?? false,

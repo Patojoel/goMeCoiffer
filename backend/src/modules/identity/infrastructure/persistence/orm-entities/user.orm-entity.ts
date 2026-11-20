@@ -8,6 +8,7 @@ export class UserOrmEntity {
   @Column('text', { nullable: true }) email!: string | null;
   @Column('text', { nullable: true }) passwordHash!: string | null;
   @Column('timestamptz', { nullable: true }) phoneVerifiedAt!: Date | null;
+  @Column('timestamptz', { nullable: true }) holderSince!: Date | null;
   @Column('timestamptz', { nullable: true }) termsAcceptedAt!: Date | null;
   @Column('timestamptz') createdAt!: Date;
   @Column('integer', { default: 1 }) credentialsVersion!: number;

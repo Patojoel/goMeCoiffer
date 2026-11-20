@@ -32,9 +32,7 @@ describe('Forgetting the name and number of an invitation that was not accepted'
     const { invitations } = await setup(37);
     const kept = new FixedClock(new Date(TODAY.getTime() - ONE_SECOND));
 
-    await expect(
-      new PurgeEndedInvitationsHandler(invitations, kept).execute(),
-    ).resolves.toEqual({
+    await expect(new PurgeEndedInvitationsHandler(invitations, kept).execute()).resolves.toEqual({
       purged: 0,
     });
 

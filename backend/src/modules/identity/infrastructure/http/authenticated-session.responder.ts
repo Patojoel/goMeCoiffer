@@ -4,6 +4,7 @@ import type { SignedIn, SignedOut, SignedUp } from '@gomecoiffer/contracts';
 import type { Request, Response } from 'express';
 import { CLOCK, type Clock } from '../../../../shared/application/ports.js';
 import { APP_CONFIG, type AppConfig } from '../../../../shared/infrastructure/config/app-config.module.js';
+import { clearPhoneProofCookie } from '../../../../shared/infrastructure/security/phone-proof-cookie.js';
 import { openAuthenticatedSession } from '../../../../shared/infrastructure/security/authenticated-session.js';
 import {
   cookieName,
@@ -61,6 +62,7 @@ export class AuthenticatedSessionResponder {
   /** Idempotente : même confirmation avec ou sans session. L'appareil reste reconnu (cookie d'appareil conservé). */
   async signedOut(req: Request, res: Response): Promise<SignedOut> {
     await new Promise<void>((done) => (req.session ? req.session.destroy(() => done()) : done()));
+    clearPhoneProofCookie(res, this.config);
     res.clearCookie(
       cookieName(this.config, this.config.SESSION_COOKIE_NAME),
       securityCookieOptions(this.config),

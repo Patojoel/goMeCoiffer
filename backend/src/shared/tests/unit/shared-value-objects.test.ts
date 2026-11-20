@@ -65,6 +65,10 @@ describe('Cameroonian phone numbers', () => {
     expect(PhoneNumber.parse('6 77 12 34 56').masked()).toBe('6 77 •• •• 56');
   });
 
+  it('can be shown with only its first and last two digits readable', () => {
+    expect(PhoneNumber.parse('6 90 11 22 33').maskedToEnds()).toBe('6 •• •• •• 33');
+  });
+
   it.each([['12345'], ['+33612345678'], ['6771234567'], ['577123456']])('refuses %s', (input) => {
     expect(() => PhoneNumber.parse(input)).toThrow(InvalidValueError);
   });

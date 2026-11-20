@@ -125,3 +125,250 @@ export const SalonInvitationSchema = z.object({
 export type SalonInvitation = z.infer<typeof SalonInvitationSchema>;
 export const SalonInvitationsSchema = z.array(SalonInvitationSchema);
 export type SalonInvitations = z.infer<typeof SalonInvitationsSchema>;
+
+/**
+ * UC-007 — POST /api/public/invitations/:id/acceptance. Corps vide pour un compte du personnel existant ; sinon nom,
+ * mot de passe et conditions, tous les trois (D-047). Toute autre clé est refusée : rôle, salon, numéro, utilisateur.
+ * Sortie : `details` vaut `null` quand le corps est vide.
+ */
+export const AcceptInvitationSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Indiquez votre nom (2 caractères au moins).')
+      .max(80, 'Votre nom ne peut pas dépasser 80 caractères.')
+      .optional(),
+    password: z.string().min(1).max(128, 'Le mot de passe ne peut pas dépasser 128 caractères.').optional(),
+    termsAccepted: z
+      .literal(true, { error: "Acceptez les conditions d'utilisation pour continuer." })
+      .optional(),
+  })
+  .strict()
+  .superRefine((body, context) => {
+    const given = [body.name, body.password, body.termsAccepted].filter((value) => value !== undefined);
+    if (given.length === 0 || given.length === 3) return;
+    for (const field of ['name', 'password', 'termsAccepted'] as const)
+      if (body[field] === undefined)
+        context.addIssue({ code: 'custom', path: [field], message: 'Complétez ce champ pour créer votre compte.' });
+  })
+  .transform(({ name, password, termsAccepted }) => ({
+    details:
+      name === undefined || password === undefined || termsAccepted === undefined
+        ? null
+        : { name, password, termsAccepted },
+  }));
+export type AcceptInvitation = z.infer<typeof AcceptInvitationSchema>;
+
+/** Réponse 200 : session ouverte ou régénérée dans le salon rejoint, ou invitation à se connecter (RG-007-13). */
+export const InvitationAcceptedSchema = z.discriminatedUnion('outcome', [
+  z.object({
+    outcome: z.literal('SIGNED_IN'),
+    salonName: z.string(),
+    csrfToken: z.string().min(1),
+    session: SessionSummarySchema,
+  }),
+  z.object({ outcome: z.literal('SIGN_IN_REQUIRED'), salonName: z.string() }),
+]);
+export type InvitationAccepted = z.infer<typeof InvitationAcceptedSchema>;
+
+/**
+ * Réponse de GET /api/public/invitations (cookie de preuve) : invitations en attente du numéro prouvé, les plus
+ * récentes d'abord. `account` dit ce que l'écran doit demander : `NEW` créer un compte, `TO_COMPLETE` compléter un
+ * compte client, `EXISTING` rien. Jamais le nom de la personne qui a invité.
+ */
+export const InvitationsForProvenPhoneSchema = z.object({
+  account: z.enum(['NEW', 'TO_COMPLETE', 'EXISTING']),
+  invitations: z.array(
+    z.object({
+      invitationId: z.uuid(),
+      salonName: z.string(),
+      city: CitySchema,
+      district: z.string(),
+      role: InvitableSalonRoleSchema,
+      expiresAt: z.iso.datetime(),
+      /** Nom saisi par le salon, pour pré-remplir (modifiable) la création du compte. */
+      suggestedName: z.string(),
+    }),
+  ),
+});
+export type InvitationsForProvenPhone = z.infer<typeof InvitationsForProvenPhoneSchema>;
+
+/** UC-008 — Les quatre rôles de collaborateur dont les permissions sont réglables par salon (RG-008-03). */
+export const AdjustableSalonRoleSchema = InvitableSalonRoleSchema;
+export type AdjustableSalonRole = z.infer<typeof AdjustableSalonRoleSchema>;
+
+/** Les 16 permissions ajustables du catalogue du salon (RG-008-02). `roles:administer` est réservé au propriétaire. */
+export const ADJUSTABLE_PERMISSIONS = [
+  'dashboard:view',
+  'bookings:view-own',
+  'bookings:view-all',
+  'bookings:manage',
+  'availability:edit-own',
+  'availability:manage-team',
+  'services:view',
+  'services:manage',
+  'staff:view',
+  'staff:invite',
+  'staff:manage',
+  'finances:view',
+  'finances:record-payment',
+  'finances:export',
+  'salon-settings:view',
+  'salon-settings:edit',
+] as const;
+export const AdjustablePermissionSchema = z.enum(ADJUSTABLE_PERMISSIONS, {
+  error: 'Choisissez une permission ajustable du catalogue.',
+});
+export type AdjustablePermission = z.infer<typeof AdjustablePermissionSchema>;
+
+/** Les 17 permissions du salon (RG-008-02). */
+export const SALON_PERMISSIONS = [...ADJUSTABLE_PERMISSIONS, 'roles:administer'] as const;
+export const SalonPermissionSchema = z.enum(SALON_PERMISSIONS);
+export type SalonPermission = z.infer<typeof SalonPermissionSchema>;
+
+/** Droits réservés au propriétaire, jamais donnés à un autre rôle (RG-008-04). */
+export const RESERVED_OWNER_RIGHTS = [
+  'roles:administer',
+  'organization:manage-salons',
+  'subscription:manage',
+  'payout-accounts:manage',
+] as const;
+export const ReservedOwnerRightSchema = z.enum(RESERVED_OWNER_RIGHTS);
+export type ReservedOwnerRight = z.infer<typeof ReservedOwnerRightSchema>;
+
+/** Permissions par défaut des quatre rôles de collaborateur (RG-008-05, D-051). */
+export const DEFAULT_ROLE_PERMISSIONS: Readonly<
+  Record<AdjustableSalonRole, readonly AdjustablePermission[]>
+> = {
+  SALON_ADMIN: [
+    'dashboard:view',
+    'bookings:view-own',
+    'bookings:view-all',
+    'bookings:manage',
+    'availability:edit-own',
+    'availability:manage-team',
+    'services:view',
+    'services:manage',
+    'staff:view',
+    'staff:invite',
+    'staff:manage',
+    'salon-settings:view',
+  ],
+  HAIRDRESSER: ['bookings:view-own', 'availability:edit-own'],
+  FINANCE_MANAGER: [
+    'dashboard:view',
+    'bookings:view-all',
+    'finances:view',
+    'finances:record-payment',
+    'finances:export',
+  ],
+  PRACTITIONER: ['bookings:view-own', 'availability:edit-own'],
+};
+
+/** UC-008 — PUT /api/salon/roles/:role/permissions : remplacer les permissions d'un rôle dans le salon actif. */
+export const AdjustRolePermissionsSchema = z
+  .object({
+    permissions: z
+      .array(AdjustablePermissionSchema)
+      .max(ADJUSTABLE_PERMISSIONS.length)
+      .refine((items) => new Set(items).size === items.length, {
+        error: 'Chaque permission ne peut apparaître qu’une seule fois.',
+      }),
+    version: z.number().int().nonnegative('Indiquez la version consultée.'),
+    resetToDefault: z.boolean().optional(),
+  })
+  .strict();
+export type AdjustRolePermissions = z.infer<typeof AdjustRolePermissionsSchema>;
+
+/** Réponse 200 de PUT /api/salon/roles/:role/permissions. */
+export const RolePermissionsAdjustedSchema = z.object({
+  role: AdjustableSalonRoleSchema,
+  permissions: z.array(AdjustablePermissionSchema),
+  version: z.number().int().nonnegative(),
+});
+export type RolePermissionsAdjusted = z.infer<typeof RolePermissionsAdjustedSchema>;
+
+/** Réponse 200 de GET /api/salon/roles (RG-008-17). */
+export const SalonRolesSchema = z.object({
+  owner: z.object({
+    permissions: z.array(SalonPermissionSchema),
+    reservedRights: z.array(ReservedOwnerRightSchema),
+    members: z.number().int().nonnegative(),
+  }),
+  roles: z.array(
+    z.object({
+      role: AdjustableSalonRoleSchema,
+      permissions: z.array(AdjustablePermissionSchema),
+      defaultPermissions: z.array(AdjustablePermissionSchema),
+      isDefault: z.boolean(),
+      members: z.number().int().nonnegative(),
+      version: z.number().int().nonnegative(),
+    }),
+  ),
+});
+export type SalonRoles = z.infer<typeof SalonRolesSchema>;
+
+/** UC-010 — POST /api/salon/salons : ajouter un salon à son organisation (mêmes 6 champs que UC-004, D-036, D-056). */
+export const AddSalonToOrganizationSchema = CreateOrganizationSchema;
+export type AddSalonToOrganization = z.infer<typeof AddSalonToOrganizationSchema>;
+
+/** Réponse 201 de POST /api/salon/salons : session régénérée sur le nouveau salon actif (D-056). */
+export const SalonAddedSchema = OrganizationCreatedSchema;
+export type SalonAdded = z.infer<typeof SalonAddedSchema>;
+
+/** UC-011 — GET /api/salon/team : membres actifs du salon actif, Propriétaire en premier puis par nom, sans numéro (D-057). */
+export const SalonRoleSchema = z.enum([
+  'OWNER',
+  'SALON_ADMIN',
+  'HAIRDRESSER',
+  'FINANCE_MANAGER',
+  'PRACTITIONER',
+]);
+export type SalonRoleContract = z.infer<typeof SalonRoleSchema>;
+
+export const SalonTeamMemberSchema = z.object({
+  membershipId: z.uuid(),
+  name: z.string(),
+  role: SalonRoleSchema,
+  joinedAt: z.iso.datetime(),
+  isCurrentUser: z.boolean(),
+  version: z.number().int().nonnegative(),
+});
+export type SalonTeamMember = z.infer<typeof SalonTeamMemberSchema>;
+
+export const SalonTeamSchema = z.object({
+  members: z.array(SalonTeamMemberSchema),
+});
+export type SalonTeam = z.infer<typeof SalonTeamSchema>;
+
+/** UC-011 — PUT /api/salon/team/:id/role : changer le rôle d'un collaborateur dans le salon actif. */
+export const ChangeCollaboratorRoleSchema = z
+  .object({
+    role: AdjustableSalonRoleSchema,
+    version: z.number().int().nonnegative('Indiquez la version consultée.'),
+  })
+  .strict();
+export type ChangeCollaboratorRole = z.infer<typeof ChangeCollaboratorRoleSchema>;
+
+export const CollaboratorRoleChangedSchema = z.object({
+  membershipId: z.uuid(),
+  role: AdjustableSalonRoleSchema,
+  version: z.number().int().nonnegative(),
+});
+export type CollaboratorRoleChanged = z.infer<typeof CollaboratorRoleChangedSchema>;
+
+/** UC-011 — POST /api/salon/team/:id/removal : retirer un collaborateur de l'équipe du salon actif. */
+export const RemoveCollaboratorSchema = z
+  .object({
+    version: z.number().int().nonnegative('Indiquez la version consultée.'),
+  })
+  .strict();
+export type RemoveCollaborator = z.infer<typeof RemoveCollaboratorSchema>;
+
+export const CollaboratorRemovedSchema = z.object({
+  membershipId: z.uuid(),
+  status: z.literal('REVOKED'),
+  version: z.number().int().nonnegative(),
+});
+export type CollaboratorRemoved = z.infer<typeof CollaboratorRemovedSchema>;

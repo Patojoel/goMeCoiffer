@@ -265,10 +265,18 @@ describe('Storing organizations, salons and memberships, and reading the rights 
       });
     });
 
-    it('gives a collaborator whose role has no permission defined yet membership but no permission', async () => {
+    it('gives a collaborator the default permissions of their role and none if the setting is missing', async () => {
       const { salonId } = await owner();
       const stylist = await collaboratorOf(salonId);
 
+      expect(await rights.resolve(stylist, salonId)).toMatchObject({
+        isMember: true,
+        permissions: ['bookings:view-own', 'availability:edit-own'],
+      });
+
+      await db.query(`DELETE FROM salon_role_permissions WHERE salon_id = $1 AND role = 'HAIRDRESSER'`, [
+        salonId,
+      ]);
       expect(await rights.resolve(stylist, salonId)).toMatchObject({ isMember: true, permissions: [] });
     });
 

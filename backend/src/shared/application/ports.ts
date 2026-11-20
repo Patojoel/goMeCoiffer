@@ -43,6 +43,11 @@ export interface RealtimePublisher {
    * l'utilisateur gardent leur salon actif et leur flux. Hors transaction, l'envoi part tout de suite.
    */
   closeStreamsOfSession(sessionId: string): void;
+  /**
+   * Ferme, après le commit, tous les flux ouverts par cet utilisateur sur ce salon (retrait d'équipe, UC-011),
+   * sans toucher ses flux ouverts sur d'autres salons.
+   */
+  closeUserStreamsInSalon(userId: string, salonId: string): void;
 }
 
 export const AUDIT_TRAIL = Symbol('AUDIT_TRAIL');

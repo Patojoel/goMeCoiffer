@@ -9,6 +9,12 @@ export interface InvitationRepository {
   save(invitation: Invitation): Promise<void>;
   /** `InvitationNotFoundError` si l'invitation n'existe pas **dans ce salon**. */
   getOfSalon(salonId: string, id: string): Promise<Invitation>;
+  /**
+   * L'invitation visée par la personne qui a prouvé ce numéro : adressée à ce numéro, ou déjà acceptée par le compte de
+   * ce numéro (son numéro est alors effacé). `InvitationNotFoundError` sinon : inexistante ou adressée à un autre
+   * numéro, sans dire lequel (RG-007-07).
+   */
+  getOfInvitee(phone: PhoneNumber, id: string): Promise<Invitation>;
   /** L'invitation encore marquée en attente pour ce numéro, échue ou non. */
   findPendingOfPhone(salonId: string, phone: PhoneNumber): Promise<Invitation | null>;
   /**

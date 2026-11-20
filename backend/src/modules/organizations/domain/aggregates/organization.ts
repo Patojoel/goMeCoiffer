@@ -28,6 +28,16 @@ export interface FoundedOrganization {
   readonly membership: SalonMembership;
 }
 
+export interface AddedSalonIds {
+  readonly salon: string;
+  readonly membership: string;
+}
+
+export interface AddedSalon {
+  readonly salon: Salon;
+  readonly membership: SalonMembership;
+}
+
 /** Propriétaire de salons. Un utilisateur n'en possède qu'une (D-035) ; elle ne naît jamais sans son premier salon. */
 export class Organization extends AggregateRoot {
   private constructor(private readonly state: OrganizationState) {
@@ -73,6 +83,27 @@ export class Organization extends AggregateRoot {
 
   static restore(state: Readonly<OrganizationState>): Organization {
     return new Organization({ ...state });
+  }
+
+  /** Ajoute un salon vide non publié à l'organisation avec son appartenance Propriétaire (D-041, D-056). */
+  addSalon(input: { salon: SalonDraft; ids: AddedSalonIds; now: Date }): AddedSalon {
+    const salon = Salon.register({
+      id: input.ids.salon,
+      organizationId: this.state.id,
+      details: input.salon,
+      now: input.now,
+    });
+    const membership = SalonMembership.grantOwnership({
+      id: input.ids.membership,
+      salonId: input.ids.salon,
+      userId: this.state.ownerUserId,
+      now: input.now,
+    });
+    return { salon, membership };
+  }
+
+  get id(): string {
+    return this.state.id;
   }
 
   snapshot(): Readonly<OrganizationState> {

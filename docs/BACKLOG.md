@@ -34,11 +34,8 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Textes des conditions d'utilisation et de la politique de confidentialité** à rédiger (acceptation obligatoire
   à l'inscription, D-022) ; d'ici là, l'écran pointe vers des pages provisoires. À fournir avant la production.
 - **Stockage des photos de salon** en prod (disque du serveur ou stockage objet).
-- **Numéros recyclés par les opérateurs (avant UC-009)** — revue sécurité UC-001 (C3), 18/11 : MTN et Orange
-  réattribuent les numéros inactifs ; le nouveau titulaire qui vérifie le numéro par SMS hériterait de l'historique
-  client de l'ancien (salons, dates, prestations), et l'inscription (RG-001-10) le figerait sous son mot de passe.
-  Options : détacher l'historique si le numéro n'a pas été vérifié depuis N mois, ou ne montrer que les
-  réservations postérieures à la dernière vérification. À trancher avant d'ouvrir les comptes clients légers.
+- ~~Numéros recyclés par les opérateurs~~ : **tranché le 20/11 par D-053** (« titulaire depuis », 180 jours),
+  appliqué par UC-009 (RG-009-06) et filtré par « Mes réservations » au lot 4.
 
 ## À faire avec le lot 1 (connexion), relevé au socle (17/11, revue sécurité du socle)
 
@@ -141,22 +138,77 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 
 ## Invitations (UC-006, revue sécurité du 19/11)
 
-- **Avant d'ouvrir `staff:invite` à un autre rôle que le propriétaire (UC-008)** : `RoleGrantPolicy` lit les
-  permissions du rôle visé dans le catalogue statique (`permissionsOfRole`), où les 4 rôles invitables n'ont aujourd'hui
-  aucune permission : la règle « pas plus de droits que soi » (D-042) passe donc toujours. Elle doit lire les
-  permissions du rôle **dans ce salon**, à la même source que `SqlActorRights` (port de lecture commun), et les deux
-  `it.todo` de `inviting-as-a-salon-administrator.e2e.test.ts` (T28) deviennent de vrais tests dans le commit de UC-008.
-  Sinon un administrateur ferait entrer un faux responsable financier (son 2e numéro) pour voir l'argent du salon.
+- ~~**Avant d'ouvrir `staff:invite` à un autre rôle que le propriétaire (UC-008)**~~ : **fait le 20/11 avec UC-008** (`RoleGrantPolicy` lit désormais `SqlSalonRolePermissions` avec refus par défaut si réglage absent ; les tests T28 de `inviting-as-a-salon-administrator.e2e.test.ts` sont actifs et verts).
 - **Écran « Équipe → Inviter » et liste des invitations (front de UC-006)** : non fait (back seul). Contrat prêt
   (`InviteCollaboratorSchema`, `CollaboratorInvitedSchema`, `InvitationCancelledSchema`, `SalonInvitationsSchema`) ;
   bouton « Partager sur WhatsApp » (D-043), aides des rôles (UC-006 §15), message si la liste atteint 100 lignes.
-- UC-007 : effacer le nom et le numéro de l'invitation à son acceptation (le compte porte déjà le numéro) ;
-  aujourd'hui D-045 ne vise que les invitations non acceptées.
+- **Page « Rejoindre un salon » (front de UC-007)** : non faite (back seul, 20/11). Contrats prêts
+  (`RequestInvitationCodeSchema`, `ProveInvitationPhoneSchema`, `InvitationPhoneProvenSchema`,
+  `InvitationsForProvenPhoneSchema`, `AcceptInvitationSchema`, `InvitationAcceptedSchema`). Après la preuve, lire
+  `GET /api/public/invitations` (la preuve ne renvoie pas la liste) ; `suggestedName` en texte seulement (champ
+  prérempli) ; prendre le `csrfToken` renvoyé quand la session s'ouvre ; `SIGN_IN_REQUIRED` → écran de connexion.
+- UC-007, relevé non traité :
+  - 3e « vérifier le code » (`ConfirmSignUp`, `ResetPassword`, `ProveInvitationPhone`) et 3e « demander un code » :
+    à factoriser (changement des constructeurs des handlers existants et de leurs tests) ;
+  - mutation (T31) non lancée : `PhoneProof.isValidFor`, borne d'échéance de `Invitation.accept`,
+    `sessionAfterAcceptance` ;
+  - non-énumération de la demande de code (médianes < 20 %) non mesurée, à faire avec le vrai fournisseur SMS ;
+  - `IdentityModule` est `@Global()` pour fournir `INVITEE_ACCOUNTS` et `PHONE_PROOFS` à `organizations` sans
+    importer son infrastructure : à revoir si d'autres modules ont besoin d'`identity` (module d'export dédié) ;
+  - choix de session après acceptation : la durée absolue est vérifiée, pas les durées plus courtes des rôles
+    système (D-026) ; sans escalade (la requête suivante est refusée par `AuthGuard`), mais la réponse annonce
+    `SIGNED_IN` ;
+  - cookie `__Host-gmc.join` non exercé par les E2E (`COOKIE_SECURE` faux en test) : ajouter un test d'attributs ;
+  - runner E2E Windows : plantage intermittent d'un worker (code 3221226505) sur un fichier au hasard ; stable avec
+    `--maxWorkers=2` ;
+  - `@apres-UC-008` : réactiver une appartenance retirée (l'unicité `(salon_id, user_id)` répond aujourd'hui
+    « vous faites déjà partie de l'équipe ») ; `@apres-UC-009` : parcours complet du compte client léger.
 - Vrai fournisseur SMS : `organizations.module.ts` refuse de démarrer si `SMS_PROVIDER` n'est pas `fake`, et `fake`
   est refusé en prod : l'API ne démarre pas en prod tant que le fournisseur n'est pas branché (blocage voulu). Deux
   adaptateurs SMS existent (`identity`, `organizations`) : extraire l'envoi dans `shared` au 3e utilisateur (UC-009).
 - Nom de salon : liste blanche de caractères (pas de liens, `@`, suites de chiffres) à décider avant la publication
   sur la marketplace (lot 3) ; le SMS d'invitation, lui, ne le contient plus (D-046).
+
+## Use cases du lot 1 à rédiger ou aligner (20/11)
+
+- ~~**À rédiger** (`use-case-writer`) : UC-010, UC-011, UC-012~~ — **rédigés et validés le 20/11** (`docs/use-cases/UC-010` à `UC-012`, décisions D-056 à D-058) ; backend livré le 20/11 (voir `docs/EVOLUTIONS.md`).
+- **UC-004 E6 / T26 à aligner sur D-054** : le compte client léger qui veut créer une organisation est refusé par la
+  protection d'espace (403 « Cet espace est réservé aux salons… ») avant le domaine ; le refus
+  `OWNER_ACCOUNT_REQUIRED` (422) reste en défense.
+- **UC-007 / RG-009-06** : l'acceptation d'une invitation par un compte existant doit aussi enregistrer la date de
+  preuve du numéro (`User.recordPhoneProof`), comme tout parcours qui prouve le numéro (`SignIn` compris).
+- ~~**Ordre d'implémentation conseillé** : la protection d'espace (`/api/client/*`, type de session, D-055) avant la première session client de UC-009.~~ **Fait le 20/11** avant UC-009.
+
+## Rôles salon et espace client léger (UC-008 & UC-009, revues sécurité du 20/11)
+
+- **Écrans front UC-008** (« Paramètres → Rôles et permissions », onboarding étape 6, `<RequirePermission>` branché sur `session.permissions`, aides du §15) : non faits (back seul). Contrats prêts (`AdjustRolePermissionsSchema`, `RolePermissionsAdjustedSchema`, `SalonRolesSchema`, `DEFAULT_ROLE_PERMISSIONS`).
+- **Écrans front UC-009** (numéro, code SMS, espace client, à livrer avec « Mes réservations » lot 4) : non faits (back seul). Contrats prêts (`RequestClientCodeSchema`, `VerifyClientCodeSchema`, `ClientSignedInSchema`, `ClientSessionSummarySchema`).
+- **UC-009 — D-053 / `SignInHandler` (`recordPhoneProof`)** (revue sécurité du 20/11) : `SignInHandler` rafraîchit aujourd'hui `phoneVerifiedAt` sur connexion par mot de passe conformément à D-053 et T15 ; la revue sécurité signale qu'une connexion par mot de passe ne prouve pas la possession actuelle de la carte SIM (un numéro recyclé pourrait rester sous le seuil de 180 j si l'ancien titulaire s'est connecté par mot de passe). À arbitrer par le user s'il souhaite restreindre `recordPhoneProof` aux seules preuves SMS.
+- **UC-009 — `ProveInvitationPhoneHandler`** (durcissement sécurité du 20/11) : enregistrer aussi `recordPhoneProof` dès la preuve SMS d'invitation si le compte existe (aujourd'hui fait à l'acceptation).
+- **UC-009 — Plafond global SMS tous motifs confondus** (durcissement sécurité du 20/11) : ajouter un plafond global par numéro (ex. 15–20 SMS / 24 h) avant de brancher le vrai fournisseur SMS, en plus des quotas isolés par motif (`SIGN_UP`, `PASSWORD_RESET`, `INVITATION`, `CLIENT_LOGIN`).
+- **UC-008 / UC-009 — Mutation testing (Stryker)** : T29 (UC-008) et T26 (UC-009) non lancés en mode light ; T25 (`@apres-UC-009` : rejeu UC-004 T26 aligné 403 et UC-007 T20 avec un compte client léger issu de UC-009) à activer.
+- **UC-008 — `EXPLAIN (ANALYZE, BUFFERS)`** sur `salon_role_permissions` : à mesurer après `migration:run && db:seed` sur la base locale ; index partiel optionnel `salon_memberships (salon_id, role) WHERE status = 'ACTIVE'` si le volume de membres révoqués par salon grandit.
+
+## Salons, équipe et rôles système (UC-010 à UC-012, revue sécurité du 20/11)
+
+- **Écrans front** non faits (back seul) : « Ajouter un salon » (UC-010), « Équipe » (liste, changer de rôle,
+  retirer, UC-011), administration « Rôles GoMeCoiffer » (UC-012). Contrats prêts dans `packages/contracts`
+  (`organizations.ts`, `platform.ts`).
+- **Avant le lot 4** : après une rétrogradation (ex. Administrateur → Coiffeur), le flux SSE `salon:<id>` reste
+  ouvert et tous les membres reçoivent les mêmes signaux quel que soit leur rôle ; filtrer les signaux selon
+  `bookings:view-all` / `view-own`, ou fermer le flux au changement de rôle (revue sécurité, point 7).
+- UC-011 : `actorPermissions` est un instantané du garde ; une rétrogradation de l'auteur pendant sa requête laisse
+  une fenêtre de quelques millisecondes (risque faible, non traité).
+- Mutation (Stryker) non lancée : UC-011 T23, UC-012 T24 ; UC-010 T19 (`@apres-UC-012`, rejeu d'un administrateur
+  plateforme propriétaire qui ajoute un salon) non couvert.
+- Tests d'annulation de migration : trois comptent encore la pile des migrations en dur
+  (`reverting-the-invitations-migration`, `…-organizations-migration`, `…-invitation-acceptance-migrations`) ;
+  passer au modèle « boucler jusqu'à disparition de l'objet ».
+- `identity.module.ts` fournit des ports de `platform` (`STAFF_ACCOUNT_LOOKUP`, `USER_SESSIONS_REVOKER`) et
+  `IdentityModule` reste `@Global()` : à revoir avec un module d'export dédié si les dépendances croisées augmentent.
+- `todo` « re-activates a membership removed earlier @apres-UC-008 » de `accepting-an-invitation.test.ts` : couvert
+  par `managing-the-salon-team` (unit et E2E T16), à supprimer.
+- Use cases : retirer les marques `@apres-UC-008` / `@apres-UC-009` / `@apres-UC-012` devenues jouables.
 
 ## Revue d'architecture du 19/11 : suggestions 🟠 non traitées
 
@@ -218,10 +270,17 @@ puis back et front en parallèle.
    d'abonnement, suspension/rétablissement, période de grâce, incidents de paiement, indicateurs.
 8. **Tableau de bord du salon** (F07) : réservations du jour, en cours, professionnels disponibles, prochains
    rendez-vous, paiements du jour.
+9. **Avis et notes** (F09, D-059, ajouté au MVP le 20/11) : avis d'une réservation terminée (note du salon et du
+   professionnel, commentaire), réponse et signalement par le salon, modération par l'administration, moyennes et
+   tri « Mieux notés » sur la marketplace, écran « Avis clients » du back-office. Peut démarrer dès que le lot 4
+   produit des réservations « Prestation terminée » ; nouveau module backend `reviews`. Prévoir dès le lot 3 la
+   place de la note sur la carte et la fiche du salon, et dès le lot 4 le lien « Laisser un avis » dans « Mes
+   réservations ». Au démarrage : compléter le catalogue des permissions de UC-008 avec le module « Avis clients »
+   (consulter, répondre, signaler), ses défauts par rôle et une migration pour les salons existants.
 
 ## Hors MVP (PRD §14) — ne rien préparer
 
-Notifications « coiffeur libre », marketing automatisé, fidélité, abonnements clients, avis et notes, chat,
+Notifications « coiffeur libre », marketing automatisé, fidélité, abonnements clients, chat,
 sponsoring opérationnel, commission automatique, stock, paie, comptabilité, franchises, multi-intervenants,
 application mobile native, IA, cabines et équipements partagés.
 

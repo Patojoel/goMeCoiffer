@@ -1,8 +1,16 @@
 import type { DataSource } from 'typeorm';
+import { ADJUSTABLE_SALON_ROLES } from '../../modules/organizations/domain/enums/permission.enum.js';
+import { defaultPermissionsOf } from '../../modules/organizations/domain/value-objects/role-permission-set.js';
 import { DEMO_USERS } from './identity.seed.js';
 import type { Seeder } from './seeder.js';
 
 const [MIREILLE, PAUL, CLARISSE, AWA] = DEMO_USERS;
+
+const AKWA_TEAM = [
+  { id: '0195f000-0000-7000-8000-000000000a11', phone: '+237694556677', name: 'Rodrigue Etoa', role: 'SALON_ADMIN' },
+  { id: '0195f000-0000-7000-8000-000000000a12', phone: '+237675403020', name: 'Hortense Mballa', role: 'FINANCE_MANAGER' },
+  { id: '0195f000-0000-7000-8000-000000000a13', phone: '+237670112234', name: 'Grâce Mbarga', role: 'PRACTITIONER' },
+] as const;
 
 interface DemoSalon {
   readonly id: string;
@@ -73,7 +81,7 @@ export const organizationsSeeder: Seeder = {
           [id, salonId, userPhone, role],
         );
 
-      /** Invitations de Mireille dans Akwa : une en attente (envoyée hier) et une expirée (envoyée il y a 10 jours). */
+      /** Invitations de Mireille dans Akwa : deux en attente (envoyées hier) et une expirée (envoyée il y a 10 jours). */
       const invitation = (id: string, salonId: string, name: string, phone: string, role: string, sentDaysAgo: number, status: string) =>
         tx.query(
           `INSERT INTO salon_invitations (id, salon_id, name, phone, role, invited_by_user_id, sent_at, expires_at, status, ended_at, notified_by_sms, version)
@@ -96,7 +104,40 @@ export const organizationsSeeder: Seeder = {
       await membership('0195f000-0000-7000-8000-000000000b24', ELEGANCE.id, PAUL.phone, 'HAIRDRESSER');
       await membership('0195f000-0000-7000-8000-000000000b04', AKWA.id, AWA.phone, 'HAIRDRESSER');
 
+      /** UC-008 : un membre de démo par rôle dans Akwa (en plus de Mireille et Awa) et Rodrigue dans Bastos. */
+      for (const member of AKWA_TEAM) {
+        await tx.query(
+          `INSERT INTO users (id, phone, name, password_hash, phone_verified_at, holder_since, terms_accepted_at, created_at, version)
+           SELECT $1, $2, $3, u.password_hash, now(), now(), now(), now(), 1
+           FROM users u WHERE u.phone = $4
+           ON CONFLICT (phone) DO NOTHING`,
+          [member.id, member.phone, member.name, MIREILLE.phone],
+        );
+      }
+      await membership('0195f000-0000-7000-8000-000000000b05', AKWA.id, AKWA_TEAM[0].phone, 'SALON_ADMIN');
+      await membership('0195f000-0000-7000-8000-000000000b15', BASTOS.id, AKWA_TEAM[0].phone, 'SALON_ADMIN');
+      await membership('0195f000-0000-7000-8000-000000000b06', AKWA.id, AKWA_TEAM[1].phone, 'FINANCE_MANAGER');
+      await membership('0195f000-0000-7000-8000-000000000b07', AKWA.id, AKWA_TEAM[2].phone, 'PRACTITIONER');
+
+      /** UC-008 : réglages par défaut des salons de démo, plus Finances : consulter pour l'Administrateur d'Akwa. */
+      for (const demoSalon of [AKWA, BASTOS, ELEGANCE]) {
+        for (const role of ADJUSTABLE_SALON_ROLES) {
+          const permissions =
+            demoSalon.id === AKWA.id && role === 'SALON_ADMIN'
+              ? [...defaultPermissionsOf(role), 'finances:view']
+              : [...defaultPermissionsOf(role)];
+          await tx.query(
+            `INSERT INTO salon_role_permissions (salon_id, role, permissions, version, updated_at, updated_by)
+             VALUES ($1, $2, $3, 1, now(), NULL)
+             ON CONFLICT (salon_id, role) DO NOTHING`,
+            [demoSalon.id, role, permissions],
+          );
+        }
+      }
+
       await invitation('0195f000-0000-7000-8000-000000000b31', AKWA.id, 'Brice Nana', '+237655443322', 'HAIRDRESSER', 1, 'PENDING');
+      // UC-007 : 6 70 00 00 02 n'a aucun compte (parcours « créer mon compte ») ; 6 55 44 33 22, ci-dessus, est celui de Clarisse (un clic).
+      await invitation('0195f000-0000-7000-8000-000000000b33', AKWA.id, 'Brice Nana', '+237670000002', 'HAIRDRESSER', 1, 'PENDING');
       await invitation('0195f000-0000-7000-8000-000000000b32', AKWA.id, 'Grâce Mbarga', '+237670112233', 'PRACTITIONER', 10, 'EXPIRED');
     });
   },

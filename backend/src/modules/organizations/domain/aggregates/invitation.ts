@@ -5,6 +5,7 @@ import { INVITABLE_SALON_ROLES } from '../enums/invitable-salon-role.enum.js';
 import { InvitationStatus } from '../enums/invitation-status.enum.js';
 import { SalonRole } from '../enums/salon-role.enum.js';
 import { CollaboratorInvited } from '../events/collaborator-invited.js';
+import { InvitationAccepted } from '../events/invitation-accepted.js';
 import { InvitationCancelled } from '../events/invitation-cancelled.js';
 import { InvitationNoLongerPendingError } from '../exceptions/invitation-no-longer-pending.error.js';
 import { OwnerRoleNotInvitableError } from '../exceptions/owner-role-not-invitable.error.js';
@@ -25,6 +26,8 @@ interface InvitationState {
   expiresAt: Date;
   status: InvitationStatus;
   endedAt: Date | null;
+  /** Compte du titulaire du numéro, posé à l'acceptation (UC-007). */
+  acceptedByUserId: string | null;
   /** Un SMS d'information a été décidé à l'envoi : sert à limiter les SMS par numéro. */
   notifiedBySms: boolean;
   version: number;
@@ -34,12 +37,16 @@ interface InvitationStatusBehavior {
   isPendingAt(state: Readonly<InvitationState>, now: Date): boolean;
   expireIfDue(state: InvitationState, now: Date): boolean;
   cancel(state: InvitationState, now: Date): void;
+  accept(state: InvitationState, userId: string, now: Date): void;
 }
 
 const terminalInvitationStatus: InvitationStatusBehavior = {
   isPendingAt: () => false,
   expireIfDue: () => false,
   cancel: () => {
+    throw new InvitationNoLongerPendingError();
+  },
+  accept: () => {
     throw new InvitationNoLongerPendingError();
   },
 };
@@ -57,6 +64,14 @@ const INVITATION_STATUS_BEHAVIORS: Record<InvitationStatus, InvitationStatusBeha
       if (now >= state.expiresAt) throw new InvitationNoLongerPendingError();
       state.status = InvitationStatus.CANCELLED;
       state.endedAt = now;
+    },
+    accept(state, userId, now) {
+      if (now >= state.expiresAt) throw new InvitationNoLongerPendingError();
+      state.status = InvitationStatus.ACCEPTED;
+      state.endedAt = now;
+      state.acceptedByUserId = userId;
+      state.name = null;
+      state.phone = null;
     },
   },
   ACCEPTED: terminalInvitationStatus,
@@ -96,6 +111,7 @@ export class Invitation extends AggregateRoot {
       expiresAt: new Date(input.now.getTime() + INVITATION_VALIDITY_DAYS * DAY_MS),
       status: InvitationStatus.PENDING,
       endedAt: null,
+      acceptedByUserId: null,
       notifiedBySms: input.notifyBySms,
       version: 0,
     });
@@ -121,6 +137,10 @@ export class Invitation extends AggregateRoot {
     return this.state.id;
   }
 
+  get salonId(): string {
+    return this.state.salonId;
+  }
+
   get role(): SalonRole {
     return this.state.role;
   }
@@ -128,6 +148,11 @@ export class Invitation extends AggregateRoot {
   /** En attente tant que l'échéance n'est pas atteinte : à l'instant exact de l'échéance, elle est expirée. */
   isPendingAt(now: Date): boolean {
     return this.behavior.isPendingAt(this.state, now);
+  }
+
+  /** Refuse tôt, avant toute écriture, une invitation qui ne peut plus être acceptée. */
+  assertPendingAt(now: Date): void {
+    if (!this.isPendingAt(now)) throw new InvitationNoLongerPendingError();
   }
 
   /** Constate l'expiration d'une invitation échue ; `true` si l'état a changé. */
@@ -138,6 +163,12 @@ export class Invitation extends AggregateRoot {
   cancel(cancelledByUserId: string, now: Date): void {
     this.behavior.cancel(this.state, now);
     this.record(new InvitationCancelled(this.state.id, this.state.salonId, cancelledByUserId, now));
+  }
+
+  /** Le nom et le numéro saisis par le salon sont effacés : le compte porte désormais le numéro (RG-007-12). */
+  accept(userId: string, now: Date): void {
+    this.behavior.accept(this.state, userId, now);
+    this.record(new InvitationAccepted(this.state.id, this.state.salonId, this.state.role, userId, now));
   }
 
   snapshot(): Readonly<InvitationState> {
