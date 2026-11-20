@@ -1,11 +1,11 @@
 
 # GoMeCoiffer — Product Requirements Document
 
-**Version :** 1.1 — MVP (20/11/2026 : avis et notes intégrés au MVP, fiche F09, décision D-059)
+**Version :** 1.2 — MVP (20/11/2026 : avis et notes intégrés au MVP, fiche F09, D-059 ; application mobile iOS et Android dans le MVP, D-061 et D-062)
 **Statut :** Proposition de périmètre fonctionnel
 **Marché initial :** Cameroun
 **Utilisateurs :** Clients, propriétaires de salons, administrateurs, professionnels de beauté et personnel financier
-**Supports :** Application web responsive, marketplace mobile-first et back-office SaaS
+**Supports :** Application web responsive, marketplace mobile-first et back-office SaaS ; application mobile iOS et Android (une seule app, espaces client et salon), développée en parallèle du web
 
 ---
 
@@ -817,7 +817,6 @@ Fonctionnalités explicitement reportées :
 - Comptabilité complète.
 - Gestion avancée des franchises.
 - Prestations multi-intervenants.
-- Application mobile native.
 - Intelligence artificielle.
 - Gestion complexe des cabines, équipements et ressources partagées.
 

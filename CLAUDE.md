@@ -53,7 +53,7 @@ PRD ──► use-case-writer ──► docs/use-cases/UC-xxx + features/*.featu
 ```
 
 - La session principale découpe, délègue, intègre et lance la suite complète. Elle ne délègue pas ce qui tient en quelques appels d'outils.
-- Back et front d'une même fonctionnalité partent **en parallèle** dès que le contrat d'API est figé dans `packages/contracts` (schémas Zod partagés). Le contrat d'abord, puis les deux côtés.
+- Back et front d'une même fonctionnalité partent **en parallèle** dès que le contrat d'API est figé dans `packages/contracts` (schémas Zod partagés). Le contrat d'abord, puis les deux côtés. Le front se livre **sur le web et sur le mobile** (D-062) : logique partagée dans `packages/client-core`, écrans web par `front-builder` / `front-ui`, écrans mobiles par `mobile-builder`.
 - Agents parallèles → worktrees isolés (`isolation: "worktree"`, créés dans `.worktrees/` par le hook). Chaque agent ne lance que les tests des modules qu'il a touchés ; la session principale fusionne et lance la suite complète une seule fois.
 - Chaque consigne donnée à un agent rappelle : le mode de la session, le périmètre exact (fichiers/modules), les règles « tous modes » ci-dessous, et ce que le rapport doit contenir.
 - Un rapport d'agent n'est pas une preuve : la session principale relit le diff et relance les tests avant d'annoncer un résultat.

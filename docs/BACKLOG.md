@@ -246,9 +246,9 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Config : `WEB_ORIGIN` validé comme URL (https hors local) ; OpenAPI protégé en preprod.
 - React Compiler par l'option native expérimentale de `@vitejs/plugin-react` (D-014) : surveiller, repli Babel documenté.
 
-## Front partagé et app mobile (D-060, D-061, 20/11)
+## Front partagé et app mobile (D-060, D-061, D-062, 20/11)
 
-Ordre : 1, puis 2 avec le front du lot 1, puis 3.
+Ordre (D-062 : mobile **en parallèle** du web) : 1 et 3a d'abord, puis 2 et 3b ensemble, use case par use case.
 
 1. **Créer `packages/client-core`** (avant le front du lot 1) : y déplacer `lib/store` (store, `createAppAsyncThunk`,
    `appApi`, actions, listeners), le port `HttpClient`, le routage temps réel, la logique rbac, `format` et les
@@ -257,11 +257,13 @@ Ordre : 1, puis 2 avec le front du lot 1, puis 3.
    `*HttpGateway` n'est instancié que dans `lib/store/dependencies/` de chaque app. Mettre à jour `docs/checklists.md`.
 2. **Front du lot 1** (web) sur cette base, module `auth` en premier (`docs/frontend-modules.md`).
 3. **App mobile `mobile/`** (`docs/mobile.md`) :
-   - prérequis côté API : **UC-013 session mobile par jeton porteur** (en rédaction le 20/11), avec revue sécurité ;
-   - socle : Expo SDK 58, Expo Router, NativeWind v5 + React Native Reusables, Expo UI, `createMobileStore`,
-     `MobileHttpClient`, `react-native-sse`, `expo-secure-store`, jest-expo, EAS (profils, dev client) ;
-   - pnpm : vérifier les dépendances isolées (repli `nodeLinker: hoisted`), `allowBuilds` et la politique d'âge ;
-   - puis les écrans, lot par lot, en commençant par l'authentification et l'espace client.
+   - 3a, avant les écrans : **backend de UC-013** (session mobile par jeton porteur, prêt pour dev, D-062) avec revue
+     sécurité, et `archi-reviewer` conseillé sur l'intergiciel qui touche toutes les routes ; **rédiger UC-014**
+     (inscription, mot de passe oublié et acceptation d'invitation depuis l'app) ; socle mobile : Expo SDK 58, Expo
+     Router, NativeWind v5 + React Native Reusables, Expo UI, `createMobileStore`, `MobileHttpClient`,
+     `react-native-sse`, `expo-secure-store`, jest-expo, EAS (profils, dev client) ; pnpm : dépendances isolées
+     (repli `nodeLinker: hoisted`), `allowBuilds`, politique d'âge ;
+   - 3b : les écrans mobiles **en même temps que les écrans web** de chaque use case (lot 1 d'abord).
 - **Skills des agents à installer par le user** (refusé à l'agent par le garde-fou de Claude Code) :
   `claude plugin install expo@claude-plugins-official --scope project` (puis `/mcp`) et
   `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`. Le skill projet
@@ -307,7 +309,7 @@ puis back et front en parallèle.
 
 Notifications « coiffeur libre », marketing automatisé, fidélité, abonnements clients, chat,
 sponsoring opérationnel, commission automatique, stock, paie, comptabilité, franchises, multi-intervenants,
-application mobile native, IA, cabines et équipements partagés.
+IA, cabines et équipements partagés.
 
 ## À observer
 

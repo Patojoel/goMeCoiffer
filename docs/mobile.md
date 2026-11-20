@@ -147,8 +147,10 @@ Skills externes, à installer par le user (refusé à l'agent par le garde-fou d
 
 ## 8. Reste à décider (voir `docs/BACKLOG.md`)
 
-- UC-013 (session mobile par jeton) : prérequis côté API avant toute connexion depuis l'app.
+- UC-013 (session mobile par jeton, prêt pour dev, D-062) : prérequis côté API avant toute connexion depuis l'app ;
+  UC-014 (inscription, mot de passe oublié, invitation depuis l'app) à rédiger.
 - Comptes Apple Developer et Google Play, identifiants de l'app (`bundleIdentifier`, `package`), domaine des liens
   universels.
 - Notifications push (rappels de rendez-vous) : hors PRD actuel.
-- Ordre : `client-core` d'abord (avant le front du lot 1), puis l'app mobile écran par écran, lot par lot.
+- Ordre (D-062, mobile dans le MVP **en parallèle du web**) : `client-core`, backend de UC-013 et socle mobile
+  d'abord ; puis chaque use case livre ses écrans web et mobiles ensemble.
