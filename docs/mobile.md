@@ -134,7 +134,12 @@ eas build --profile preview           # build interne (TestFlight / test interne
 eas update --branch preview           # mise à jour OTA
 ```
 
-## 7. Skills pour les agents (à installer par le user)
+## 7. Skills et agent
+
+- Projet : skill **`mobile-stack`** (`.claude/skills/mobile-stack/`) et agent **`mobile-builder`**
+  (`.claude/agents/mobile-builder.md`), qui charge `mobile-stack`, `front-stack`, `tdd`, `clean-code` et `security`.
+
+Skills externes, à installer par le user (refusé à l'agent par le garde-fou de Claude Code) :
 
 - Expo officiel (skills `expo-router`, `expo-ui`, `expo-native-ui`, `expo-data-fetching`, `expo-design-system`,
   `eas-*`… + serveur MCP Expo) : `claude plugin install expo@claude-plugins-official --scope project`, puis `/mcp`.

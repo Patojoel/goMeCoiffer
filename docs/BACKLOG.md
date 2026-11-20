@@ -264,8 +264,9 @@ Ordre : 1, puis 2 avec le front du lot 1, puis 3.
    - puis les écrans, lot par lot, en commençant par l'authentification et l'espace client.
 - **Skills des agents à installer par le user** (refusé à l'agent par le garde-fou de Claude Code) :
   `claude plugin install expo@claude-plugins-official --scope project` (puis `/mcp`) et
-  `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`. Ensuite, ajouter
-  un agent `mobile-builder` (ou étendre `front-builder` / `front-ui`) qui charge ces skills.
+  `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`. Le skill projet
+  `mobile-stack` et l'agent `mobile-builder` existent (20/11) et chargent ces skills externes s'ils sont installés.
+- À prévoir : étendre `front-reviewer` (ou créer un `mobile-reviewer`) à `mobile/` avant les premiers écrans mobiles.
 - **Décisions à prendre plus tard** : comptes Apple Developer et Google Play, identifiants de l'app
   (`bundleIdentifier`, `package`), domaine des liens universels (`/rejoindre`, `/reprogrammation/:token`),
   notifications push (hors PRD actuel).

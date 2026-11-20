@@ -23,13 +23,14 @@ Référence technique de GoMeCoiffer pour Claude Code : architecture, patterns, 
 
 **Config Claude Code** (`.claude/`) :
 
-- Skills (règles à charger avant d'écrire du code) : `ddd`, `hexagonal`, `nest-stack`, `tdd`, `sql-query`, `security`, `clean-code`, `refactoring`, `front-stack`.
+- Skills (règles à charger avant d'écrire du code) : `ddd`, `hexagonal`, `nest-stack`, `tdd`, `sql-query`, `security`, `clean-code`, `refactoring`, `front-stack`, `mobile-stack` (app Expo et logique partagée `client-core`). Skills externes recommandés pour le mobile, à installer par le user : plugin Expo officiel (`expo-router`, `expo-ui`, `eas-*`…) et `react-native-best-practices` de Callstack (`docs/mobile.md` §7).
 - Agents :| Agent               | Rôle                                                                      | Modèle    |
   | ------------------- | -------------------------------------------------------------------------- | ---------- |
   | `backend-builder` | Implémente un cas d'usage back (commande, agrégat, endpoint, migration)  | sonnet 5.0 |
   | `query-perf`      | Écrit ou optimise les QueryHandlers (SQL pur), produit le rapport d'index | sonnet5.0  |
   | `front-builder`   | Logique front : thunk, slice, RTK Query, gateway, DI                       | sonnet5.0  |
   | `front-ui`        | Présentation, composants, écrans, maquettes                              | sonnet5.0  |
+  | `mobile-builder`  | App mobile Expo : écrans, routes Expo Router, composants natifs, adaptateurs de plateforme (logique dans `client-core`) | sonnet5.0  |
   | `use-case-writer` | Transforme le PRD en use cases BDD                                         | opus       |
 - Relecteurs (lecture seule) : `archi-reviewer` (opus), `security-reviewer` (opus), `front-reviewer` (sonnet).
 - Hooks (`.claude/settings.json`, scripts dans `.claude/hooks/`) : garde-fous fichiers (`.env`, migrations déjà commitées), garde-fous shell (push forcé, `--no-verify`, `schema:sync`/`schema:drop`), formatage Prettier du fichier écrit, contexte de session (mode, URGENT du backlog), worktrees dans `.worktrees/`.
