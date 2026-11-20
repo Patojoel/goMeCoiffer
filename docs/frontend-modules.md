@@ -31,10 +31,21 @@ qu'un module front propriétaire.
 
 ## Structure interne d'un module
 
-Exemple : `team`.
+Exemple : `team`. **Depuis D-061, un module est réparti en deux** : sa logique dans
+`packages/client-core/src/modules/team/` (partagée avec l'app mobile), ses écrans dans
+`frontend/src/modules/team/` (web) et `mobile/src/modules/team/ui/` (mobile).
+
+| Dossier ci-dessous | Où il vit |
+|---|---|
+| `models/`, `usecases/`, `slice/`, `listeners/`, `infra/api-routes/`, `infra/repo/`, `infra/api/`, `__tests__/` de logique (gateway `InMemory…`) | `packages/client-core/src/modules/team/` (Vitest) |
+| `infra/validators/` propres à l'UI, `infra/router/`, `infra/ui/`, `__tests__/` d'écran (`render<Module>`) | `frontend/src/modules/team/` |
+| écrans natifs | `mobile/src/modules/team/ui/` (jest-expo), routes dans `mobile/src/app/` |
+
+L'adaptateur `infra/repo/TeamHttpGateway.ts` est écrit sur le **port** `HttpClient` de `client-core` : chaque app lui
+injecte son implémentation (cookies + CSRF sur le web, jeton porteur sur mobile).
 
 ```
-modules/team/
+modules/team/                                # vue d'ensemble, toutes parties confondues
 ├─ models/
 │  ├─ gateway/TeamGateway.ts                 # port : une méthode par endpoint consommé
 │  ├─ teamMember.ts  invitation.ts           # entités (types repris de @gomecoiffer/contracts)

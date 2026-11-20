@@ -7,6 +7,15 @@ structure interne d'un module, liste des modules et routes : `docs/frontend-modu
 Organisation reprise du frontend de vossou (`CrinaProjet/vossou/frontend`), adaptée à la stack de GoMeCoiffer :
 SSE (pas STOMP), lectures RTK Query, contrats Zod partagés, pas de persistance globale (décision D-060).
 
+**Logique partagée avec l'app mobile (D-061)** : tout ce qui ne dessine rien vit dans `packages/client-core`
+(ports, `usecases/`, `slice/`, `listeners/`, `infra/api/`, `infra/repo/` écrit sur le **port** `HttpClient`, store
+RTK, rbac, format, dictionnaires i18n). `frontend/` garde ses écrans, ses routes, ses validateurs propres à l'UI et
+ses adaptateurs web (`WebHttpClient` à cookies + CSRF, `EventSource`, `window`). Dans l'arborescence ci-dessous,
+`lib/store`, `lib/http`, `lib/realtime`, `lib/rbac`, `lib/format` et `lib/i18n` ne gardent que la partie propre au web
+(création du store avec les adaptateurs web, composants de garde, rendu de `t()`) ; le reste est dans `client-core`
+(`docs/mobile.md` §3). Les modules de `frontend/src/modules/<module>/` ne contiennent plus que `infra/{ui,router,
+validators}` et leurs tests d'écran.
+
 ## Structure de `frontend/src/`
 
 ```

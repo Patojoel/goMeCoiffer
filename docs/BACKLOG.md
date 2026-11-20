@@ -246,6 +246,30 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Config : `WEB_ORIGIN` validé comme URL (https hors local) ; OpenAPI protégé en preprod.
 - React Compiler par l'option native expérimentale de `@vitejs/plugin-react` (D-014) : surveiller, repli Babel documenté.
 
+## Front partagé et app mobile (D-060, D-061, 20/11)
+
+Ordre : 1, puis 2 avec le front du lot 1, puis 3.
+
+1. **Créer `packages/client-core`** (avant le front du lot 1) : y déplacer `lib/store` (store, `createAppAsyncThunk`,
+   `appApi`, actions, listeners), le port `HttpClient`, le routage temps réel, la logique rbac, `format` et les
+   dictionnaires i18n ; le web garde `WebHttpClient`, la source `EventSource`, les composants de garde et le rendu.
+   Règles `pnpm arch` : `client-core` n'importe ni `react-dom`, ni `react-native`, ni `fetch`, ni stockage ; un
+   `*HttpGateway` n'est instancié que dans `lib/store/dependencies/` de chaque app. Mettre à jour `docs/checklists.md`.
+2. **Front du lot 1** (web) sur cette base, module `auth` en premier (`docs/frontend-modules.md`).
+3. **App mobile `mobile/`** (`docs/mobile.md`) :
+   - prérequis côté API : **UC-013 session mobile par jeton porteur** (en rédaction le 20/11), avec revue sécurité ;
+   - socle : Expo SDK 58, Expo Router, NativeWind v5 + React Native Reusables, Expo UI, `createMobileStore`,
+     `MobileHttpClient`, `react-native-sse`, `expo-secure-store`, jest-expo, EAS (profils, dev client) ;
+   - pnpm : vérifier les dépendances isolées (repli `nodeLinker: hoisted`), `allowBuilds` et la politique d'âge ;
+   - puis les écrans, lot par lot, en commençant par l'authentification et l'espace client.
+- **Skills des agents à installer par le user** (refusé à l'agent par le garde-fou de Claude Code) :
+  `claude plugin install expo@claude-plugins-official --scope project` (puis `/mcp`) et
+  `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`. Ensuite, ajouter
+  un agent `mobile-builder` (ou étendre `front-builder` / `front-ui`) qui charge ces skills.
+- **Décisions à prendre plus tard** : comptes Apple Developer et Google Play, identifiants de l'app
+  (`bundleIdentifier`, `package`), domaine des liens universels (`/rejoindre`, `/reprogrammation/:token`),
+  notifications push (hors PRD actuel).
+
 ## Lots MVP (ordre proposé, cycle Disponibilité → Réservation → Paiement → Prestation terminée)
 
 Chaque lot commence par `use-case-writer` (use cases + `.feature`), puis contrat dans `packages/contracts`,

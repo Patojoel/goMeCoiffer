@@ -17,6 +17,7 @@ Référence technique de GoMeCoiffer pour Claude Code : architecture, patterns, 
 - `docs/use-cases/` — use cases BDD (`UC-xxx`), inventaire des exigences, index
 - `docs/frontend.md` — structure et règles du frontend
 - `docs/frontend-modules.md` — liste des modules front, structure interne d'un module, routes par espace
+- `docs/mobile.md` — app mobile Expo / React Native et logique partagée `packages/client-core` (D-061)
 
 **Maquettes** : aucune pour l'instant. Dès qu'une maquette (Figma ou autre) est fournie, son lien s'ajoute ici et elle devient un **contrat** : pour chaque module touché, vérifier que les écrans, formulaires, libellés et parcours lui correspondent, corriger les écarts (`front-ui`) ou les soumettre au user. Lecture Figma : skill `figma:figma-design-to-code` avant `get_design_context`.
 
@@ -121,7 +122,7 @@ Quand le travail est une **refonte UI/UX** (nouveau design, écrans jugés trop 
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Runtime        | **Node.js 24 LTS**, **pnpm 11**                                                                                           | `.nvmrc` / `engines` ; pnpm 11 applique une politique d'âge des versions (`minimumReleaseAgeExclude`) et n'exécute que les scripts d'install listés dans `allowBuilds` (`pnpm-workspace.yaml`) |
 | Langage        | **TypeScript 6.0** (pas 7 : `@nestjs/swagger` 12 ne l'accepte pas), ESM partout                                               | côté API, build et tests par **SWC** (décorateurs + metadata)                                                                                                                                      |
-| Monorepo       | **pnpm workspaces**                                                                                                             | `backend/` (paquet `api`), `frontend/` (paquet `web`), `packages/contracts` (`@gomecoiffer/contracts`)                                                                                          |
+| Monorepo       | **pnpm workspaces**                                                                                                             | `backend/` (paquet `api`), `frontend/` (paquet `web`), `mobile/` (paquet `mobile`), `packages/contracts` (`@gomecoiffer/contracts`), `packages/client-core` (`@gomecoiffer/client-core` : logique partagée web + mobile, D-061)                                                                                          |
 | Backend        | **NestJS 12**, `@nestjs/cqrs`, `nestjs-cls` + `@nestjs-cls/transactional` + `@nestjs-cls/transactional-adapter-typeorm` | validation **Standard Schema** native (`@Body({ schema })`)                                                                                                                                         |
 | Persistance    | **PostgreSQL 17** + **TypeORM** (migrations TypeORM)                                                                      | écriture : entités et repositories TypeORM ; **lecture : SQL pur écrit dans `application/`**, exécuté par le port `SqlReader` (paramètres liés)                                            |
 | Contrats       | `packages/contracts` : schémas **Zod 4** + types inférés                                                                   | partagés API ↔ web, une seule source de vérité                                                                                                                                                          |
@@ -131,7 +132,8 @@ Quand le travail est une **refonte UI/UX** (nouveau design, écrans jugés trop 
 | Frontend       | **React 19.2** + **Vite 8** + TypeScript strict                                                                           | React Compiler activé, mobile-first                                                                                                                                                                        |
 | État front    | **Redux Toolkit 2** (commandes) + **RTK Query** (lectures)                                                                | gateways injectés via `extraArgument`                                                                                                                                                                    |
 | UI             | Tailwind CSS v4 + shadcn/ui (Radix) + lucide-react                                                                                    | formulaires `react-hook-form` + `zod`                                                                                                                                                                   |
-| Tests          | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation)       | pas de Jest, pas de `vi.mock` de module                                                                                                                                                                   |
+| Mobile         | **Expo SDK 58** (React Native 0.88, React 19.3, New Architecture), **Expo Router**, Redux Toolkit + RTK Query via `client-core` | UI : Expo UI (SwiftUI / Compose) + `NativeTabs`, NativeWind v5 + React Native Reusables ; `expo-secure-store`, `react-native-sse`, EAS ; détail `docs/mobile.md` (D-061) |
+| Tests          | **Vitest** partout (projets unit / integration / e2e), Testing Library, MSW, **Testcontainers**, Stryker (mutation)       | pas de Jest, pas de `vi.mock` de module ; **seule exception** : écrans de `mobile/` en `jest-expo` + React Native Testing Library (D-061) |
 | Qualité       | oxlint, Prettier, **dependency-cruiser** (`pnpm arch`)                                                                        | les règles d'architecture sont vérifiées par outil                                                                                                                                                       |
 | Observabilité | `nestjs-pino` (JSON, redaction PII), `GET /api/public/health` (ping de la base)                                                   |                                                                                                                                                                                                             |
 
@@ -488,28 +490,39 @@ Canal standard pour garder planning et disponibilités à jour (PRD F02 : moins 
 
 SPA Vite (pas de SSR), **mobile-first**. Cinq espaces dans la même app, layouts séparés et chargés paresseusement : marketplace publique (`/`), authentification (`/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/rejoindre`), back-office salon (`/salon/*`), espace client (`/mon-espace/*`, D-055), administration plateforme (`/admin/*`). Organisation reprise du frontend de vossou et adaptée (D-060). Structure et règles : `docs/frontend.md` ; modules, structure interne et routes : `docs/frontend-modules.md` ; idiomes : skill `front-stack`.
 
+**Logique partagée avec le mobile (D-061)** : tout ce qui ne dessine rien (ports, `usecases/`, `slice/`, `listeners/`, `infra/api/`, `infra/repo/` sur le port `HttpClient`, store RTK, rbac, format, dictionnaires i18n) vit dans `packages/client-core/src/modules/<module>/` et `packages/client-core/src/{store,http,realtime,rbac,format,i18n}`. `frontend/` et `mobile/` ne gardent que leurs écrans, leurs routes et leurs adaptateurs de plateforme (HttpClient web à cookies + CSRF ou mobile à jeton, temps réel, stockage). Détail : `docs/mobile.md` §3.
+
 ```
-frontend/src/
-  app/router/          # router.tsx (assemble les routeurs des modules), routes.ts, ResolveHomeRoute, erreurs
-  app/layouts/         # Marketplace, Auth, Salon, Client, Admin
-  components/ui/       # shadcn/ui
-  components/          # forms/ (PhoneField, OtpField, FieldHint), feedback/ (EmptyState, ErrorState), navigation/
-  lib/http/            # HttpClient (credentials, CSRF, 401/403)
-  lib/store/           # store, reducer, actions/, api/ (RTK Query), dependencies/ (DI des gateways), listeners/, testing/
-  lib/realtime/  lib/rbac/  lib/format/
-  lib/i18n/            # i18n.ts, fr.ts/en.ts, lang/<module>.fr.ts
-  shared/              # hooks/, errors/ (code API → message), test-utils/
+packages/client-core/src/      # partagé web + mobile, sans react-dom ni react-native
+  store/  http/  realtime/  rbac/  format/  i18n/
   modules/<module>/
     models/            # entités + gateway/<Module>Gateway.ts (port)
     usecases/<cas>/    # <Cas>Async.ts (thunk) + <Cas>Command.ts + <Cas>Response.ts (z.infer des contrats)
     slice/             # état local seulement + <Module>Selector.ts
     listeners/         # ListenWhen<Fait>.ts
-    infra/             # api-routes/, repo/<Module>HttpGateway.ts, api/<module>Api.ts, validators/, router/, ui/<fonctionnalité>/
-    __tests__/         # fakes/InMemory<Module>Gateway.ts, render<Module>.tsx, tests nommés par règle métier
+    infra/             # api-routes/, repo/<Module>HttpGateway.ts (sur le port HttpClient), api/<module>Api.ts
+    __tests__/         # Vitest : fakes/InMemory<Module>Gateway.ts, tests nommés par règle métier
+
+frontend/src/
+  app/router/          # router.tsx (assemble les routeurs des modules), routes.ts, ResolveHomeRoute, erreurs
+  app/layouts/         # Marketplace, Auth, Salon, Client, Admin
+  components/ui/       # shadcn/ui
+  components/          # forms/ (PhoneField, OtpField, FieldHint), feedback/ (EmptyState, ErrorState), navigation/
+  lib/http/            # WebHttpClient (implémente le port de client-core : credentials, CSRF, 401/403)
+  lib/store/           # createWebStore, dependencies/ (DI des gateways avec les adaptateurs web), testing/
+  lib/realtime/        # source EventSource (port RealtimeSource de client-core)
+  lib/rbac/            # composants de garde (<RequirePermission>…) sur les règles de client-core
+  lib/i18n/            # rendu de t() pour React DOM (dictionnaires dans client-core)
+  shared/              # hooks/, test-utils/
+  modules/<module>/
+    infra/             # validators/ (propres à l'UI), router/, ui/<fonctionnalité>/
+    __tests__/         # écrans : render<Module>.tsx, tests nommés par règle métier
+
+mobile/src/            # app Expo : app/ (Expo Router), modules/<module>/ui/, components/, lib/ (adaptateurs natifs) — docs/mobile.md
 ```
 
 - Lectures : **RTK Query** (`injectEndpoints` par module, `queryFn` via le gateway injecté). Écritures : thunks `createAppAsyncThunk` (`<Cas>Async`) qui invalident les tags concernés. Pas de slice `EntityAdapter` pour une liste.
-- **Jamais** d'import d'un `*HttpGateway` hors de `lib/store/dependencies/`.
+- **Jamais** d'instanciation d'un `*HttpGateway` hors de `lib/store/dependencies/` de chaque app ; `client-core` n'importe ni `react-dom`, ni `react-native`, ni `fetch`, ni stockage (`pnpm arch` le vérifie).
 - Chaque module expose `infra/router/<Module>Routes.ts` et `<Module>Router.tsx` (routes paresseuses + gardes) ; `app/router/router.tsx` ne fait qu'assembler.
 - Schémas de formulaire repris de `packages/contracts` : le front et l'API valident la même chose.
 - Heures affichées dans le fuseau **du salon**, montants en FCFA sans décimales (`Intl.NumberFormat('fr-CM', { style: 'currency', currency: 'XAF' })`).

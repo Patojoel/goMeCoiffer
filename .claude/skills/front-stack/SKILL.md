@@ -6,6 +6,7 @@ description: Idiomes du frontend GoMeCoiffer (React 19.2 + Vite 8 + Redux Toolki
 # Front-stack — React + Vite + Redux Toolkit (GoMeCoiffer)
 
 > Réf : `CLAUDE.md` §II, `docs/frontend.md` (structure et règles), `docs/frontend-modules.md` (modules, structure interne, routes), `docs/checklists.md` § Frontend. Organisation reprise de vossou, adaptée (D-060).
+> **Logique partagée (D-061)** : ports, use cases, slices, listeners, endpoints RTK Query et adaptateurs HTTP (sur le port `HttpClient`) vivent dans `packages/client-core` ; `frontend/` n'écrit que ses écrans, ses routes et ses adaptateurs web. `client-core` n'importe ni `react-dom`, ni `react-native`, ni `fetch`, ni stockage. App mobile : `docs/mobile.md`.
 > SPA Vite (pas de SSR, pas de `'use client'`). Routage `react-router`. **Mobile-first** : le client réserve depuis son téléphone.
 
 ## Cinq espaces, une app
