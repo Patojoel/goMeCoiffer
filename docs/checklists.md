@@ -67,12 +67,14 @@ d'une évolution. Les règles de fond sont dans `CLAUDE.md` et les skills ; ici,
 
 ## Nouveau module frontend
 
-1. [ ] Contrat lu dans `packages/contracts` ; port `models/gateway/<Module>Gateway.ts`.
-2. [ ] Fake in-memory du gateway ; tests de logique d'abord (thunk/slice/listener/hook).
-3. [ ] `infra/repo/<Module>HttpGateway.ts` sur `HttpClient` ; câblage dans `lib/store/dependencies/`.
-4. [ ] Endpoints RTK Query (`infra/api/<module>Api.ts`, `providesTags`) ; thunks de commande qui invalident ; abonnements SSE.
-5. [ ] Écrans (`infra/ui/`) mobile-first + hooks `use*` ; i18n ; garde de permission ; aides de guidage.
-6. [ ] Route paresseuse dans le bon espace (marketplace, salon, admin).
+Structure de référence : `docs/frontend-modules.md` (module `team` en exemple).
+
+1. [ ] Contrat lu dans `packages/contracts` ; port `models/gateway/<Module>Gateway.ts` ; entités typées depuis le contrat.
+2. [ ] `__tests__/fakes/InMemory<Module>Gateway.ts` et `__tests__/render<Module>.tsx` ; tests de logique d'abord (thunk/slice/listener/hook), nommés par règle métier.
+3. [ ] `infra/api-routes/<Module>ApiRoutes.ts` ; `infra/repo/<Module>HttpGateway.ts` sur `HttpClient` ; câblage dans `lib/store/dependencies/` (+ `unprovided` dans `createTestStore`).
+4. [ ] Lectures RTK Query (`infra/api/<module>Api.ts`, `providesTags`, tag dans `API_TAGS`) ; `usecases/<cas>/<Cas>Async.ts` + `Command` + `Response` qui invalident ; abonnements SSE.
+5. [ ] Écrans `infra/ui/<fonctionnalité>/` mobile-first + hooks `use*` ; textes dans `lib/i18n/lang/<module>.fr.ts` ; garde de permission ; `FieldHint` et états vides ou refus guidés.
+6. [ ] `infra/router/<Module>Routes.ts` + `<Module>Router.tsx` (paresseux, gardes) branché dans le bon espace de `app/router/router.tsx`.
 7. [ ] Captures 390 px et ordinateur ; `test`, `lint`, `build` verts ; revue selon le mode.
 
 ## Fin d'une évolution (session principale)

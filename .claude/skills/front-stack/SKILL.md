@@ -5,19 +5,22 @@ description: Idiomes du frontend GoMeCoiffer (React 19.2 + Vite 8 + Redux Toolki
 
 # Front-stack — React + Vite + Redux Toolkit (GoMeCoiffer)
 
-> Réf : `CLAUDE.md` §II, `docs/frontend.md` (quand il existe), `docs/checklists.md` § Frontend.
+> Réf : `CLAUDE.md` §II, `docs/frontend.md` (structure et règles), `docs/frontend-modules.md` (modules, structure interne, routes), `docs/checklists.md` § Frontend. Organisation reprise de vossou, adaptée (D-060).
 > SPA Vite (pas de SSR, pas de `'use client'`). Routage `react-router`. **Mobile-first** : le client réserve depuis son téléphone.
 
-## Trois espaces, une app
-- `app/` porte trois layouts et arbres de routes **paresseux** : marketplace publique (`/`), back-office salon (`/salon/*`), administration plateforme (`/admin/*`).
+## Cinq espaces, une app
+- `app/layouts/` porte cinq layouts et `app/router/router.tsx` cinq arbres de routes **paresseux** : marketplace publique (`/`), authentification (`/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/rejoindre`), back-office salon (`/salon/*`), espace client (`/mon-espace/*`, D-055), administration plateforme (`/admin/*`).
 - La marketplace ne charge jamais le code du back-office ni de l'admin (découpage par `lazy`).
 - Le back-office affiche le **salon actif** et un sélecteur de salon pour les utilisateurs multi-salons ; changer de salon appelle l'API, puis vide le cache RTK Query et l'état dépendant du salon.
+- Après connexion, `app/router/ResolveHomeRoute.ts` suit l'étape suivante du résumé de session (D-027).
 
-## Structure hexagonale par module (`src/modules/<module>/`)
-- `models/` — types d'entités, **port** `models/gateway/<Module>Gateway.ts`.
-- `usecases/<cas>/` — thunk `createAppAsyncThunk` + `Command` + `Response`.
-- `slice/` — slice + selectors ; `listeners/` — effets (`listenerMiddleware`).
-- `infra/` — `repo/<Module>HttpGateway.ts` (adapter sur `HttpClient`), `api/<module>Api.ts` (RTK Query `injectEndpoints`), `validators/`, `ui/<fonctionnalité>/` (composants + hook `use*`).
+## Structure hexagonale par module (`src/modules/<module>/`, kebab-case)
+- `models/` — types d'entités (tirés des contrats), règles d'affichage pures, **port** `models/gateway/<Module>Gateway.ts`.
+- `usecases/<cas>/` — `<Cas>Async.ts` (thunk `createAppAsyncThunk`) + `<Cas>Command.ts` + `<Cas>Response.ts` (`z.infer` des schémas de `@gomecoiffer/contracts`).
+- `slice/` — état **local** seulement + `<Module>Selector.ts` (méthodes statiques) ; jamais d'`EntityAdapter` pour une liste (RTK Query) ; `listeners/` — `ListenWhen<Fait>.ts` (`listenerMiddleware`).
+- `infra/` — `api-routes/<Module>ApiRoutes.ts`, `repo/<Module>HttpGateway.ts` (adapter sur `HttpClient`), `api/<module>Api.ts` (RTK Query `injectEndpoints`), `validators/`, `router/` (`<Module>Routes.ts` + `<Module>Router.tsx` : routes paresseuses et gardes), `ui/<fonctionnalité>/` (composants + hook `use*`).
+- `__tests__/` — `fakes/InMemory<Module>Gateway.ts`, `render<Module>.tsx`, tests nommés par règle métier.
+- Transverse : `components/forms/` (PhoneField, OtpField, PasswordField, FieldHint), `components/feedback/` (EmptyState, ErrorState, LoadingButton), `shared/hooks/`, `shared/errors/codeToMessage`, `shared/test-utils/`, `lib/i18n/lang/<module>.fr.ts`.
 
 ## Injection de dépendances (règle centrale)
 - Conteneur typé `AppDependencies` instancié dans `lib/store/dependencies/` et passé en `extraArgument` (thunks) et au contexte des `queryFn`.
@@ -26,7 +29,7 @@ description: Idiomes du frontend GoMeCoiffer (React 19.2 + Vite 8 + Redux Toolki
 
 ## HTTP
 - Tous les adapters s'appuient sur `lib/http/HttpClient` (`credentials: 'include'`, en-tête CSRF, déballage d'`ApiResponse<T>`, 401 → purge du store + redirection connexion, 403 → erreur typée sans déconnexion). Ne pas réimplémenter `fetch`/CSRF.
-- Base `VITE_API_BASE_URL` + `/api`. Espaces : `/api/public/*`, `/api/salon/*`, `/api/admin/*`.
+- Base `VITE_API_BASE_URL` + `/api`. Espaces : `/api/public/*`, `/api/salon/*`, `/api/client/*`, `/api/admin/*`.
 - Erreurs typées depuis l'API : `code` stable d'un 422 (règle métier) et 409 (créneau pris) → message i18n dédié, jamais le `message` brut affiché tel quel si une traduction existe.
 
 ## Lectures : RTK Query

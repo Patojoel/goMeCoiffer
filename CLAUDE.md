@@ -15,7 +15,8 @@ Référence technique de GoMeCoiffer pour Claude Code : architecture, patterns, 
 - `docs/migrations-history.md` — historique des migrations TypeORM
 - `docs/checklists.md` — checklists : nouveau module backend/frontend, socle `shared/`
 - `docs/use-cases/` — use cases BDD (`UC-xxx`), inventaire des exigences, index
-- `docs/frontend.md` — structure du frontend (à rédiger quand le front existe)
+- `docs/frontend.md` — structure et règles du frontend
+- `docs/frontend-modules.md` — liste des modules front, structure interne d'un module, routes par espace
 
 **Maquettes** : aucune pour l'instant. Dès qu'une maquette (Figma ou autre) est fournie, son lien s'ajoute ici et elle devient un **contrat** : pour chaque module touché, vérifier que les écrans, formulaires, libellés et parcours lui correspondent, corriger les écarts (`front-ui`) ou les soumettre au user. Lecture Figma : skill `figma:figma-design-to-code` avant `get_design_context`.
 
@@ -485,26 +486,31 @@ Canal standard pour garder planning et disponibilités à jour (PRD F02 : moins 
 
 ## II. ARCHITECTURE FRONTEND (`frontend/`)
 
-SPA Vite (pas de SSR), **mobile-first**. Trois espaces dans la même app : marketplace publique, back-office salon, administration plateforme (routes et layouts séparés, chargés paresseusement). Détail et idiomes : skill `front-stack`.
+SPA Vite (pas de SSR), **mobile-first**. Cinq espaces dans la même app, layouts séparés et chargés paresseusement : marketplace publique (`/`), authentification (`/connexion`, `/inscription`, `/mot-de-passe-oublie`, `/rejoindre`), back-office salon (`/salon/*`), espace client (`/mon-espace/*`, D-055), administration plateforme (`/admin/*`). Organisation reprise du frontend de vossou et adaptée (D-060). Structure et règles : `docs/frontend.md` ; modules, structure interne et routes : `docs/frontend-modules.md` ; idiomes : skill `front-stack`.
 
 ```
 frontend/src/
-  app/                 # router, providers, layouts (marketplace, salon, admin)
-  lib/store/           # store, reducer, dependencies (DI des gateways), api (RTK Query)
-  lib/http/            # HttpClient (credentials, CSRF, 401)
-  lib/i18n/  lib/rbac/  lib/realtime/
+  app/router/          # router.tsx (assemble les routeurs des modules), routes.ts, ResolveHomeRoute, erreurs
+  app/layouts/         # Marketplace, Auth, Salon, Client, Admin
   components/ui/       # shadcn/ui
-  components/          # composants transverses
+  components/          # forms/ (PhoneField, OtpField, FieldHint), feedback/ (EmptyState, ErrorState), navigation/
+  lib/http/            # HttpClient (credentials, CSRF, 401/403)
+  lib/store/           # store, reducer, actions/, api/ (RTK Query), dependencies/ (DI des gateways), listeners/, testing/
+  lib/realtime/  lib/rbac/  lib/format/
+  lib/i18n/            # i18n.ts, fr.ts/en.ts, lang/<module>.fr.ts
+  shared/              # hooks/, errors/ (code API → message), test-utils/
   modules/<module>/
     models/            # entités + gateway/<Module>Gateway.ts (port)
-    usecases/<cas>/    # thunk de commande + Command + Response
-    slice/  listeners/
-    infra/             # repo/<Module>HttpGateway.ts, api/<module>Api.ts (RTK Query), ui/, validators/
+    usecases/<cas>/    # <Cas>Async.ts (thunk) + <Cas>Command.ts + <Cas>Response.ts (z.infer des contrats)
+    slice/             # état local seulement + <Module>Selector.ts
+    listeners/         # ListenWhen<Fait>.ts
+    infra/             # api-routes/, repo/<Module>HttpGateway.ts, api/<module>Api.ts, validators/, router/, ui/<fonctionnalité>/
+    __tests__/         # fakes/InMemory<Module>Gateway.ts, render<Module>.tsx, tests nommés par règle métier
 ```
 
-- Lectures : **RTK Query** (`injectEndpoints` par module, `queryFn` via le gateway injecté). Écritures : thunks `createAppAsyncThunk` qui invalident les tags concernés.
+- Lectures : **RTK Query** (`injectEndpoints` par module, `queryFn` via le gateway injecté). Écritures : thunks `createAppAsyncThunk` (`<Cas>Async`) qui invalident les tags concernés. Pas de slice `EntityAdapter` pour une liste.
 - **Jamais** d'import d'un `*HttpGateway` hors de `lib/store/dependencies/`.
-- Routes paresseuses (`lazy`) par espace et par module.
+- Chaque module expose `infra/router/<Module>Routes.ts` et `<Module>Router.tsx` (routes paresseuses + gardes) ; `app/router/router.tsx` ne fait qu'assembler.
 - Schémas de formulaire repris de `packages/contracts` : le front et l'API valident la même chose.
 - Heures affichées dans le fuseau **du salon**, montants en FCFA sans décimales (`Intl.NumberFormat('fr-CM', { style: 'currency', currency: 'XAF' })`).
 
