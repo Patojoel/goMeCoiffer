@@ -22,12 +22,13 @@ describe('Founding an organization with its first salon', () => {
       expect(() => found(aSalonDraft({ name }))).toThrow(InvalidValueError);
     });
 
-    it.each([['GB', 'GB'], ['A'.repeat(60), 'A'.repeat(60)], ['  Go   Beauty  Akwa  ', 'Go Beauty Akwa']])(
-      'accepts %j and keeps %j',
-      (name, kept) => {
-        expect(found(aSalonDraft({ name })).salon.snapshot().name).toBe(kept);
-      },
-    );
+    it.each([
+      ['GB', 'GB'],
+      ['A'.repeat(60), 'A'.repeat(60)],
+      ['  Go   Beauty  Akwa  ', 'Go Beauty Akwa'],
+    ])('accepts %j and keeps %j', (name, kept) => {
+      expect(found(aSalonDraft({ name })).salon.snapshot().name).toBe(kept);
+    });
   });
 
   describe('the type of salon', () => {
@@ -154,7 +155,13 @@ describe('Founding an organization with its first salon', () => {
 describe('The Owner role of a salon', () => {
   it('cannot be granted to a collaborator: it only comes with the foundation of the organization', () => {
     expect(() =>
-      SalonMembership.grantCollaboratorRole({ id: 'm-2', salonId: 'salon-1', userId: 'paul', role: 'OWNER', now: NOW }),
+      SalonMembership.grantCollaboratorRole({
+        id: 'm-2',
+        salonId: 'salon-1',
+        userId: 'paul',
+        role: 'OWNER',
+        now: NOW,
+      }),
     ).toThrow(OwnerRoleReservedError);
   });
 
@@ -167,6 +174,10 @@ describe('The Owner role of a salon', () => {
       now: NOW,
     });
 
-    expect(membership.snapshot()).toMatchObject({ role: 'HAIRDRESSER', status: 'ACTIVE', salonId: 'salon-1' });
+    expect(membership.snapshot()).toMatchObject({
+      role: 'HAIRDRESSER',
+      status: 'ACTIVE',
+      salonId: 'salon-1',
+    });
   });
 });

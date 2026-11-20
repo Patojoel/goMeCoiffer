@@ -150,8 +150,27 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - **Écran « Équipe → Inviter » et liste des invitations (front de UC-006)** : non fait (back seul). Contrat prêt
   (`InviteCollaboratorSchema`, `CollaboratorInvitedSchema`, `InvitationCancelledSchema`, `SalonInvitationsSchema`) ;
   bouton « Partager sur WhatsApp » (D-043), aides des rôles (UC-006 §15), message si la liste atteint 100 lignes.
-- UC-007 : effacer le nom et le numéro de l'invitation à son acceptation (le compte porte déjà le numéro) ;
-  aujourd'hui D-045 ne vise que les invitations non acceptées.
+- **Page « Rejoindre un salon » (front de UC-007)** : non faite (back seul, 20/11). Contrats prêts
+  (`RequestInvitationCodeSchema`, `ProveInvitationPhoneSchema`, `InvitationPhoneProvenSchema`,
+  `InvitationsForProvenPhoneSchema`, `AcceptInvitationSchema`, `InvitationAcceptedSchema`). Après la preuve, lire
+  `GET /api/public/invitations` (la preuve ne renvoie pas la liste) ; `suggestedName` en texte seulement (champ
+  prérempli) ; prendre le `csrfToken` renvoyé quand la session s'ouvre ; `SIGN_IN_REQUIRED` → écran de connexion.
+- UC-007, relevé non traité :
+  - 3e « vérifier le code » (`ConfirmSignUp`, `ResetPassword`, `ProveInvitationPhone`) et 3e « demander un code » :
+    à factoriser (changement des constructeurs des handlers existants et de leurs tests) ;
+  - mutation (T31) non lancée : `PhoneProof.isValidFor`, borne d'échéance de `Invitation.accept`,
+    `sessionAfterAcceptance` ;
+  - non-énumération de la demande de code (médianes < 20 %) non mesurée, à faire avec le vrai fournisseur SMS ;
+  - `IdentityModule` est `@Global()` pour fournir `INVITEE_ACCOUNTS` et `PHONE_PROOFS` à `organizations` sans
+    importer son infrastructure : à revoir si d'autres modules ont besoin d'`identity` (module d'export dédié) ;
+  - choix de session après acceptation : la durée absolue est vérifiée, pas les durées plus courtes des rôles
+    système (D-026) ; sans escalade (la requête suivante est refusée par `AuthGuard`), mais la réponse annonce
+    `SIGNED_IN` ;
+  - cookie `__Host-gmc.join` non exercé par les E2E (`COOKIE_SECURE` faux en test) : ajouter un test d'attributs ;
+  - runner E2E Windows : plantage intermittent d'un worker (code 3221226505) sur un fichier au hasard ; stable avec
+    `--maxWorkers=2` ;
+  - `@apres-UC-008` : réactiver une appartenance retirée (l'unicité `(salon_id, user_id)` répond aujourd'hui
+    « vous faites déjà partie de l'équipe ») ; `@apres-UC-009` : parcours complet du compte client léger.
 - Vrai fournisseur SMS : `organizations.module.ts` refuse de démarrer si `SMS_PROVIDER` n'est pas `fake`, et `fake`
   est refusé en prod : l'API ne démarre pas en prod tant que le fournisseur n'est pas branché (blocage voulu). Deux
   adaptateurs SMS existent (`identity`, `organizations`) : extraire l'envoi dans `shared` au 3e utilisateur (UC-009).

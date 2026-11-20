@@ -73,7 +73,7 @@ export const organizationsSeeder: Seeder = {
           [id, salonId, userPhone, role],
         );
 
-      /** Invitations de Mireille dans Akwa : une en attente (envoyée hier) et une expirée (envoyée il y a 10 jours). */
+      /** Invitations de Mireille dans Akwa : deux en attente (envoyées hier) et une expirée (envoyée il y a 10 jours). */
       const invitation = (id: string, salonId: string, name: string, phone: string, role: string, sentDaysAgo: number, status: string) =>
         tx.query(
           `INSERT INTO salon_invitations (id, salon_id, name, phone, role, invited_by_user_id, sent_at, expires_at, status, ended_at, notified_by_sms, version)
@@ -97,6 +97,8 @@ export const organizationsSeeder: Seeder = {
       await membership('0195f000-0000-7000-8000-000000000b04', AKWA.id, AWA.phone, 'HAIRDRESSER');
 
       await invitation('0195f000-0000-7000-8000-000000000b31', AKWA.id, 'Brice Nana', '+237655443322', 'HAIRDRESSER', 1, 'PENDING');
+      // UC-007 : 6 70 00 00 02 n'a aucun compte (parcours « créer mon compte ») ; 6 55 44 33 22, ci-dessus, est celui de Clarisse (un clic).
+      await invitation('0195f000-0000-7000-8000-000000000b33', AKWA.id, 'Brice Nana', '+237670000002', 'HAIRDRESSER', 1, 'PENDING');
       await invitation('0195f000-0000-7000-8000-000000000b32', AKWA.id, 'Grâce Mbarga', '+237670112233', 'PRACTITIONER', 10, 'EXPIRED');
     });
   },

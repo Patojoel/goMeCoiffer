@@ -96,3 +96,20 @@ export const ResetPasswordSchema = z
   })
   .strict();
 export type ResetPassword = z.infer<typeof ResetPasswordSchema>;
+
+/** UC-007 — POST /api/public/invitations/code : demander un code pour rejoindre un salon (réponse `SignUpCodeSent`, identique pour tout numéro). */
+export const RequestInvitationCodeSchema = z.object({ phone: PhoneInput }).strict();
+export type RequestInvitationCode = z.infer<typeof RequestInvitationCodeSchema>;
+
+/** UC-007 — POST /api/public/invitations/phone-proof : prouver le numéro avec le code reçu. */
+export const ProveInvitationPhoneSchema = z
+  .object({
+    phone: PhoneInput,
+    code: z.string().regex(/^\d{6}$/, 'Le code reçu par SMS compte 6 chiffres.'),
+  })
+  .strict();
+export type ProveInvitationPhone = z.infer<typeof ProveInvitationPhoneSchema>;
+
+/** Le jeton de preuve ne voyage que dans un cookie HttpOnly ; le corps ne dit que jusqu'à quand il vaut. */
+export const InvitationPhoneProvenSchema = z.object({ provenUntil: z.iso.datetime() });
+export type InvitationPhoneProven = z.infer<typeof InvitationPhoneProvenSchema>;

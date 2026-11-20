@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { APP_CONFIG, type AppConfig } from '../../../shared/infrastructure/config/app-config.module.js';
 import { ACTOR_RIGHTS } from '../../../shared/application/ports.js';
+import { AcceptInvitationHandler } from '../application/commands/accept-invitation/accept-invitation.handler.js';
 import { CreateOrganizationHandler } from '../application/commands/create-organization/create-organization.handler.js';
 import { CancelInvitationHandler } from '../application/commands/cancel-invitation/cancel-invitation.handler.js';
 import { InviteCollaboratorHandler } from '../application/commands/invite-collaborator/invite-collaborator.handler.js';
 import { PurgeEndedInvitationsHandler } from '../application/commands/purge-ended-invitations/purge-ended-invitations.handler.js';
 import { ListSalonInvitationsHandler } from '../application/queries/list-salon-invitations/list-salon-invitations.handler.js';
+import { ListInvitationsForProvenPhoneHandler } from '../application/queries/list-invitations-for-proven-phone/list-invitations-for-proven-phone.handler.js';
 import { SelectActiveSalonHandler } from '../application/commands/select-active-salon/select-active-salon.handler.js';
 import { SqlActorRights } from '../application/read-repositories/sql-actor-rights.js';
 import { SqlInvitationChecks } from '../application/read-repositories/sql-invitation-checks.js';
@@ -20,6 +22,8 @@ import { SALON_REPOSITORY } from '../domain/repositories/write/salon.repository.
 import { RoleGrantPolicy } from '../domain/services/role-grant-policy.js';
 import { ActiveSalonController } from './http/active-salon.controller.js';
 import { ActiveSalonResponder } from './http/active-salon.responder.js';
+import { InvitationAcceptanceController } from './http/invitation-acceptance.controller.js';
+import { InvitationAcceptanceResponder } from './http/invitation-acceptance.responder.js';
 import { InvitationsController } from './http/invitations.controller.js';
 import { OrganizationsController } from './http/organizations.controller.js';
 import { OwnerSessionResponder } from './http/owner-session.responder.js';
@@ -35,17 +39,25 @@ import { LoggingInvitationNotifier } from './sms/logging-invitation-notifier.js'
  * dépend d'aucun module, c'est le module qui se lie à son token, et `AppModule` l'importe.
  */
 @Module({
-  controllers: [OrganizationsController, ActiveSalonController, InvitationsController],
+  controllers: [
+    OrganizationsController,
+    ActiveSalonController,
+    InvitationsController,
+    InvitationAcceptanceController,
+  ],
   providers: [
     CreateOrganizationHandler,
     SelectActiveSalonHandler,
     InviteCollaboratorHandler,
     CancelInvitationHandler,
+    AcceptInvitationHandler,
     ListSalonInvitationsHandler,
+    ListInvitationsForProvenPhoneHandler,
     PurgeEndedInvitationsHandler,
     PurgeEndedInvitationsTask,
     { provide: RoleGrantPolicy, useFactory: () => new RoleGrantPolicy() },
     ActiveSalonResponder,
+    InvitationAcceptanceResponder,
     OwnerSessionResponder,
     { provide: ORGANIZATION_REPOSITORY, useClass: TypeOrmOrganizationRepository },
     { provide: SALON_REPOSITORY, useClass: TypeOrmSalonRepository },

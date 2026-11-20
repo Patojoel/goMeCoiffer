@@ -609,8 +609,8 @@ forçable) ; `ActorRights` en mémoire ; lecture `InvitationChecks` en mémoire 
     `ROLE_ABOVE_INVITER` 422, 500 sans détail.
 - **Stocké** : invitation (salon, nom, numéro, rôle, auteur, envoyée le, échéance, état, annulée le / acceptée le,
   version) ; lignes d'audit ; historique des SMS d'invitation par numéro (pour la limite de 3 par 24 h).
-- **SMS** (texte fixe, [HYPOTHÈSE] adresse `gomecoiffer.cm/rejoindre`, Q2) : « GoMeCoiffer : le salon {nom commercial}
-  vous invite à rejoindre son équipe comme {rôle}. Pour accepter avant le {JJ/MM}, ouvrez gomecoiffer.cm/rejoindre
+- **SMS** (texte fixe, [HYPOTHÈSE] adresse `gomecoiffer.cm/rejoindre`, Q2) : « GoMeCoiffer : un salon vous invite à
+  rejoindre son équipe comme {rôle}. Pour accepter avant le {JJ/MM}, ouvrez gomecoiffer.cm/rejoindre
   avec ce numéro. Ne communiquez jamais un code reçu par SMS. »
 - **Message WhatsApp prérempli** (front seulement) : « Bonjour {prénom}, je vous ai invité(e) à rejoindre {nom
   commercial} sur GoMeCoiffer comme {rôle}. Ouvrez gomecoiffer.cm/rejoindre avec votre numéro avant le {JJ/MM} pour
@@ -630,7 +630,7 @@ forçable) ; `ActorRights` en mémoire ; lecture `InvitationChecks` en mémoire 
 
 - **Sécurité** : route dans `/api/salon/*`, `@RequiresPermission('staff:invite')` + CSRF ; salon et auteur lus dans la
   session ; schéma strict ; 404 identique hors périmètre ; réponse identique quel que soit le compte du numéro ; SMS
-  sans code ni lien secret, texte fixe (le nom commercial n'est qu'une variable) ; pas de numéro ni de nom dans les
+  sans code ni lien secret, texte fixe sans nom du salon (D-046) ; pas de numéro ni de nom dans les
   logs, l'audit, les événements ou le suivi en direct. Périmètre critique (invitation de collaborateur, autorisation,
   isolation entre salons, données personnelles) : `security-reviewer` obligatoire.
 - **Performance** : invitation < 300 ms côté serveur (hors SMS, envoyé après la réponse) ; liste < 100 ms jusqu'à 50
@@ -733,8 +733,8 @@ peut être confirmée sans changer la structure du use case.
   salon) ; aucune branche de réponse ni de durée ne doit dépendre de l'existence du compte ailleurs (T19).
 - **SMS après la réponse** : jamais dans la transaction (BACKLOG « Avant de brancher un vrai fournisseur SMS »), pour
   ne pas occuper le pool ni envoyer un SMS pour une invitation annulée par un rollback.
-- **Hameçonnage** : le nom commercial est saisi par le salon ; le SMS reste un gabarit fixe qui rappelle de ne jamais
-  communiquer un code. Tronquer le nom commercial s'il fait dépasser 2 segments SMS.
+- **Hameçonnage** : le SMS ne contient aucun texte saisi par un salon (D-046, revue sécurité) ; seuls le rôle et la
+  date varient, et il rappelle de ne jamais communiquer un code.
 - **Isolation** : l'annulation charge l'invitation par `(salon_id, id)` ; une invitation de Bastos demandée depuis
   Akwa → 404 identique (T25).
 - **BACKLOG** : déplacer « invitation des collaborateurs » du lot 2 vers le lot 1 (Q8).

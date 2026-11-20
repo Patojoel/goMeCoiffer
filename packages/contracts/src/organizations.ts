@@ -125,3 +125,71 @@ export const SalonInvitationSchema = z.object({
 export type SalonInvitation = z.infer<typeof SalonInvitationSchema>;
 export const SalonInvitationsSchema = z.array(SalonInvitationSchema);
 export type SalonInvitations = z.infer<typeof SalonInvitationsSchema>;
+
+/**
+ * UC-007 — POST /api/public/invitations/:id/acceptance. Corps vide pour un compte du personnel existant ; sinon nom,
+ * mot de passe et conditions, tous les trois (D-047). Toute autre clé est refusée : rôle, salon, numéro, utilisateur.
+ * Sortie : `details` vaut `null` quand le corps est vide.
+ */
+export const AcceptInvitationSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(2, 'Indiquez votre nom (2 caractères au moins).')
+      .max(80, 'Votre nom ne peut pas dépasser 80 caractères.')
+      .optional(),
+    password: z.string().min(1).max(128, 'Le mot de passe ne peut pas dépasser 128 caractères.').optional(),
+    termsAccepted: z
+      .literal(true, { error: "Acceptez les conditions d'utilisation pour continuer." })
+      .optional(),
+  })
+  .strict()
+  .superRefine((body, context) => {
+    const given = [body.name, body.password, body.termsAccepted].filter((value) => value !== undefined);
+    if (given.length === 0 || given.length === 3) return;
+    for (const field of ['name', 'password', 'termsAccepted'] as const)
+      if (body[field] === undefined)
+        context.addIssue({ code: 'custom', path: [field], message: 'Complétez ce champ pour créer votre compte.' });
+  })
+  .transform(({ name, password, termsAccepted }) => ({
+    details:
+      name === undefined || password === undefined || termsAccepted === undefined
+        ? null
+        : { name, password, termsAccepted },
+  }));
+export type AcceptInvitation = z.infer<typeof AcceptInvitationSchema>;
+
+/** Réponse 200 : session ouverte ou régénérée dans le salon rejoint, ou invitation à se connecter (RG-007-13). */
+export const InvitationAcceptedSchema = z.discriminatedUnion('outcome', [
+  z.object({
+    outcome: z.literal('SIGNED_IN'),
+    salonName: z.string(),
+    csrfToken: z.string().min(1),
+    session: SessionSummarySchema,
+  }),
+  z.object({ outcome: z.literal('SIGN_IN_REQUIRED'), salonName: z.string() }),
+]);
+export type InvitationAccepted = z.infer<typeof InvitationAcceptedSchema>;
+
+/**
+ * Réponse de GET /api/public/invitations (cookie de preuve) : invitations en attente du numéro prouvé, les plus
+ * récentes d'abord. `account` dit ce que l'écran doit demander : `NEW` créer un compte, `TO_COMPLETE` compléter un
+ * compte client, `EXISTING` rien. Jamais le nom de la personne qui a invité.
+ */
+export const InvitationsForProvenPhoneSchema = z.object({
+  account: z.enum(['NEW', 'TO_COMPLETE', 'EXISTING']),
+  invitations: z.array(
+    z.object({
+      invitationId: z.uuid(),
+      salonName: z.string(),
+      city: CitySchema,
+      district: z.string(),
+      role: InvitableSalonRoleSchema,
+      expiresAt: z.iso.datetime(),
+      /** Nom saisi par le salon, pour pré-remplir (modifiable) la création du compte. */
+      suggestedName: z.string(),
+    }),
+  ),
+});
+export type InvitationsForProvenPhone = z.infer<typeof InvitationsForProvenPhoneSchema>;

@@ -10,8 +10,9 @@ post-commit via l'outbox, livrés au moins une fois) avec leurs subscribers. Rè
 |---|---|---|---|---|---|
 | `OrganizationFounded` | domaine | — | `Organization.found` | aucun à ce stade | sans objet |
 | `SalonRegistered` | domaine | — | `Salon.register` | aucun à ce stade (lot 7 : activation, essai) ; UC-008 pourra y brancher la recopie des rôles | sans objet |
-| `CollaboratorInvited` | domaine | — | `Invitation.issue` | aucun à ce stade (UC-007 : acceptation) ; identifiants et rôle seulement, jamais nom ni numéro | sans objet |
+| `CollaboratorInvited` | domaine | — | `Invitation.issue` | aucun à ce stade ; identifiants et rôle seulement, jamais nom ni numéro | sans objet |
 | `InvitationCancelled` | domaine | — | `Invitation.cancel` | aucun à ce stade | sans objet |
+| `InvitationAccepted` | domaine | — | `Invitation.accept` (UC-007) | aucun à ce stade (UC-008 : équipe et planning) ; identifiants (invitation, salon, compte) et rôle seulement, jamais nom ni numéro | sans objet |
 
 Les repositories d'écriture d'`organizations` remettent `pullEvents()` au `DomainEventDispatcher` dans `add` (dans la transaction). Les repositories d'`identity` ne le font pas encore (voir backlog).
 

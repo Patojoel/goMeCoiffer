@@ -41,6 +41,15 @@ export class SqlInvitationChecks implements InvitationChecks {
     return row.total;
   }
 
+  async hasPendingInvitation(phone: PhoneNumber, now: Date): Promise<boolean> {
+    const row = await this.db.one<{ found: boolean }>(sql`
+      SELECT EXISTS (
+        SELECT 1 FROM salon_invitations
+        WHERE phone = ${phone.value} AND status = 'PENDING' AND expires_at > ${now}::timestamptz
+      ) AS "found"`);
+    return row.found;
+  }
+
   async pendingCount(salonId: string, now: Date): Promise<number> {
     const row = await this.db.one<{ total: number }>(sql`
       SELECT count(*)::int AS "total"
@@ -58,7 +67,7 @@ export class SqlInvitationChecks implements InvitationChecks {
   }
 
   salonOf(salonId: string) {
-    return this.db.one<{ readonly timezone: string }>(sql`
-      SELECT timezone FROM salons WHERE id = ${salonId}`);
+    return this.db.one<{ readonly name: string; readonly timezone: string }>(sql`
+      SELECT name, timezone FROM salons WHERE id = ${salonId}`);
   }
 }

@@ -19,6 +19,42 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-20 — UC-007 Accepter une invitation (backend)
+
+- **Quoi** : la personne invitée rejoint l'équipe d'un salon depuis une page publique : elle demande un code SMS
+  (réponse identique pour tout numéro, SMS seulement s'il existe une invitation en attente), prouve son numéro
+  (preuve de 15 min par cookie), voit ses invitations en attente (salon, ville, quartier, rôle, date limite, jamais
+  l'invitant), puis accepte. Sans compte : mot de passe et conditions, compte créé et session ouverte sur le salon
+  rejoint ; avec un compte du personnel : un clic, session régénérée si elle est déjà connectée, sinon « connectez-vous ».
+  L'appartenance va toujours au titulaire du numéro prouvé. Le frontend n'est pas fait.
+- **Pourquoi** : UC-007 (lot 1, EX-022 en partie), décisions du user D-047 à D-049.
+- **Périmètre** :
+  - **`identity`** : commandes `RequestInvitationCode`, `ProveInvitationPhone`, tâche `PurgePhoneProofs` ;
+    `PhoneProof` (empreinte HMAC séparée par domaine), `User.registerCollaborator` / `completeAsCollaborator` ;
+    services `InviteeAccountProvider` et `PhoneProofReader` (implémentent les ports d'`organizations`, type opaque
+    `ProvenPhone`) ; la déconnexion supprime aussi la preuve du numéro et efface son cookie. `IdentityModule` devient
+    `@Global()`.
+  - **`organizations`** : commande `AcceptInvitation` (une transaction, invitation + appartenance + compte : exception
+    nommée dans `docs/domains.md`), query `ListInvitationsForProvenPhone` ; routes `POST /api/public/invitations/code`,
+    `/phone-proof`, `/:id/acceptance` et `GET /api/public/invitations` ; nom et numéro de l'invitation effacés à
+    l'acceptation ; preuves du numéro supprimées quand il ne reste plus d'invitation en attente.
+  - **Socle** : cookie de preuve `__Host-gmc.join` (`Path=/`, HttpOnly, `SameSite=Strict`) ; `no-store` étendu à
+    `/api/public/invitations`.
+  - **Base & seed** : migrations `OrganizationsInvitationAcceptance` (`accepted_by_user_id`, index partiel par numéro)
+    et `IdentityPhoneProofs` ; invitation de démo au 6 70 00 00 02 (sans compte).
+  - **Contrats** : `RequestInvitationCodeSchema`, `ProveInvitationPhoneSchema`, `InvitationPhoneProvenSchema`,
+    `InvitationsForProvenPhoneSchema`, `AcceptInvitationSchema`, `InvitationAcceptedSchema`.
+- **Vérification** : mode light ; agents `use-case-writer`, `backend-builder`, `query-perf` (rapport d'index : index
+  partiel par numéro et `users_phone_key`, aucune migration d'index), `security-reviewer` (0 critique, 2 importants et
+  4 durcissements, tous corrigés sauf les durées des rôles système dans le choix de session).
+  - Suite complète (`pnpm test`) : backend 69 fichiers, 793 tests verts et 4 `todo` ; 2 fichiers E2E interrompus par
+    le plantage connu du worker Windows (aucune assertion rouge), relancés seuls : 42 verts ; frontend 8 fichiers,
+    36 verts. `lint` 0 erreur (3 avertissements anciens), `typecheck` vert, `arch` 0 violation (466 modules).
+- **Suites** (`docs/BACKLOG.md`) : page « Rejoindre un salon » (front) ; factorisation des « vérifier le code » ;
+  mutation T31 ; mesure de non-énumération ; réactivation d'une appartenance retirée (UC-008) ; client léger (UC-009).
+
+---
+
 ### 2026-11-19 — UC-006 Inviter un collaborateur dans son salon (backend)
 
 - **Quoi** : un propriétaire de salon peut inviter un collaborateur par son numéro de téléphone (avec nom et rôle),
@@ -53,6 +89,8 @@ Gabarit d'une entrée :
     `inviting-as-a-salon-administrator` (2 `todo` prévus pour UC-008).
   - Qualité : `oxlint` (0 erreur), `pnpm typecheck` (`contracts`, `backend`, `frontend` verts), `pnpm arch` (0 violation
     sur 407 modules).
+  - Suite complète `pnpm test` sur `develop` (20/11) : backend 57 fichiers, 669 tests verts et 2 `todo` ; frontend
+    8 fichiers, 36 tests verts. Aucun plantage de worker sur ce lancement.
 - **Suites** :
   - écran « Équipe → Inviter » et liste des invitations (front UC-006) ;
   - `RoleGrantPolicy` dynamique par salon et activation des 2 `it.todo` T28 lors de UC-008 ;

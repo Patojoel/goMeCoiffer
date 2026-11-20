@@ -1,6 +1,7 @@
 import { TransactionHost } from '@nestjs-cls/transactional';
 import type { TransactionalAdapterTypeOrm } from '@nestjs-cls/transactional-adapter-typeorm';
 import { Injectable } from '@nestjs/common';
+import { Brackets } from 'typeorm';
 import { ConcurrencyConflictError } from '../../../../../shared/domain/errors.js';
 import type { PhoneNumber } from '../../../../../shared/domain/phone-number.js';
 import { isPgError } from '../../../../../shared/infrastructure/database/pg-error.js';
@@ -44,11 +45,11 @@ export class TypeOrmInvitationRepository implements InvitationRepository {
   }
 
   async save(invitation: Invitation): Promise<void> {
-    const { id, status, endedAt, version } = invitation.snapshot();
+    const { id, status, endedAt, name, phone, acceptedByUserId, version } = invitation.snapshot();
     const { affected } = await this.repo
       .createQueryBuilder()
       .update()
-      .set({ status, endedAt, version: () => 'version + 1' })
+      .set({ status, endedAt, name, phone, acceptedByUserId, version: () => 'version + 1' })
       .where('id = :id AND version = :version', { id, version })
       .execute();
     if (affected === 0) throw new ConcurrencyConflictError('Invitation', id);
@@ -57,6 +58,22 @@ export class TypeOrmInvitationRepository implements InvitationRepository {
 
   async getOfSalon(salonId: string, id: string): Promise<Invitation> {
     const row = await this.repo.findOneBy({ id, salonId });
+    if (!row) throw new InvitationNotFoundError();
+    return toDomain(row);
+  }
+
+  async getOfInvitee(phone: PhoneNumber, id: string): Promise<Invitation> {
+    const row = await this.repo
+      .createQueryBuilder('i')
+      .where('i.id = :id', { id })
+      .andWhere(
+        new Brackets((byPhone) =>
+          byPhone
+            .where('i.phone = :phone', { phone: phone.value })
+            .orWhere('i.acceptedByUserId = (SELECT u.id FROM users u WHERE u.phone = :phone)'),
+        ),
+      )
+      .getOne();
     if (!row) throw new InvitationNotFoundError();
     return toDomain(row);
   }

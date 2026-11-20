@@ -25,6 +25,8 @@ describe('The invitations migration', () => {
   it('removes its table when reverted and creates it again when replayed', async () => {
     expect(await exists()).toBe(true);
 
+    await db.undoLastMigration(); // l'acceptation des invitations (colonne et index) et les preuves de numéro d'abord
+    await db.undoLastMigration();
     await db.undoLastMigration();
     expect(await exists()).toBe(false);
 

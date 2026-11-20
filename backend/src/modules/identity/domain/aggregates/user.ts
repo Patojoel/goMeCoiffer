@@ -25,6 +25,14 @@ interface OwnerDetails {
   now: Date;
 }
 
+interface CollaboratorAccount {
+  name: string;
+  passwordHash: string;
+  /** Instant où le code SMS a prouvé le numéro. */
+  provenAt: Date;
+  now: Date;
+}
+
 /** Identité de connexion unique, clé : le numéro de téléphone (EX-001). Aucun rôle ici : les rôles vivent ailleurs. */
 export class User extends AggregateRoot {
   private constructor(private state: UserState) {
@@ -39,6 +47,22 @@ export class User extends AggregateRoot {
       email: input.email,
       passwordHash: input.passwordHash,
       phoneVerifiedAt: input.now,
+      termsAcceptedAt: input.now,
+      createdAt: input.now,
+      credentialsVersion: 1,
+      version: 0,
+    });
+  }
+
+  /** Personne invitée sans compte : numéro vérifié à l'instant de la preuve, conditions acceptées, aucun e-mail (RG-007-08). */
+  static registerCollaborator(input: CollaboratorAccount & { id: string; phone: PhoneNumber }): User {
+    return new User({
+      id: input.id,
+      phone: input.phone.value,
+      name: input.name,
+      email: null,
+      passwordHash: input.passwordHash,
+      phoneVerifiedAt: input.provenAt,
       termsAcceptedAt: input.now,
       createdAt: input.now,
       credentialsVersion: 1,
@@ -100,6 +124,20 @@ export class User extends AggregateRoot {
     this.state.email = details.email;
     this.state.passwordHash = details.passwordHash;
     this.state.phoneVerifiedAt = details.now;
+    this.state.termsAcceptedAt = details.now;
+  }
+
+  /** Compte du personnel : il a un mot de passe ; un compte client léger n'en a pas (D-018). */
+  get isStaffAccount(): boolean {
+    return this.state.passwordHash !== null;
+  }
+
+  /** Compte client léger devenu collaborateur : même identité, ses réservations restent les siennes (RG-007-09). */
+  completeAsCollaborator(details: CollaboratorAccount): void {
+    if (this.isStaffAccount) throw new AccountAlreadyRegisteredError();
+    this.state.name = details.name;
+    this.state.passwordHash = details.passwordHash;
+    this.state.phoneVerifiedAt = details.provenAt;
     this.state.termsAcceptedAt = details.now;
   }
 

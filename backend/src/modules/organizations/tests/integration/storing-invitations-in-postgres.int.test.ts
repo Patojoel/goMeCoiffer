@@ -203,8 +203,8 @@ describe('Storing invitations in PostgreSQL', () => {
       ).toBe(0);
     });
 
-    it('reads the time zone of a salon', async () => {
-      expect(await checks.salonOf(akwa.id)).toEqual({ timezone: 'Africa/Douala' });
+    it('reads the name and the time zone of a salon', async () => {
+      expect(await checks.salonOf(akwa.id)).toEqual({ name: 'Go Beauty Akwa', timezone: 'Africa/Douala' });
     });
   });
 
@@ -303,7 +303,14 @@ describe('Storing invitations in PostgreSQL', () => {
       await db.query(
         `INSERT INTO salon_invitations (id, salon_id, name, phone, role, invited_by_user_id, sent_at, expires_at, status, notified_by_sms, version)
          VALUES ($1, $2, 'Brice Nana', $3, 'HAIRDRESSER', $4, $5, $6, 'PENDING', true, 1)`,
-        [nextId(), bastos.id, phone, authorId, new Date(NOW.getTime() - HOUR_MS), new Date(NOW.getTime() + 6 * DAY_MS)],
+        [
+          nextId(),
+          bastos.id,
+          phone,
+          authorId,
+          new Date(NOW.getTime() - HOUR_MS),
+          new Date(NOW.getTime() + 6 * DAY_MS),
+        ],
       );
 
       const count = await bus.inTransaction(() =>

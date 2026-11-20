@@ -1,9 +1,16 @@
 import { ConcurrencyConflictError } from '../../../../shared/domain/errors.js';
-import type { PhoneNumber } from '../../../../shared/domain/phone-number.js';
+import { PhoneNumber } from '../../../../shared/domain/phone-number.js';
 import type { AfterCommit } from '../../../../shared/application/after-commit.js';
 import { Invitation } from '../../domain/aggregates/invitation.js';
 import { InvitationAlreadyPendingError } from '../../domain/exceptions/invitation-already-pending.error.js';
+import { AccountStateChangedError } from '../../domain/exceptions/account-state-changed.error.js';
 import { InvitationNotFoundError } from '../../domain/exceptions/invitation-not-found.error.js';
+import type {
+  InviteeAccount,
+  InviteeAccounts,
+  NewAccountDetails,
+} from '../../domain/ports/invitee-accounts.port.js';
+import type { PhoneProofs, ProvenPhone } from '../../domain/ports/phone-proofs.port.js';
 import type { InvitationNotifier } from '../../domain/ports/invitation-notifier.port.js';
 import type { InvitationChecks } from '../../domain/repositories/read/invitation-checks.read-repository.js';
 import type { InvitationRepository } from '../../domain/repositories/write/invitation.repository.js';
@@ -40,6 +47,20 @@ export class InMemoryInvitationRepository implements InvitationRepository {
     return Invitation.restore(row);
   }
 
+  /** Comme la requête : le numéro de l'invitation, ou le compte de ce numéro qui l'a déjà acceptée. */
+  async getOfInvitee(phone: PhoneNumber, id: string): Promise<Invitation> {
+    const row = this.rows.get(id);
+    const acceptedBy = row?.acceptedByUserId ?? null;
+    const mine =
+      row?.phone === phone.value ||
+      (acceptedBy !== null && this.accountPhones.get(acceptedBy) === phone.value);
+    if (!row || !mine) throw new InvitationNotFoundError();
+    return Invitation.restore(row);
+  }
+
+  /** Les comptes dont le test a besoin pour retrouver une invitation acceptée (son numéro est effacé). */
+  readonly accountPhones = new Map<string, string>();
+
   async findPendingOfPhone(salonId: string, phone: PhoneNumber): Promise<Invitation | null> {
     const row = this.all().find(
       (r) => r.status === 'PENDING' && r.salonId === salonId && r.phone === phone.value,
@@ -69,6 +90,64 @@ export class InMemoryInvitationRepository implements InvitationRepository {
 
   ofSalon(salonId: string): Row[] {
     return this.all().filter((r) => r.salonId === salonId);
+  }
+}
+
+/** Preuves de numéro déclarées par le test : jeton → numéro et échéance. */
+export class InMemoryPhoneProofs implements PhoneProofs {
+  private readonly proofs = new Map<string, { phone: string; provenAt: Date; expiresAt: Date }>();
+
+  prove(token: string, phone: string, provenAt: Date, validMinutes = 15): this {
+    this.proofs.set(token, {
+      phone,
+      provenAt,
+      expiresAt: new Date(provenAt.getTime() + validMinutes * 60_000),
+    });
+    return this;
+  }
+
+  /** Numéros dont les preuves ont été oubliées après la dernière acceptation. */
+  readonly forgotten: string[] = [];
+
+  async forgetProofsOf(proven: ProvenPhone) {
+    this.forgotten.push(proven.phone.value);
+    for (const [token, proof] of this.proofs) if (proof.phone === proven.phone.value) this.proofs.delete(token);
+  }
+
+  async phoneProvenBy(token: string | null, now: Date) {
+    const proof = token === null ? undefined : this.proofs.get(token);
+    if (!proof || now >= proof.expiresAt) return null;
+    return { phone: PhoneNumber.parse(proof.phone), provenAt: proof.provenAt };
+  }
+}
+
+/** Comptes connus, un par numéro ; sans détails le compte doit exister, avec détails il ne doit pas exister. */
+export class InMemoryInviteeAccounts implements InviteeAccounts {
+  readonly provided: Array<{ phone: string; details: NewAccountDetails | null; provenAt: Date }> = [];
+  private readonly accounts = new Map<string, { userId: string; credentialsVersion: number }>();
+  private created = 0;
+
+  withStaffAccount(phone: string, userId: string, credentialsVersion = 1): this {
+    this.accounts.set(phone, { userId, credentialsVersion });
+    return this;
+  }
+
+  idOf(phone: string): string | undefined {
+    return this.accounts.get(phone)?.userId;
+  }
+
+  async provide(input: { proven: ProvenPhone; details: NewAccountDetails | null }): Promise<InviteeAccount> {
+    const input2 = { phone: input.proven.phone, details: input.details, provenAt: input.proven.provenAt };
+    this.provided.push({ phone: input2.phone.value, details: input2.details, provenAt: input2.provenAt });
+    const existing = this.accounts.get(input2.phone.value);
+    if (existing && input.details) throw new AccountStateChangedError();
+    if (existing) return { ...existing, created: false };
+    if (!input.details) throw new AccountStateChangedError();
+    this.created += 1;
+    const userId = `0195f000-0000-7000-8000-0000000a${String(this.created).padStart(4, '0')}`;
+    const account = { userId, credentialsVersion: 1 };
+    this.accounts.set(input2.phone.value, account);
+    return { ...account, created: true };
   }
 }
 
@@ -104,6 +183,12 @@ export class InMemoryInvitationChecks implements InvitationChecks {
 
   async invitationsSentSince(salonId: string, since: Date) {
     return this.invitations.ofSalon(salonId).filter((r) => r.sentAt >= since).length;
+  }
+
+  async hasPendingInvitation(phone: PhoneNumber, now: Date) {
+    return this.invitations
+      .all()
+      .some((r) => r.phone === phone.value && r.status === 'PENDING' && r.expiresAt > now);
   }
 
   async pendingCount(salonId: string, now: Date) {

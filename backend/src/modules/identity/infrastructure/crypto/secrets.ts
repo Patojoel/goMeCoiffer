@@ -3,6 +3,7 @@ import { Inject, Injectable, type OnModuleInit } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
 import { APP_CONFIG, type AppConfig } from '../../../../shared/infrastructure/config/app-config.module.js';
 import type { DeviceTokenGenerator } from '../../domain/ports/device-token-generator.port.js';
+import type { ProofTokenGenerator } from '../../domain/ports/proof-token-generator.port.js';
 import type { OtpCodeGenerator } from '../../domain/ports/otp-code-generator.port.js';
 import type { PasswordHasher } from '../../domain/ports/password-hasher.port.js';
 import type { PasswordVerifier } from '../../domain/ports/password-verifier.port.js';
@@ -45,6 +46,14 @@ export class Argon2PasswordHasher implements PasswordHasher {
 /** Jeton de 32 octets aléatoires, en base64url (43 caractères), posé dans le cookie de l'appareil reconnu. */
 @Injectable()
 export class CryptoDeviceTokenGenerator implements DeviceTokenGenerator {
+  next(): string {
+    return randomBytes(32).toString('base64url');
+  }
+}
+
+/** Jeton de preuve du numéro : 32 octets aléatoires (256 bits), remis au navigateur dans un cookie HttpOnly. */
+@Injectable()
+export class CryptoProofTokenGenerator implements ProofTokenGenerator {
   next(): string {
     return randomBytes(32).toString('base64url');
   }

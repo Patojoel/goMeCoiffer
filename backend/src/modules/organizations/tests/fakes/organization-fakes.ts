@@ -3,6 +3,7 @@ import { NotFoundError } from '../../../../shared/domain/errors.js';
 import type { Organization } from '../../domain/aggregates/organization.js';
 import type { SalonMembership } from '../../domain/aggregates/salon-membership.js';
 import type { Salon } from '../../domain/aggregates/salon.js';
+import { AlreadySalonMemberError } from '../../domain/exceptions/already-salon-member.error.js';
 import { OrganizationAlreadyExistsError } from '../../domain/exceptions/organization-already-exists.error.js';
 import type { OwnerCandidates } from '../../domain/repositories/read/owner-candidates.read-repository.js';
 import type { OrganizationRepository } from '../../domain/repositories/write/organization.repository.js';
@@ -36,8 +37,12 @@ export class InMemorySalonRepository implements SalonRepository {
 export class InMemorySalonMembershipRepository implements SalonMembershipRepository {
   readonly rows: MembershipRow[] = [];
 
+  /** Comme la base : une seule appartenance par couple (salon, compte). */
   async add(membership: SalonMembership): Promise<void> {
-    this.rows.push(membership.snapshot());
+    const row = membership.snapshot();
+    if (this.rows.some((r) => r.salonId === row.salonId && r.userId === row.userId))
+      throw new AlreadySalonMemberError();
+    this.rows.push(row);
   }
 
   ofUser(userId: string): MembershipRow[] {

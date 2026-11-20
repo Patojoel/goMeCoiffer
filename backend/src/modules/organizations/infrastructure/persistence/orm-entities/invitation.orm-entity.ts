@@ -12,6 +12,7 @@ export class InvitationOrmEntity {
   @Column('timestamptz') expiresAt!: Date;
   @Column('text') status!: string;
   @Column('timestamptz', { nullable: true }) endedAt!: Date | null;
+  @Column('uuid', { nullable: true }) acceptedByUserId!: string | null;
   @Column('boolean') notifiedBySms!: boolean;
   @Column('integer') version!: number;
 }
