@@ -54,6 +54,12 @@ describe('Creating an organization and its first salon', () => {
     expect(audit.entries).toHaveLength(0);
   };
 
+  it('keeps the organization name separate from the first salon name', async () => {
+    await handler.execute(new CreateOrganization(MIREILLE_ID, aSalonDraft({ name: 'Awa Bastos' }), 'Maison Awa'));
+    expect(organizations.rows[0]).toMatchObject({ name: 'Maison Awa' });
+    expect(salons.rows[0]).toMatchObject({ name: 'Awa Bastos' });
+  });
+
   it('refuses a light client account and stores nothing', async () => {
     await expect(create(LIGHT_CLIENT_ID)).rejects.toThrow(OwnerAccountRequiredError);
 

@@ -1,4 +1,4 @@
-import { selectSession, t } from '@gomecoiffer/client-core';
+import { selectActiveSalon, selectSession, t } from '@gomecoiffer/client-core';
 import { Link } from 'expo-router';
 import { ScrollView, View } from 'react-native';
 import { EmptyState } from '@/components/feedback/empty-state';
@@ -19,6 +19,7 @@ const DASHBOARD_KPIS = [
 
 export default function SalonTodayScreen() {
   const session = useAppSelector(selectSession);
+  const salon = useAppSelector(selectActiveSalon);
   const firstName = session.userName?.trim().split(/\s+/)[0] || '';
 
   return (
@@ -43,6 +44,9 @@ export default function SalonTodayScreen() {
           </ThemedText>
         </View>
 
+        {salon?.role === 'OWNER' && <Link href="/(salon)/horaires?guide=1" asChild>
+          <Button variant="outline" title="Revoir la configuration du salon" />
+        </Link>}
         <ActiveSalonCard
           action={
             <Link href="/(salon)/choisir-salon" asChild>

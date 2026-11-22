@@ -16,7 +16,7 @@ const SalonPhoneInput = z
   });
 
 /** UC-004 — POST /api/salon/organizations : créer son organisation et son premier salon (D-035, D-036). */
-export const CreateOrganizationSchema = z
+const SalonDetailsSchema = z
   .object({
     name: z
       .string()
@@ -38,6 +38,9 @@ export const CreateOrganizationSchema = z
     phone: SalonPhoneInput,
   })
   .strict();
+export const CreateOrganizationSchema = SalonDetailsSchema.extend({
+  organizationName: z.string().trim().min(2).max(60).optional(),
+});
 export type CreateOrganization = z.infer<typeof CreateOrganizationSchema>;
 
 /** Réponse 201 : la session vient d'être régénérée (D-037), le nouveau salon est le salon actif. */
@@ -310,7 +313,7 @@ export const SalonRolesSchema = z.object({
 export type SalonRoles = z.infer<typeof SalonRolesSchema>;
 
 /** UC-010 — POST /api/salon/salons : ajouter un salon à son organisation (mêmes 6 champs que UC-004, D-036, D-056). */
-export const AddSalonToOrganizationSchema = CreateOrganizationSchema;
+export const AddSalonToOrganizationSchema = SalonDetailsSchema;
 export type AddSalonToOrganization = z.infer<typeof AddSalonToOrganizationSchema>;
 
 /** Réponse 201 de POST /api/salon/salons : session régénérée sur le nouveau salon actif (D-056). */

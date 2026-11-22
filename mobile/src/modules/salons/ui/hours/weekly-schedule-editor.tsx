@@ -12,6 +12,7 @@ import {
   type WeekDayKey,
   type WeeklySchedule,
 } from '@gomecoiffer/client-core';
+import { OwnerStepHero } from '../owner-step-hero';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Badge } from '@/components/ui/badge';
@@ -198,14 +199,9 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply, guided }: Weekl
       >
         <BrandTopBar logoWidth={160} />
 
-        {guided ? <ThemedText variant="headline">Étape 2 sur 3 · Horaires du salon</ThemedText> : null}
-        <PageHero
-          icon="clock"
-          tone="terra"
-          title={t('salons.hours.title')}
-          subtitle={t('salons.hours.subtitle')}
-        />
-
+        {guided ? <OwnerStepHero step={3} title="Vos horaires" hint="Vérifiez les heures d’ouverture et les pauses de chaque journée." /> : (
+          <PageHero icon="clock" tone="terra" title={t('salons.hours.title')} subtitle={t('salons.hours.subtitle')} />
+        )}
         <InlineAlert variant="info" message={t('salons.hours.draftNotice')} />
 
         <Card>
@@ -246,7 +242,7 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply, guided }: Weekl
 
         <Button
           icon="clock"
-          title={guided ? 'Valider l’aperçu et passer à l’équipe' : t('salons.hours.saveAction')}
+          title={guided ? 'Valider l’aperçu et ajouter une prestation' : t('salons.hours.saveAction')}
           disabled={hasErrors}
           onPress={handleApply}
         />
