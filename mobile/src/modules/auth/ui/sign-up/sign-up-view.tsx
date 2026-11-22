@@ -65,7 +65,7 @@ function SignUpViewContent({
               ? 'gap-3 rounded-3xl bg-[#17213B] p-5'
               : 'gap-3 rounded-3xl bg-[#81391F] p-5'}>
               <View className="flex-row items-center justify-between">
-                <ThemedText className="text-sm font-bold text-white">
+                <ThemedText className="text-base font-bold text-white">
                   {step === 'phone' ? 'Étape 1 sur 2' : 'Étape 2 sur 2'}
                 </ThemedText>
                 <IconTile name={step === 'phone' ? 'userplus' : 'shield'} tone={step === 'phone' ? 'navy' : 'terra'} size={40} />
@@ -73,7 +73,7 @@ function SignUpViewContent({
               <ThemedText accessibilityRole="header" variant="title" className="text-white">
                 {step === 'phone' ? 'Votre numéro de téléphone' : 'Votre profil professionnel'}
               </ThemedText>
-              <ThemedText className="text-sm leading-6 text-white">
+              <ThemedText className="text-base leading-6 text-white">
                 {step === 'phone' ? 'Indiquez le numéro sur lequel recevoir votre code de vérification.' : 'Saisissez le code reçu, puis choisissez vos identifiants.'}
               </ThemedText>
               <View aria-hidden className="flex-row gap-2">
@@ -299,7 +299,7 @@ function SignUpViewContent({
             )}
 
             <Card>
-              <ThemedText variant="muted" className="text-center text-xs">
+              <ThemedText variant="muted" className="text-center text-sm">
                 {t('auth.signUp.hasAccount')}
               </ThemedText>
               <Button

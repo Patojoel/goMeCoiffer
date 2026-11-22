@@ -49,6 +49,7 @@ const CLOSED_TEMPLATE: Omit<DaySchedule, 'day'> = {
 };
 
 export type WeeklyScheduleEditorProps = {
+  readonly guided?: boolean;
   readonly initialSchedule?: WeeklySchedule;
   readonly onApply?: (schedule: WeeklySchedule) => void;
 };
@@ -144,7 +145,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
   );
 }
 
-export function WeeklyScheduleEditor({ initialSchedule, onApply }: WeeklyScheduleEditorProps) {
+export function WeeklyScheduleEditor({ initialSchedule, onApply, guided }: WeeklyScheduleEditorProps) {
   const [schedule, setSchedule] = useState<WeeklySchedule>(
     () => initialSchedule ?? createDefaultWeeklySchedule(),
   );
@@ -197,6 +198,7 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply }: WeeklySchedul
       >
         <BrandTopBar logoWidth={160} />
 
+        {guided ? <ThemedText variant="headline">Étape 2 sur 3 · Horaires du salon</ThemedText> : null}
         <PageHero
           icon="clock"
           tone="terra"
@@ -244,7 +246,7 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply }: WeeklySchedul
 
         <Button
           icon="clock"
-          title={t('salons.hours.saveAction')}
+          title={guided ? 'Valider l’aperçu et passer à l’équipe' : t('salons.hours.saveAction')}
           disabled={hasErrors}
           onPress={handleApply}
         />

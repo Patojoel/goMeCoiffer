@@ -1,4 +1,13 @@
 export const teamFr = {
+  'team.directory.search': 'Rechercher un membre',
+  'team.directory.filter': 'Filtrer par rôle',
+  'team.directory.allRoles': 'Tous les rôles',
+  'team.directory.noMatch': 'Aucun membre trouvé',
+  'team.directory.noMatchHint': 'Essayez un autre nom ou un autre rôle.',
+  'team.directory.clear': 'Effacer les filtres',
+  'team.directory.back': 'Retour à l’équipe',
+  'team.directory.invite': 'Inviter',
+  'team.directory.joined': 'Membre depuis le {date}',
   'team.section.title': 'Équipe et invitations',
   'team.section.subtitle': 'Gérez les membres actifs du salon et suivez vos invitations envoyées.',
   'team.tabs.members': 'Membres actifs',

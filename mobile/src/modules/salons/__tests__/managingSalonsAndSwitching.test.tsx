@@ -80,7 +80,7 @@ describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', 
     expect(store.getState().session.salons).toHaveLength(0);
   });
 
-  it('creates an organization with the first salon and navigates to salon home (UC-004)', async () => {
+  it('creates an organization with the first salon and opens the guided hours step (UC-004)', async () => {
     const salons = new InMemorySalonsGateway();
     const store = createTestStore({ salons });
     createdStores.push(store);
@@ -99,7 +99,7 @@ describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', 
     await fillSalonForm(user);
     await user.press(screen.getByRole('button', { name: t('salons.form.submitCreate') }));
 
-    expect(navigatedTo).toEqual(['/(salon)/(tabs)']);
+    expect(navigatedTo).toEqual(['/(salon)/horaires?guide=1']);
     expect(store.getState().session.salons).toHaveLength(1);
     expect(store.getState().session.activeSalonId).toBe(salons.currentSession.activeSalonId);
   });

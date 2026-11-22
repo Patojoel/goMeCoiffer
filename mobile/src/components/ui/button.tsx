@@ -28,7 +28,7 @@ const buttonVariants = cva(
   },
 );
 
-const labelVariants = cva('shrink text-center text-sm font-bold', {
+const labelVariants = cva('shrink text-center text-base font-bold', {
   variants: {
     variant: {
       default: 'text-primary-foreground',

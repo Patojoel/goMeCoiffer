@@ -44,12 +44,14 @@ function buildStaffSession(overrides: Partial<SessionState> = {}): SessionState 
   };
 }
 
-async function renderWorkspace(options: {
-  team?: InMemoryTeamGateway;
-  session?: SessionState;
-  isOnline?: boolean;
-  onOpenExternalUrl?: (url: string) => Promise<void> | void;
-} = {}) {
+async function renderWorkspace(
+  options: {
+    team?: InMemoryTeamGateway;
+    session?: SessionState;
+    isOnline?: boolean;
+    onOpenExternalUrl?: (url: string) => Promise<void> | void;
+  } = {},
+) {
   const team = options.team ?? new InMemoryTeamGateway();
   const store = createTestStore({ team });
   createdStores.push(store);
@@ -59,14 +61,16 @@ async function renderWorkspace(options: {
 
   await render(
     <StoreProvider store={store}>
-      <SalonTeamWorkspace
-        isOnline={options.isOnline ?? true}
-        onOpenExternalUrl={options.onOpenExternalUrl}
-      />
+      <SalonTeamWorkspace isOnline={options.isOnline ?? true} onOpenExternalUrl={options.onOpenExternalUrl} />
     </StoreProvider>,
   );
 
   return { store, team };
+}
+
+async function openMember(name: string) {
+  const user = userEvent.setup();
+  await user.press(await screen.findByRole('button', { name: new RegExp('^' + name + ',') }));
 }
 
 function buildManyInvitations(count: number): SalonInvitations {
@@ -154,14 +158,15 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     });
 
     expect(await screen.findByText('Mireille Ngono')).toBeOnTheScreen();
-    expect(screen.getByText('1 nov. 2026')).toBeOnTheScreen();
-    expect(screen.getByText(t('team.role.OWNER'))).toBeOnTheScreen();
+    const user = userEvent.setup();
+    await openMember('Mireille Ngono');
+    expect(screen.getByText(t('team.directory.joined', { date: '1 nov. 2026' }))).toBeOnTheScreen();
     expect(screen.getByText(t('team.members.ownerProtectedHint'))).toBeOnTheScreen();
-
-    expect(screen.getByText('Rodrigue Etoa')).toBeOnTheScreen();
-    expect(screen.getByText('5 nov. 2026')).toBeOnTheScreen();
-    expect(screen.getByText(t('team.role.SALON_ADMIN'))).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: t('team.members.removeAction') })).not.toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: t('team.directory.back') }));
     expect(screen.getByText(t('team.members.currentUserBadge'))).toBeOnTheScreen();
+    await openMember('Rodrigue Etoa');
+    expect(screen.getByText(t('team.directory.joined', { date: '5 nov. 2026' }))).toBeOnTheScreen();
 
     // Neither owner nor current user can be edited or removed
     expect(screen.queryByRole('button', { name: t('team.members.changeRole') })).not.toBeOnTheScreen();
@@ -179,17 +184,34 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
 
     expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
     expect(screen.queryByRole('tablist')).not.toBeOnTheScreen();
-    expect(screen.queryByRole('tab', { name: t('team.tabs.invitations') })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('tab', { name: /^Invitations/ })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: t('team.members.changeRole') })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: t('team.members.removeAction') })).not.toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: t('team.invite.openAction') })).not.toBeOnTheScreen();
+  });
+
+  it('filters members by name and role and preserves search on return from a member', async () => {
+    await renderWorkspace({ session: buildStaffSession() });
+    const user = userEvent.setup();
+    expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
+    await user.type(screen.getByLabelText(t('team.directory.search')), 'MBÁRGA');
+    expect(screen.queryByText('Mireille Ngono')).not.toBeOnTheScreen();
+    await openMember('Paul Mbarga');
+    await user.press(screen.getByRole('button', { name: t('team.directory.back') }));
+    expect(screen.getByLabelText(t('team.directory.search')).props.value).toBe('MBÁRGA');
+    await user.press(screen.getByRole('button', { name: t('team.directory.filter') }));
+    await user.press(screen.getByText(t('team.role.OWNER')));
+    expect(screen.getByText(t('team.directory.noMatch'))).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: t('team.directory.clear') }));
+    expect(screen.getByText('Mireille Ngono')).toBeOnTheScreen();
+    expect(screen.getByText('Paul Mbarga')).toBeOnTheScreen();
   });
 
   it('changes collaborator role with optimistic version and updates role description hint', async () => {
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession() });
 
-    expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
+    await openMember('Paul Mbarga');
     expect(screen.getByText(t('team.roleDesc.HAIRDRESSER'))).toBeOnTheScreen();
 
     const user = userEvent.setup();
@@ -207,7 +229,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
   it('shows API error on role change concurrency conflict without losing member row', async () => {
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession() });
-    expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
+    await openMember('Paul Mbarga');
 
     team.nextError = new HttpError(409, 'CONCURRENCY_CONFLICT', 'Le rôle a été modifié entre-temps.');
     const user = userEvent.setup();
@@ -221,15 +243,13 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
   it('requires inline confirmation before removing a collaborator with version', async () => {
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession() });
-    expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
+    await openMember('Paul Mbarga');
 
     const user = userEvent.setup();
     await user.press(screen.getByRole('button', { name: t('team.members.removeAction') }));
 
     expect(screen.getByText(t('team.members.removeConfirmTitle'))).toBeOnTheScreen();
-    expect(
-      screen.getByText(t('team.members.removeConfirmHint', { name: 'Paul Mbarga' })),
-    ).toBeOnTheScreen();
+    expect(screen.getByText(t('team.members.removeConfirmHint', { name: 'Paul Mbarga' }))).toBeOnTheScreen();
 
     await user.press(screen.getByRole('button', { name: t('team.members.cancelAction') }));
     expect(screen.queryByText(t('team.members.removeConfirmTitle'))).not.toBeOnTheScreen();
@@ -247,7 +267,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession(), isOnline: false });
 
-    expect(await screen.findByText('Paul Mbarga')).toBeOnTheScreen();
+    await openMember('Paul Mbarga');
     expect(screen.getByText(t('common.offlineActionHint'))).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: t('team.members.changeRole') })).toBeDisabled();
     expect(screen.getByRole('button', { name: t('team.members.removeAction') })).toBeDisabled();
@@ -280,9 +300,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
 
     await user.press(screen.getByRole('button', { name: t('team.invite.submit') }));
 
-    expect(
-      await screen.findByText(t('team.invite.successHint', { date: '27 nov. 2026' })),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText(t('team.invite.successHint', { date: '27 nov. 2026' }))).toBeOnTheScreen();
     expect(team.invitations.some((item) => item.name === 'Brice Nana')).toBe(true);
 
     await user.press(screen.getByRole('button', { name: t('team.invite.shareWhatsApp') }));
@@ -314,9 +332,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     await user.press(screen.getByText(t('team.role.PRACTITIONER')));
     await user.press(screen.getByRole('button', { name: t('team.invite.submit') }));
 
-    expect(
-      await screen.findByText('Cette personne travaille déjà dans ce salon.'),
-    ).toBeOnTheScreen();
+    expect(await screen.findByText('Cette personne travaille déjà dans ce salon.')).toBeOnTheScreen();
     expect(screen.getByLabelText(t('team.invite.nameLabel')).props.value).toBe('Paul Mbarga');
 
     await renderWorkspace({ team, session: buildStaffSession(), isOnline: false });
@@ -324,7 +340,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     expect(screen.getByRole('button', { name: t('team.invite.submit') })).toBeDisabled();
   });
 
-  it('validates invite fields locally and toggles the inline invite panel closed', async () => {
+  it('validates invite fields locally and returns to the directory after closing the invitation screen', async () => {
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession() });
 
@@ -337,7 +353,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     expect(await screen.findAllByRole('alert')).not.toHaveLength(0);
     expect(team.invitations).toHaveLength(1);
 
-    await user.press(toggleButton);
+    await user.press(screen.getByRole('button', { name: t('team.directory.back') }));
     expect(screen.queryByRole('header', { name: t('team.invite.title') })).not.toBeOnTheScreen();
   });
 
@@ -346,7 +362,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     await renderWorkspace({ team, session: buildStaffSession(), isOnline: false });
 
     const user = userEvent.setup();
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
     expect(await screen.findByText('Sandra Kouam')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: t('team.invitations.cancelAction') })).toBeDisabled();
 
@@ -355,7 +371,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
       throw new HttpError(0, 'NETWORK_ERROR', 'Le serveur est injoignable.');
     };
     await renderWorkspace({ team: failingTeam, session: buildStaffSession() });
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
     expect(await screen.findByText(t('errors.network'))).toBeOnTheScreen();
 
     failingTeam.listInvitations = InMemoryTeamGateway.prototype.listInvitations.bind(failingTeam);
@@ -389,7 +405,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     await renderWorkspace({ team, session: buildStaffSession() });
 
     const user = userEvent.setup();
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
 
     expect(await screen.findByText('Sandra Kouam')).toBeOnTheScreen();
     expect(screen.getByText('+237670000002')).toBeOnTheScreen();
@@ -408,7 +424,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     // Empty state when no invitations
     const emptyTeam = new InMemoryTeamGateway({ invitations: [] });
     await renderWorkspace({ team: emptyTeam, session: buildStaffSession() });
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
     expect(await screen.findByText(t('team.invitations.empty'))).toBeOnTheScreen();
 
     // Limit hint when >= 100 invitations (with staff:invite) and InvitationsListView hides cancel without staff:invite
@@ -417,7 +433,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
       team: cappedTeam,
       session: buildStaffSession(),
     });
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
     expect(await screen.findByText(t('team.invitations.limitHint'))).toBeOnTheScreen();
 
     const readOnlyStore = createTestStore({ team: cappedTeam });
@@ -429,9 +445,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
       </StoreProvider>,
     );
     expect(await screen.findByText(t('team.invitations.limitHint'))).toBeOnTheScreen();
-    expect(
-      screen.queryByRole('button', { name: t('team.invitations.cancelAction') }),
-    ).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: t('team.invitations.cancelAction') })).not.toBeOnTheScreen();
   });
 
   it('switches back to active members and hides tabs if staff:invite is revoked via SSE demotion (Durcissement 3)', async () => {
@@ -439,7 +453,7 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     const { store } = await renderWorkspace({ team, session: buildStaffSession() });
 
     const user = userEvent.setup();
-    await user.press(screen.getByRole('tab', { name: t('team.tabs.invitations') }));
+    await user.press(screen.getByRole('tab', { name: /^Invitations/ }));
     expect(await screen.findByText('Sandra Kouam')).toBeOnTheScreen();
 
     await act(async () => {
@@ -454,9 +468,9 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     await act(async () => {
       store.dispatch(sessionStarted(buildStaffSession()));
     });
-    expect(
-      screen.getByRole('tab', { name: t('team.tabs.members') }).props.accessibilityState.selected,
-    ).toBe(true);
+    expect(screen.getByRole('tab', { name: t('team.tabs.members') }).props.accessibilityState.selected).toBe(
+      true,
+    );
     expect(screen.getByText('Paul Mbarga')).toBeOnTheScreen();
     expect(screen.queryByText('Sandra Kouam')).not.toBeOnTheScreen();
   });

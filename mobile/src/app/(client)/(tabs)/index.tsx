@@ -1,6 +1,7 @@
 import { t } from '@gomecoiffer/client-core';
 import { Link } from 'expo-router';
 import { ScrollView, View } from 'react-native';
+import { SalonPhoto } from '@/components/ui/salon-photo';
 import { Badge } from '@/components/ui/badge';
 import { BrandBackdrop, BrandTopBar, IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
@@ -30,13 +31,28 @@ export default function MarketplaceExploreScreen() {
         />
 
         <Card>
+          <CardTitle>Votre espace professionnel</CardTitle>
+          <CardDescription>Vous êtes propriétaire ? Commencez par créer votre salon. Si vous avez reçu une invitation, rejoignez votre équipe.</CardDescription>
+          <Link href="/inscription" asChild>
+            <Button icon="shop" title="Créer mon salon" />
+          </Link>
+          <Link href="/rejoindre" asChild>
+            <Button variant="outline" icon="users" title="Rejoindre un salon" />
+          </Link>
+          <Link href="/connexion" asChild>
+            <Button variant="ghost" title="J’ai déjà un compte" />
+          </Link>
+        </Card>
+        <SalonPhoto scene="salon" />
+
+        <Card>
           <View className="flex-row items-center gap-3.5">
             <IconTile name="sparkle" tone="terra" size={48} />
             <View className="flex-1 gap-1">
               <ThemedText variant="title" className="text-2xl font-extrabold">
                 {t('marketplace.title')}
               </ThemedText>
-              <ThemedText variant="muted" className="text-xs leading-5">
+              <ThemedText variant="muted" className="text-sm leading-6">
                 {t('marketplace.intro')}
               </ThemedText>
             </View>
@@ -49,8 +65,8 @@ export default function MarketplaceExploreScreen() {
                 className="gap-1.5 rounded-2xl sm:flex-1 border border-white/95 bg-secondary/50 p-3"
               >
                 <IconTile name={pillar.icon} tone={pillar.tone} size={32} />
-                <ThemedText className="text-xs font-bold">{pillar.title}</ThemedText>
-                <ThemedText variant="caption" className="text-xs leading-5">
+                <ThemedText className="text-sm font-bold">{pillar.title}</ThemedText>
+                <ThemedText variant="caption" className="text-sm leading-6">
                   {pillar.subtitle}
                 </ThemedText>
               </View>
@@ -60,23 +76,9 @@ export default function MarketplaceExploreScreen() {
 
         <HealthStatusCard />
 
-        <Card>
-          <View className="flex-row items-center gap-3">
-            <IconTile name="shop" tone="navy" size={42} />
-            <View className="flex-1 gap-0.5">
-              <CardTitle>{t('common.signIn')}</CardTitle>
-              <CardDescription>{t('auth.signIn.hint')}</CardDescription>
-            </View>
-          </View>
-          <View className="gap-2.5">
-            <Link href="/connexion" asChild>
-              <Button variant="default" icon="lock" title={t('common.signIn')} />
-            </Link>
-            <Link href="/(salon)/(tabs)" asChild>
-              <Button variant="outline" icon="shop" title={t('marketplace.openSalonSpace')} />
-            </Link>
-          </View>
-        </Card>
+        <Link href="/(salon)/(tabs)" asChild>
+          <Button variant="outline" icon="shop" title={t('marketplace.openSalonSpace')} />
+        </Link>
       </ScrollView>
     </SafeAreaView>
   );

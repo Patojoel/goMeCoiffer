@@ -44,7 +44,9 @@ export function useCreateOrganization({ onNavigate, isOnline }: UseCreateOrganiz
     setInfoMessage(null);
     try {
       const res = await createOrganization(values).unwrap();
-      onNavigate(resolveHomeHref(res.session.nextStep));
+      onNavigate(res.session.nextStep === 'OPEN_SALON' && res.session.activeSalonId
+        ? '/(salon)/horaires?guide=1'
+        : resolveHomeHref(res.session.nextStep));
     } catch (error) {
       if (isOrganizationAlreadyExistsError(error)) {
         setInfoMessage(t('salons.create.alreadyExistsHint'));

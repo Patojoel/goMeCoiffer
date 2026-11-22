@@ -1,6 +1,12 @@
-import { can, selectSession, t } from '@gomecoiffer/client-core';
+import {
+  can,
+  selectActiveSalon,
+  selectSession,
+  t,
+  useListSalonInvitationsQuery,
+} from '@gomecoiffer/client-core';
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { RequirePermission } from '@/components/navigation/require-permission';
 import { BrandBackdrop, BrandTopBar, PageHero } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
@@ -9,6 +15,7 @@ import { useOnlineStatus } from '@/lib/platform/setupPlatformListeners';
 import { useAppSelector } from '@/lib/store/hooks';
 import { InviteCollaboratorView } from './invite/invite-collaborator-view';
 import { InvitationsListView } from './invitations/invitations-list-view';
+import { TeamPanel } from './team-panel';
 import { TeamListView } from './team-list/team-list-view';
 
 export type TeamWorkspaceTab = 'members' | 'invitations';
@@ -17,11 +24,6 @@ export type SalonTeamWorkspaceProps = {
   readonly isOnline?: boolean;
   readonly onOpenExternalUrl?: (url: string) => Promise<void> | void;
 };
-
-const TAB_ITEMS: ReadonlyArray<SegmentedTabItem<TeamWorkspaceTab>> = [
-  { value: 'members', label: t('team.tabs.members') },
-  { value: 'invitations', label: t('team.tabs.invitations') },
-];
 
 function SalonTeamWorkspaceContent({
   isOnline,
@@ -34,6 +36,16 @@ function SalonTeamWorkspaceContent({
   const [activeTab, setActiveTab] = useState<TeamWorkspaceTab>('members');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const canInvite = can(session, 'staff:invite');
+  const activeSalon = useAppSelector(selectActiveSalon);
+  const { currentData: invitations } = useListSalonInvitationsQuery(undefined, { skip: !canInvite });
+  const pending = invitations?.filter((invite) => invite.status === 'PENDING').length;
+  const tabs: ReadonlyArray<SegmentedTabItem<TeamWorkspaceTab>> = [
+    { value: 'members', label: t('team.tabs.members') },
+    {
+      value: 'invitations',
+      label: pending ? `${t('team.tabs.invitations')} (${pending})` : t('team.tabs.invitations'),
+    },
+  ];
   const effectiveTab: TeamWorkspaceTab = canInvite ? activeTab : 'members';
 
   useEffect(() => {
@@ -50,22 +62,23 @@ function SalonTeamWorkspaceContent({
       <BrandBackdrop />
       <View className="mx-auto w-full max-w-2xl flex-1">
         <View className="gap-3 px-5 pt-4 pb-2">
-          <BrandTopBar logoWidth={154} />
+          {Platform.OS !== 'web' ? <BrandTopBar logoWidth={154} /> : null}
 
           <PageHero
             icon="users"
             tone="terra"
-            title={t('team.section.title')}
-            subtitle={t('team.section.subtitle')}
+            title={t('nav.salon.team')}
+            eyebrow={activeSalon?.name}
             right={
               canInvite ? (
                 <Button
-                  variant={isInviteOpen ? 'outline' : 'accent'}
+                  variant="accent"
                   size="sm"
                   icon="userplus"
-                  title={t('team.invite.openAction')}
+                  title={t('team.directory.invite')}
+                  accessibilityLabel={t('team.invite.openAction')}
                   accessibilityState={{ expanded: isInviteOpen }}
-                  onPress={() => setIsInviteOpen((open) => !open)}
+                  onPress={() => setIsInviteOpen(true)}
                 />
               ) : null
             }
@@ -74,7 +87,7 @@ function SalonTeamWorkspaceContent({
           {canInvite ? (
             <SegmentedTabs
               value={effectiveTab}
-              items={TAB_ITEMS}
+              items={tabs}
               onChange={setActiveTab}
               accessibilityLabel={t('team.section.title')}
             />
@@ -82,13 +95,9 @@ function SalonTeamWorkspaceContent({
         </View>
 
         {canInvite && isInviteOpen ? (
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            className="shrink-0 px-5 pb-2"
-            style={{ maxHeight: '58%' }}
-          >
+          <TeamPanel onClose={() => setIsInviteOpen(false)}>
             <InviteCollaboratorView isOnline={isOnline} onOpenExternalUrl={onOpenExternalUrl} />
-          </ScrollView>
+          </TeamPanel>
         ) : null}
 
         <View className="flex-1">

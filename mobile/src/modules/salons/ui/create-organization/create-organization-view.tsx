@@ -15,7 +15,7 @@ export type CreateOrganizationViewProps = {
   readonly isOnline?: boolean;
 };
 
-const STEP_LABELS = ['Organisation', 'Prestations', 'Équipe', 'Finalisation'] as const;
+const STEP_LABELS = ['Salon', 'Horaires', 'Équipe'] as const;
 
 function CreateOrganizationContent({
   onNavigate,
@@ -42,11 +42,11 @@ function CreateOrganizationContent({
 
         <Card className="gap-3 p-4">
           <View className="flex-row items-center justify-between gap-2">
-            <ThemedText className="text-xs font-bold">Configuration du salon</ThemedText>
-            <ThemedText className="text-xs font-bold text-accent">Étape 1 sur 4</ThemedText>
+            <ThemedText className="text-base font-bold">Configuration du salon</ThemedText>
+            <ThemedText className="text-base font-bold text-accent">Étape 1 sur 3</ThemedText>
           </View>
           <View className="h-1.5 overflow-hidden rounded-full bg-secondary">
-            <View className="h-full w-1/4 rounded-full bg-accent" />
+            <View className="h-full w-1/3 rounded-full bg-accent" />
           </View>
           <View className="flex-row flex-wrap gap-1.5">
             {STEP_LABELS.map((step, index) => (

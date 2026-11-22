@@ -47,7 +47,7 @@ export function TextField({
   return (
     <View className={cn('gap-1.5', containerClassName)}>
       <View className="flex-row items-center justify-between gap-2 px-0.5">
-        <ThemedText nativeID={labelId} variant="headline" className="text-sm font-bold text-foreground">
+        <ThemedText nativeID={labelId} variant="headline" className="text-base font-bold text-foreground">
           {label}
         </ThemedText>
         {requirementHint ? <ThemedText variant="caption">{requirementHint}</ThemedText> : null}
@@ -79,7 +79,7 @@ export function TextField({
           editable={editable}
           secureTextEntry={isPassword ? !revealed : false}
           className={cn(
-            'min-h-12 flex-1 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground',
+            'min-h-12 flex-1 px-3.5 py-2.5 text-base text-foreground placeholder:text-muted-foreground',
             resolvedIcon && 'pl-2',
             className,
           )}
@@ -103,7 +103,7 @@ export function TextField({
 
       {hint ? <FieldHint nativeID={hintId} message={hint} /> : null}
       {error ? (
-        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-xs">
+        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-sm">
           {error}
         </ThemedText>
       ) : null}
