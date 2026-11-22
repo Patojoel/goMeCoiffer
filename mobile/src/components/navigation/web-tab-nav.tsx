@@ -34,7 +34,7 @@ export function WebTabNav({ spaceLabel, items }: WebTabNavProps) {
           </View>
           <View
             role="tablist"
-            className="flex-row flex-wrap gap-1.5 rounded-2xl border border-white/90 bg-secondary/70 p-1"
+            className="max-w-full flex-row flex-wrap gap-1.5 rounded-2xl border border-white/90 bg-secondary/70 p-1"
           >
             {items.map((item) => {
               const active = pathname === item.matchPath;

@@ -207,6 +207,17 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     expect(screen.getByText('Paul Mbarga')).toBeOnTheScreen();
   });
 
+  it('keeps the member detail usable when the join date cannot be formatted', async () => {
+    const member = new InMemoryTeamGateway().members[1]!;
+    const team = new InMemoryTeamGateway({ members: [{ ...member, joinedAt: 'invalid' }] });
+    await renderWorkspace({ team, session: buildStaffSession() });
+    await openMember(member.name);
+    expect(screen.getByRole('button', { name: t('team.members.changeRole') })).toBeOnTheScreen();
+    expect(screen.queryByText(/Membre depuis/)).not.toBeOnTheScreen();
+    await userEvent.setup().press(screen.getByRole('button', { name: t('team.directory.back') }));
+    expect(screen.getByLabelText(t('team.directory.search'))).toBeOnTheScreen();
+  });
+
   it('changes collaborator role with optimistic version and updates role description hint', async () => {
     const team = new InMemoryTeamGateway();
     await renderWorkspace({ team, session: buildStaffSession() });
@@ -410,8 +421,13 @@ describe('Salon team and invitations workspace on mobile (UC-006, UC-011)', () =
     expect(await screen.findByText('Sandra Kouam')).toBeOnTheScreen();
     expect(screen.getByText('+237670000002')).toBeOnTheScreen();
     expect(screen.getByText(t('team.invitations.status.PENDING'))).toBeOnTheScreen();
-    expect(screen.getByText('—')).toBeOnTheScreen();
+    expect(screen.getByText(t('team.invitations.unknownRecipient'))).toBeOnTheScreen();
     expect(screen.getByText(t('team.invitations.status.EXPIRED'))).toBeOnTheScreen();
+
+    expect(screen.getByText(t('team.invitations.expiration', { date: '26 nov. 2026' }))).toBeOnTheScreen();
+    await user.press(screen.getByRole('button', { name: t('team.invite.openAction') }));
+    await user.press(screen.getByRole('button', { name: t('team.invitations.back') }));
+    expect(screen.getByRole('tab', { name: /^Invitations/ }).props.accessibilityState.selected).toBe(true);
 
     // Only PENDING invitation shows Cancel button
     const cancelButtons = screen.getAllByRole('button', { name: t('team.invitations.cancelAction') });

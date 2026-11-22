@@ -8,7 +8,9 @@ import { SafeAreaView } from '@/components/ui/safe-area-view';
 export function TeamPanel({
   children,
   onClose,
+  backLabel = t('team.directory.back'),
 }: {
+  readonly backLabel?: string;
   readonly children: ReactNode;
   readonly onClose: () => void;
 }) {
@@ -17,8 +19,8 @@ export function TeamPanel({
       <SafeAreaView className="flex-1 bg-background">
         <BrandBackdrop />
         <View className="mx-auto w-full max-w-2xl flex-1">
-          <View className="items-start px-5 pt-3">
-            <Button variant="ghost" size="sm" title={t('team.directory.back')} onPress={onClose} />
+          <View className="shrink-0 items-start border-b border-border bg-card px-5 py-2">
+            <Button variant="outline" title={backLabel} onPress={onClose} />
           </View>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="px-5 pt-2 pb-10">
             {children}

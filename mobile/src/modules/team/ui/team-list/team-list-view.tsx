@@ -41,6 +41,16 @@ function normalizeName(value: string) {
 
 type DirectoryRole = SalonTeamMember['role'] | 'ALL';
 
+function memberSince(joinedAt: string): string | null {
+  try {
+    return t('team.directory.joined', { date: formatDateFr(joinedAt) });
+  } catch (error) {
+    // An invalid instant or a timezone unsupported by the device makes Intl throw.
+    if (error instanceof RangeError) return null;
+    throw error;
+  }
+}
+
 function TeamMemberDetail({
   member,
   canManageStaff,
@@ -68,6 +78,8 @@ function TeamMemberDetail({
 }) {
   const isManageable = member.role !== 'OWNER' && !member.isCurrentUser && canManageStaff;
 
+  const joined = memberSince(member.joinedAt);
+
   return (
     <Card className="p-4">
       <View className="flex-row items-center gap-3">
@@ -76,20 +88,17 @@ function TeamMemberDetail({
           <ThemedText variant="headline" className="text-lg font-bold">
             {member.name}
           </ThemedText>
-          <ThemedText variant="muted" className="text-xs">
-            {t('team.directory.joined', { date: formatDateFr(member.joinedAt) })}
-          </ThemedText>
+          {joined ? <ThemedText variant="caption">{joined}</ThemedText> : null}
         </View>
-
-        <View className="flex-row flex-wrap items-center gap-1.5">
-          <Badge
-            variant={member.role === 'OWNER' ? 'default' : 'outline'}
-            label={t(`team.role.${member.role}`)}
-          />
-          {member.isCurrentUser ? (
-            <Badge variant="secondary" label={t('team.members.currentUserBadge')} />
-          ) : null}
-        </View>
+      </View>
+      <View className="flex-row flex-wrap items-center gap-2">
+        <Badge
+          variant={member.role === 'OWNER' ? 'default' : 'outline'}
+          label={t(`team.role.${member.role}`)}
+        />
+        {member.isCurrentUser ? (
+          <Badge variant="secondary" label={t('team.members.currentUserBadge')} />
+        ) : null}
       </View>
 
       {member.role === 'OWNER' ? <FieldHint message={t('team.members.ownerProtectedHint')} /> : null}

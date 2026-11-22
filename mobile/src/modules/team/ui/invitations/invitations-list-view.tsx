@@ -33,36 +33,38 @@ function InvitationRow({
   readonly onCancel: (invitationId: string) => void;
 }) {
   const canCancel = invitation.status === 'PENDING' && canInvite;
-  const phone = invitation.phone ?? '';
+  const name = invitation.name?.trim();
+  const phone = invitation.phone?.trim();
 
   return (
     <Card className="p-4">
       <View className="flex-row items-center gap-3">
         <AvatarInitials
-          name={invitation.name ?? 'GM'}
+          name={name || phone || ''}
           tone={invitation.status === 'PENDING' ? 'terra' : 'navy'}
           size={40}
         />
-        <View className="flex-1 gap-0.5">
-          <ThemedText variant="headline" className="text-sm font-bold">
-            {invitation.name ?? '—'}
+        <View className="min-w-0 flex-1 gap-1">
+          <ThemedText variant="headline">
+            {name || phone || t('team.invitations.unknownRecipient')}
           </ThemedText>
-          {phone.length > 0 ? (
-            <ThemedText selectable variant="muted" className="text-xs">
+          {name && phone ? (
+            <ThemedText selectable variant="muted">
               {phone}
             </ThemedText>
           ) : null}
-          <ThemedText variant="caption">{formatDateFr(invitation.expiresAt)}</ThemedText>
-        </View>
-
-        <View className="flex-row flex-wrap items-center gap-1.5">
-          <Badge variant="outline" label={t(`team.role.${invitation.role}`)} />
-          <Badge
-            variant={invitation.status === 'PENDING' ? 'accent' : 'secondary'}
-            label={t(`team.invitations.status.${invitation.status}`)}
-          />
         </View>
       </View>
+      <View className="flex-row flex-wrap items-center gap-2">
+        <Badge
+          variant={invitation.status === 'PENDING' ? 'accent' : 'secondary'}
+          label={t(`team.invitations.status.${invitation.status}`)}
+        />
+        <Badge variant="outline" label={t(`team.role.${invitation.role}`)} />
+      </View>
+      <ThemedText variant="caption">
+        {t('team.invitations.expiration', { date: formatDateFr(invitation.expiresAt) })}
+      </ThemedText>
 
       {canCancel ? (
         <Button

@@ -95,7 +95,10 @@ function SalonTeamWorkspaceContent({
         </View>
 
         {canInvite && isInviteOpen ? (
-          <TeamPanel onClose={() => setIsInviteOpen(false)}>
+          <TeamPanel
+            backLabel={effectiveTab === 'invitations' ? t('team.invitations.back') : t('team.directory.back')}
+            onClose={() => setIsInviteOpen(false)}
+          >
             <InviteCollaboratorView isOnline={isOnline} onOpenExternalUrl={onOpenExternalUrl} />
           </TeamPanel>
         ) : null}
