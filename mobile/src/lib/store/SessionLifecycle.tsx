@@ -15,7 +15,7 @@ import {
 import { router, type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
-import { env } from '../config/env';
+import { env, localCookieSession } from '../config/env';
 import {
   createRealtimeSource,
   type CreateRealtimeSourceOptions,
@@ -64,7 +64,7 @@ export function SessionLifecycle({
     bootstrappedRef.current = true;
 
     void (async () => {
-      if (platformOs !== 'web') {
+      if (platformOs !== 'web' && !localCookieSession) {
         if (!storage) return;
         const token = await storage.getSessionToken().catch(() => null);
         if (!token) return;

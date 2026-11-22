@@ -52,6 +52,12 @@ export function resolveApiBaseUrl(
   return `${parsed.origin}${parsed.pathname}`.replace(/\/+$/, '');
 }
 
+// Opt-in for Expo Go against the local cookie-session API while UC-013 is pending.
+export const localCookieSession =
+  typeof __DEV__ !== 'undefined' && __DEV__ &&
+  process.env.EXPO_PUBLIC_APP_ENV === 'local' &&
+  process.env.EXPO_PUBLIC_LOCAL_COOKIE_SESSION === '1';
+
 export const env = {
   apiBaseUrl: resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_BASE_URL),
 } as const;

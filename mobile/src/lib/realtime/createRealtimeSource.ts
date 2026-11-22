@@ -1,6 +1,7 @@
 import type { RealtimeSource, RealtimeSourceCallbacks, TokenStorage } from '@gomecoiffer/client-core';
 import { AppState, type AppStateStatus } from 'react-native';
 import EventSource, { type EventSourceOptions, type SseMessageEvent } from 'react-native-sse';
+import { localCookieSession } from '../config/env';
 import { MOBILE_CLIENT_CHANNEL, MOBILE_CLIENT_HEADER } from '../http/headers';
 
 const RECONNECT_DELAY_MS = 5_000;
@@ -107,7 +108,7 @@ export function createRealtimeSource({
         opening = true;
         let openedToken: string | null = null;
         try {
-          openedToken = await storage.getSessionToken();
+          if (!localCookieSession) openedToken = await storage.getSessionToken();
         } catch {
           return;
         } finally {
@@ -119,11 +120,12 @@ export function createRealtimeSource({
           pausedInBackground = true;
           return;
         }
-        if (!openedToken) return;
+        if (!openedToken && !localCookieSession) return;
 
         const nextSource = eventSourceFactory(url, {
           pollingInterval: 0,
-          headers: {
+          withCredentials: localCookieSession,
+          headers: localCookieSession ? {} : {
             [MOBILE_CLIENT_HEADER]: MOBILE_CLIENT_CHANNEL,
             Authorization: `Bearer ${openedToken}`,
           },
@@ -159,7 +161,8 @@ export function createRealtimeSource({
           closeStream();
 
           if (event?.xhrStatus === 401) {
-            void handleUnauthorized(openedToken);
+            if (localCookieSession) onUnauthorized?.();
+            else if (openedToken) void handleUnauthorized(openedToken);
             return;
           }
 
