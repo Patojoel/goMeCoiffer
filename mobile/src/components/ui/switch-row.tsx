@@ -29,7 +29,7 @@ export function SwitchRow({
   return (
     <View
       className={cn(
-        'min-h-14 flex-row items-center justify-between gap-3 rounded-2xl border border-white/95 bg-card/85 px-3.5 py-3',
+        'min-h-14 flex-row items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3',
         disabled && 'opacity-55',
         className,
       )}
