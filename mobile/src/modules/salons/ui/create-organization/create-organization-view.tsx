@@ -1,14 +1,11 @@
 import { t } from '@gomecoiffer/client-core';
 import { ScrollView, View } from 'react-native';
-import { useState } from 'react';
-import { OwnerStepHero } from '../owner-step-hero';
-import { Button } from '@/components/ui/button';
-import { TextField } from '@/components/ui/text-field';
-import { BrandBackdrop, BrandTopBar } from '@/components/ui/brand';
+import { Badge } from '@/components/ui/badge';
+import { BrandTopBar, PageHero } from '@/components/ui/brand';
 import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { SafeAreaView } from '@/components/ui/safe-area-view';
-
+import { ThemedText } from '@/components/ui/themed-text';
 import { SalonForm } from '../shared/salon-form';
 import { WithScreenContext } from '../shared/screen-bridge';
 import { useCreateOrganization } from './use-create-organization';
@@ -18,6 +15,8 @@ export type CreateOrganizationViewProps = {
   readonly isOnline?: boolean;
 };
 
+const STEP_LABELS = ['Salon', 'Horaires', 'Équipe'] as const;
+
 function CreateOrganizationContent({
   onNavigate,
   isOnline,
@@ -25,8 +24,6 @@ function CreateOrganizationContent({
   readonly onNavigate: (path: string) => void;
   readonly isOnline: boolean;
 }) {
-  const [organizationName, setName] = useState('');
-  const [showSalon, setShowSalon] = useState(false);
   const { isSubmitting, errorMessage, infoMessage, submit } = useCreateOrganization({
     onNavigate,
     isOnline,
@@ -34,7 +31,6 @@ function CreateOrganizationContent({
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
-      <BrandBackdrop />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -43,26 +39,42 @@ function CreateOrganizationContent({
       >
         <BrandTopBar logoWidth={160} />
 
-        <OwnerStepHero step={showSalon ? 2 : 1}
-          title={showSalon ? 'Votre premier salon' : 'Votre organisation'}
-          hint={showSalon ? 'Ces coordonnées identifient votre établissement.' : 'Une même organisation peut regrouper plusieurs salons.'} />
-        {!showSalon && <Card>
-          <TextField label="Nom de l’organisation" placeholder="Ex. Maison Awa" value={organizationName} maxLength={60} onChangeText={setName} />
-          <Button title="Configurer mon premier salon" disabled={organizationName.trim().length < 2} onPress={() => setShowSalon(true)} />
-        </Card>}
-        <View style={{ display: showSalon ? 'flex' : 'none' }}>
-        <Card>
-          <Button variant="ghost" title="Modifier l’organisation" onPress={() => setShowSalon(false)} />
+        <Card className="gap-3 p-4">
+          <View className="flex-row items-center justify-between gap-2">
+            <ThemedText className="text-base font-bold">Configuration du salon</ThemedText>
+            <ThemedText className="text-base font-bold text-accent">Étape 1 sur 3</ThemedText>
+          </View>
+          <View className="h-1.5 overflow-hidden rounded-full bg-secondary">
+            <View className="h-full w-1/3 rounded-full bg-accent" />
+          </View>
+          <View className="flex-row flex-wrap gap-1.5">
+            {STEP_LABELS.map((step, index) => (
+              <Badge
+                key={step}
+                variant={index === 0 ? 'accent' : 'outline'}
+                label={`${index + 1}. ${step}`}
+              />
+            ))}
+          </View>
+        </Card>
+
+        <PageHero
+          icon="shop"
+          tone="terra"
+          title={t('salons.create.title')}
+          subtitle={t('salons.create.subtitle')}
+        />
+
+        <Card className="bg-card">
           {infoMessage ? <InlineAlert variant="info" message={infoMessage} /> : null}
           <SalonForm
             submitLabel={t('salons.form.submitCreate')}
             isSubmitting={isSubmitting}
             isOnline={isOnline}
             errorMessage={errorMessage}
-            onSubmit={(values) => submit({ ...values, organizationName: organizationName.trim() })}
+            onSubmit={submit}
           />
         </Card>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );

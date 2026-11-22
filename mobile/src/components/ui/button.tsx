@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default: 'bg-primary',
         accent: 'bg-accent',
         secondary: 'border border-white/95 bg-secondary',
-        outline: 'border border-border bg-card',
+        outline: 'border border-border bg-card/85',
         ghost: 'bg-transparent',
       },
       size: {

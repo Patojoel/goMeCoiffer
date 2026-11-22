@@ -6,4 +6,4 @@ import { CreateOrganization } from '../../../application/commands/create-organiz
 export const toCreateOrganization = (
   body: CreateOrganizationBody,
   actor: Pick<Actor, 'userId'>,
-): CreateOrganization => new CreateOrganization(actor.userId, body, body.organizationName);
+): CreateOrganization => new CreateOrganization(actor.userId, body);

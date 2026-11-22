@@ -1,9 +1,9 @@
 import { t } from '@gomecoiffer/client-core';
 import { Link } from 'expo-router';
 import { ScrollView, View } from 'react-native';
-import { SalonPhoto } from '@/components/ui/salon-photo';
+import { SalonStepsCarousel } from '@/modules/salons/ui/onboarding/salon-steps-carousel';
 import { Badge } from '@/components/ui/badge';
-import { BrandBackdrop, BrandTopBar, IconTile } from '@/components/ui/brand';
+import { BrandTopBar, IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { SafeAreaView } from '@/components/ui/safe-area-view';
@@ -19,7 +19,6 @@ const EXPLORE_PILLARS = [
 export default function MarketplaceExploreScreen() {
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-background">
-      <BrandBackdrop />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         className="flex-1"
@@ -30,7 +29,7 @@ export default function MarketplaceExploreScreen() {
           right={<Badge variant="accent" label={t('nav.client.explore')} />}
         />
 
-        <Card>
+        <Card className="bg-card">
           <CardTitle>Votre espace professionnel</CardTitle>
           <CardDescription>Vous êtes propriétaire ? Commencez par créer votre salon. Si vous avez reçu une invitation, rejoignez votre équipe.</CardDescription>
           <Link href="/inscription" asChild>
@@ -43,9 +42,9 @@ export default function MarketplaceExploreScreen() {
             <Button variant="ghost" title="J’ai déjà un compte" />
           </Link>
         </Card>
-        <SalonPhoto scene="salon" />
+        <SalonStepsCarousel />
 
-        <Card>
+        <Card className="bg-card">
           <View className="flex-row items-center gap-3.5">
             <IconTile name="sparkle" tone="terra" size={48} />
             <View className="flex-1 gap-1">

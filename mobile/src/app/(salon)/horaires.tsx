@@ -1,13 +1,16 @@
-import { useLocalSearchParams } from 'expo-router';
 import { RequirePermission } from '@/components/navigation/require-permission';
 import { WeeklyScheduleEditor } from '@/modules/salons/ui/hours/weekly-schedule-editor';
-import { OwnerGuide } from '@/modules/salons/ui/owner-guide';
+
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 export default function SalonHoursScreen() {
   const { guide } = useLocalSearchParams();
+  const router = useRouter();
   return (
     <RequirePermission permission="salon-settings:edit" wrapDeniedInSafeArea>
-      {guide === '1' ? <OwnerGuide /> : <WeeklyScheduleEditor />}
+      <WeeklyScheduleEditor guided={guide === '1'} onApply={guide === '1'
+        ? () => router.replace('/(salon)/(tabs)/equipe?guide=1')
+        : undefined} />
     </RequirePermission>
   );
 }

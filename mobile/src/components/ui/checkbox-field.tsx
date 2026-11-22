@@ -57,7 +57,7 @@ export function CheckboxField({
               ? 'border-accent bg-accent'
               : error
                 ? 'border-destructive bg-card'
-                : 'border-border bg-card',
+                : 'border-border bg-card/90',
           )}
           style={{ borderCurve: 'continuous' }}
         >

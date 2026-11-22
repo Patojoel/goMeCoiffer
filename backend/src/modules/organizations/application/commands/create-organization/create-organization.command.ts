@@ -7,7 +7,6 @@ export class CreateOrganization extends Command<CreateOrganizationResponse> {
   constructor(
     readonly ownerUserId: string,
     readonly salon: SalonDraft,
-    readonly organizationName?: string,
   ) {
     super();
   }

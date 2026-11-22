@@ -65,7 +65,6 @@ declare global {
     ): JestSpyInstance<TReturn, TArgs>;
     useFakeTimers(): void;
     useRealTimers(): void;
-    mock(moduleName: string, factory: () => unknown): void;
     advanceTimersByTime(msToRun: number): void;
   };
 }

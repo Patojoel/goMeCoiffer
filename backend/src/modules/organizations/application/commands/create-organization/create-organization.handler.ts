@@ -47,7 +47,6 @@ export class CreateOrganizationHandler implements ICommandHandler<CreateOrganiza
     const { organization, salon, membership } = Organization.found({
       owner: await this.candidates.of(cmd.ownerUserId),
       salon: cmd.salon,
-      organizationName: cmd.organizationName,
       ids,
       now,
     });

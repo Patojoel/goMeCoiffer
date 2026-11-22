@@ -3,7 +3,6 @@ import { OrganizationFounded } from '../events/organization-founded.js';
 import { OrganizationAlreadyExistsError } from '../exceptions/organization-already-exists.error.js';
 import { OwnerAccountRequiredError } from '../exceptions/owner-account-required.error.js';
 import type { OwnerCandidate } from '../value-objects/owner-candidate.js';
-import { boundedText } from '../value-objects/bounded-text.js';
 import { Salon, type SalonDetails } from './salon.js';
 import { SalonMembership } from './salon-membership.js';
 
@@ -47,11 +46,10 @@ export class Organization extends AggregateRoot {
 
   /**
    * Les trois agrégats se créent d'un bloc (RG-004-03, RG-004-16) : jamais d'organisation sans salon ni de salon sans
-   * propriétaire. Sans nom distinct, l’organisation reprend le nom commercial du premier salon.
+   * propriétaire. L'organisation porte le nom commercial du premier salon.
    */
   static found(input: {
     owner: OwnerCandidate;
-    organizationName?: string;
     salon: SalonDraft;
     ids: FoundingIds;
     now: Date;
@@ -69,9 +67,7 @@ export class Organization extends AggregateRoot {
     const organization = new Organization({
       id: ids.organization,
       ownerUserId: owner.userId,
-      name: input.organizationName === undefined ? salon.name : boundedText(
-        input.organizationName, 2, 60, 'Le nom de l’organisation doit compter de 2 à 60 caractères.',
-      ),
+      name: salon.name,
       createdAt: now,
       version: 0,
     });

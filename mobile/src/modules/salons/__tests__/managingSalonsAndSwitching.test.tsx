@@ -51,11 +51,6 @@ async function fillSalonForm(user: ReturnType<typeof userEvent.setup>, overrides
   await user.type(screen.getByLabelText(t('salons.form.phoneLabel')), '6 70 00 00 00');
 }
 
-async function enterOrganization() {
-  await userEvent.setup().type(screen.getByLabelText('Nom de l’organisation'), 'Maison Awa');
-  await userEvent.setup().press(screen.getByRole('button', { name: 'Configurer mon premier salon' }));
-}
-
 describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', () => {
   it('shows field guidance, validates locally and disables submission when offline (UC-004)', async () => {
     const salons = new InMemorySalonsGateway();
@@ -68,7 +63,6 @@ describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', 
       </StoreProvider>,
     );
 
-    await enterOrganization();
     expect(screen.getByText(t('salons.form.landmarkHint'))).toBeOnTheScreen();
     expect(screen.getByText(t('common.offlineActionHint'))).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: t('salons.form.submitCreate') })).toBeDisabled();
@@ -102,7 +96,6 @@ describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', 
     );
 
     const user = userEvent.setup();
-    await enterOrganization();
     await fillSalonForm(user);
     await user.press(screen.getByRole('button', { name: t('salons.form.submitCreate') }));
 
@@ -155,7 +148,6 @@ describe('Managing salons and switching active salon (UC-004, UC-005, UC-010)', 
     );
 
     const user = userEvent.setup();
-    await enterOrganization();
     await fillSalonForm(user);
     await user.press(screen.getByRole('button', { name: t('salons.form.submitCreate') }));
 

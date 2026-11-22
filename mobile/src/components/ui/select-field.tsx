@@ -95,9 +95,9 @@ export function SelectField<T extends string>({
         disabled={disabled}
         onPress={() => setOpen(true)}
         className={cn(
-          'min-h-12 flex-row items-center justify-between gap-2.5 rounded-[14px] border bg-card px-3.5 py-2.5',
-          error ? 'border-destructive' : 'border-border',
-          disabled && 'bg-muted',
+          'min-h-12 flex-row items-center justify-between gap-2.5 rounded-[14px] border bg-card/85 px-3.5 py-2.5',
+          error ? 'border-destructive' : 'border-white/95',
+          disabled && 'bg-muted opacity-60',
         )}
         style={{
           borderCurve: 'continuous',
@@ -128,7 +128,7 @@ export function SelectField<T extends string>({
       >
         <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
           <BrandBackdrop />
-          <View className="flex-row items-center justify-between gap-3 border-b border-border bg-card px-4 py-3">
+          <View className="flex-row items-center justify-between gap-3 border-b border-white/90 bg-card/90 px-4 py-3">
             <ThemedText variant="subtitle" className="flex-1 font-bold">
               {label}
             </ThemedText>
@@ -136,7 +136,7 @@ export function SelectField<T extends string>({
           </View>
 
           {searchable ? (
-            <View className="border-b border-border bg-card px-4 py-3">
+            <View className="border-b border-white/80 bg-card/80 px-4 py-3">
               <TextInput
                 value={query}
                 onChangeText={setQuery}
@@ -144,7 +144,7 @@ export function SelectField<T extends string>({
                 accessibilityLabel={t('ui.select.searchPlaceholder')}
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="min-h-12 rounded-[14px] border border-border bg-card px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
+                className="min-h-12 rounded-[14px] border border-white/95 bg-card/90 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
                 style={{ borderCurve: 'continuous' }}
               />
             </View>
@@ -170,7 +170,7 @@ export function SelectField<T extends string>({
                   onPress={() => handleSelect(item.value)}
                   className={cn(
                     'min-h-12 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3',
-                    isSelected ? 'border-accent bg-secondary' : 'border-border bg-card',
+                    isSelected ? 'border-accent/60 bg-accent/10' : 'border-white/95 bg-card/90',
                     item.disabled && 'opacity-45',
                   )}
                   style={{ borderCurve: 'continuous' }}

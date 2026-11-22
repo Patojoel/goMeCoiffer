@@ -3,8 +3,8 @@ import { Controller } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
 import { FieldHint } from '@/components/forms/field-hint';
 import { PhoneField } from '@/components/forms/phone-field';
-import { SalonPhoto } from '@/components/ui/salon-photo';
-import { BrandBackdrop, BrandIcon, BrandLogo } from '@/components/ui/brand';
+import { SalonStepsCarousel } from '@/modules/salons/ui/onboarding/salon-steps-carousel';
+import { BrandIcon, BrandLogo } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -34,7 +34,6 @@ function SignInViewContent({
 
   return (
     <View className="flex-1 bg-background">
-      <BrandBackdrop />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
@@ -42,7 +41,7 @@ function SignInViewContent({
         contentContainerClassName="mx-auto w-full max-w-2xl gap-5 px-5 pt-6 pb-12"
       >
         <BrandLogo width={185} />
-        <Card>
+        <Card className="bg-card">
           <View className="gap-1">
             <CardTitle className="text-2xl">{t('auth.signIn.title')}</CardTitle>
             <CardDescription>{t('auth.signIn.subline')}</CardDescription>
@@ -109,9 +108,9 @@ function SignInViewContent({
             disabled={!isOnline}
           />
         </Card>
-        <SalonPhoto scene="barber" />
+        <SalonStepsCarousel />
 
-        <Card>
+        <Card className="bg-card">
           <ThemedText variant="headline" className="text-center text-base font-bold">
             {t('auth.signIn.noAccount')}
           </ThemedText>

@@ -55,9 +55,9 @@ export function TextField({
 
       <View
         className={cn(
-          'min-h-12 flex-row items-center rounded-[14px] border bg-card',
+          'min-h-12 flex-row items-center rounded-[14px] border bg-card/85',
           error ? 'border-destructive' : 'border-border',
-          !editable && 'bg-muted',
+          !editable && 'bg-muted opacity-60',
         )}
         style={{
           borderCurve: 'continuous',
