@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/feedback/empty-state';
 import { FieldHint } from '@/components/forms/field-hint';
 import { OtpCodeField } from '@/components/forms/otp-code-field';
 import { PhoneField } from '@/components/forms/phone-field';
+import { BrandBackdrop, BrandIcon, BrandTopBar, IconTile, PageHero } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { CheckboxField } from '@/components/ui/checkbox-field';
@@ -26,11 +27,14 @@ function ClientBookingsEmptyState({
 }) {
   return (
     <EmptyState
+      icon="calendar"
+      tone="terra"
       title={t('client.bookings.emptyTitle')}
       description={t('client.bookings.emptyHint')}
       action={
         <Button
           variant="accent"
+          icon="sparkle"
           title={t('client.bookings.exploreAction')}
           onPress={onExplore}
           className="self-start"
@@ -70,208 +74,256 @@ function ClientSpaceViewContent({
 
   if (session.kind === 'CLIENT') {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <Card>
-          <CardTitle>{t('client.profile.title')}</CardTitle>
-          <InlineAlert
-            variant="success"
-            message={t('client.access.connectedAs', { maskedPhone: session.maskedPhone ?? '' })}
-          />
-          <View className="gap-3">
-            <Button
-              variant="outline"
-              title={t('client.access.signOut')}
-              onPress={() => void signOutClient()}
-              loading={isSigningOut}
-            />
-            <Button
-              variant="ghost"
-              title={t('client.access.changePhone')}
-              onPress={() => void signOutClient()}
-              disabled={isSigningOut}
-            />
-          </View>
-        </Card>
-
-        {mode === 'bookings' ? (
-          <ClientBookingsEmptyState onExplore={() => navigateTo('/(client)/(tabs)')} />
-        ) : (
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
+        >
+          <BrandTopBar logoWidth={154} />
           <Card>
-            <FieldHint message={t('auth.signIn.hint')} />
-            <Button variant="outline" title={t('common.signIn')} onPress={() => navigateTo('/connexion')} />
+            <View className="flex-row items-center gap-3">
+              <IconTile name="shield" tone="green" size={42} />
+              <CardTitle className="flex-1">{t('client.profile.title')}</CardTitle>
+            </View>
+            <InlineAlert
+              variant="success"
+              message={t('client.access.connectedAs', { maskedPhone: session.maskedPhone ?? '' })}
+            />
+            <View className="gap-2.5">
+              <Button
+                variant="outline"
+                title={t('client.access.signOut')}
+                onPress={() => void signOutClient()}
+                loading={isSigningOut}
+              />
+              <Button
+                variant="ghost"
+                title={t('client.access.changePhone')}
+                onPress={() => void signOutClient()}
+                disabled={isSigningOut}
+              />
+            </View>
           </Card>
-        )}
-      </ScrollView>
+
+          {mode === 'bookings' ? (
+            <ClientBookingsEmptyState onExplore={() => navigateTo('/(client)/(tabs)')} />
+          ) : (
+            <Card>
+              <FieldHint message={t('auth.signIn.hint')} />
+              <Button
+                variant="outline"
+                icon="lock"
+                title={t('common.signIn')}
+                onPress={() => navigateTo('/connexion')}
+              />
+            </Card>
+          )}
+        </ScrollView>
+      </View>
     );
   }
 
   if (session.kind === 'STAFF') {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <Card>
-          <CardTitle>{t('client.profile.title')}</CardTitle>
-          <InlineAlert variant="info" message={t('client.access.staffActiveHint')} />
-          <View className="gap-3">
-            <Button
-              variant="outline"
-              title={t('marketplace.openSalonSpace')}
-              onPress={() => navigateTo('/(salon)/(tabs)')}
-            />
-            {session.systemRoles.length > 0 ? (
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
+        >
+          <BrandTopBar logoWidth={154} />
+          <Card>
+            <View className="flex-row items-center gap-3">
+              <IconTile name="shop" tone="terra" size={42} />
+              <CardTitle className="flex-1">{t('client.profile.title')}</CardTitle>
+            </View>
+            <InlineAlert variant="info" message={t('client.access.staffActiveHint')} />
+            <View className="gap-2.5">
               <Button
-                variant="secondary"
-                title={t('salons.more.platformAdmin')}
-                onPress={() => navigateTo('/(admin)')}
+                variant="outline"
+                icon="shop"
+                title={t('marketplace.openSalonSpace')}
+                onPress={() => navigateTo('/(salon)/(tabs)')}
               />
-            ) : null}
-          </View>
-        </Card>
+              {session.systemRoles.length > 0 ? (
+                <Button
+                  variant="secondary"
+                  icon="shield"
+                  title={t('salons.more.platformAdmin')}
+                  onPress={() => navigateTo('/(admin)')}
+                />
+              ) : null}
+            </View>
+          </Card>
 
-        {mode === 'bookings' ? (
-          <ClientBookingsEmptyState onExplore={() => navigateTo('/(client)/(tabs)')} />
-        ) : null}
-      </ScrollView>
+          {mode === 'bookings' ? (
+            <ClientBookingsEmptyState onExplore={() => navigateTo('/(client)/(tabs)')} />
+          ) : null}
+        </ScrollView>
+      </View>
     );
   }
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-4 p-4"
-    >
-      <Card>
-        <CardTitle>{t('client.access.headline')}</CardTitle>
-        <CardDescription>{t('client.access.subline')}</CardDescription>
-        {mode === 'profile' ? <FieldHint message={t('client.profile.hint')} /> : null}
-      </Card>
+    <View className="flex-1 bg-background">
+      <BrandBackdrop />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        className="flex-1"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
+      >
+        <BrandTopBar logoWidth={154} />
 
-      {expiredKind === 'CLIENT' ? (
-        <InlineAlert variant="warning" message={t('errors.unauthenticated.client')} />
-      ) : null}
+        <PageHero
+          icon={mode === 'bookings' ? 'calendar' : 'users'}
+          tone="terra"
+          title={t('client.access.headline')}
+          subtitle={t('client.access.subline')}
+        />
 
-      {step === 'phone' ? (
-        <Card>
-          {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
-          {formError ? <InlineAlert variant="error" message={formError} /> : null}
+        {mode === 'profile' ? (
+          <Card>
+            <CardDescription>{t('client.profile.hint')}</CardDescription>
+          </Card>
+        ) : null}
 
-          <Controller
-            control={step1Form.control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <PhoneField
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={step1Form.formState.errors.phone?.message}
-                editable={!isSubmitting}
+        {expiredKind === 'CLIENT' ? (
+          <InlineAlert variant="warning" message={t('errors.unauthenticated.client')} />
+        ) : null}
+
+        {step === 'phone' ? (
+          <Card>
+            {!isOnline ? (
+              <InlineAlert variant="warning" message={t('common.offlineActionHint')} />
+            ) : null}
+            {formError ? <InlineAlert variant="error" message={formError} /> : null}
+
+            <Controller
+              control={step1Form.control}
+              name="phone"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PhoneField
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={step1Form.formState.errors.phone?.message}
+                  editable={!isSubmitting}
+                />
+              )}
+            />
+
+            <Controller
+              control={step1Form.control}
+              name="termsAccepted"
+              render={({ field: { onChange, value } }) => (
+                <CheckboxField
+                  label={t('client.access.termsLabel')}
+                  checked={value}
+                  onCheckedChange={onChange}
+                  hint={t('auth.signUp.termsHint')}
+                  error={step1Form.formState.errors.termsAccepted?.message}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+
+            <Button
+              icon="shield"
+              title={t('client.access.sendCode')}
+              onPress={() => void submitStep1()}
+              loading={isSubmitting}
+              disabled={!isOnline}
+            />
+          </Card>
+        ) : (
+          <Card>
+            {sentInfo ? (
+              <View className="gap-1.5">
+                <InlineAlert
+                  variant="info"
+                  message={t('auth.signUp.codeSentHint', {
+                    maskedPhone: sentInfo.maskedPhone,
+                    minutes: sentInfo.minutes,
+                  })}
+                />
+                <FieldHint message={t('auth.reset.noSmsHint')} />
+              </View>
+            ) : null}
+
+            {!isOnline ? (
+              <InlineAlert variant="warning" message={t('common.offlineActionHint')} />
+            ) : null}
+            {formError ? <InlineAlert variant="error" message={formError} /> : null}
+
+            <Controller
+              control={step2Form.control}
+              name="code"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <OtpCodeField
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={step2Form.formState.errors.code?.message}
+                  editable={!isSubmitting}
+                />
+              )}
+            />
+
+            <Button
+              icon="shield"
+              title={t('client.access.verifySubmit')}
+              onPress={() => void submitStep2()}
+              loading={isSubmitting}
+              disabled={!isOnline}
+            />
+
+            <View className="gap-2.5">
+              <Button
+                variant="outline"
+                title={t('auth.signUp.resendCode')}
+                onPress={() => void resendCode()}
+                loading={isResending}
+                disabled={!isOnline || isSubmitting}
               />
-            )}
-          />
-
-          <Controller
-            control={step1Form.control}
-            name="termsAccepted"
-            render={({ field: { onChange, value } }) => (
-              <CheckboxField
-                label={t('client.access.termsLabel')}
-                checked={value}
-                onCheckedChange={onChange}
-                hint={t('auth.signUp.termsHint')}
-                error={step1Form.formState.errors.termsAccepted?.message}
-                disabled={isSubmitting}
+              <Button
+                variant="ghost"
+                title={t('auth.signUp.changePhone')}
+                onPress={goToPhoneStep}
+                disabled={isSubmitting || isResending}
               />
-            )}
-          />
-
-          <Button
-            title={t('client.access.sendCode')}
-            onPress={() => void submitStep1()}
-            loading={isSubmitting}
-            disabled={!isOnline}
-          />
-        </Card>
-      ) : (
-        <Card>
-          {sentInfo ? (
-            <View className="gap-1.5">
-              <InlineAlert
-                variant="info"
-                message={t('auth.signUp.codeSentHint', {
-                  maskedPhone: sentInfo.maskedPhone,
-                  minutes: sentInfo.minutes,
-                })}
-              />
-              <FieldHint message={t('auth.reset.noSmsHint')} />
             </View>
-          ) : null}
+          </Card>
+        )}
 
-          {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
-          {formError ? <InlineAlert variant="error" message={formError} /> : null}
-
-          <Controller
-            control={step2Form.control}
-            name="code"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <OtpCodeField
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={step2Form.formState.errors.code?.message}
-                editable={!isSubmitting}
+        {mode === 'profile' ? (
+          <Card>
+            <FieldHint message={t('auth.signIn.hint')} />
+            <View className="gap-2.5">
+              <Button
+                variant="outline"
+                icon="lock"
+                title={t('common.signIn')}
+                onPress={() => navigateTo('/connexion')}
               />
-            )}
-          />
-
-          <Button
-            title={t('client.access.verifySubmit')}
-            onPress={() => void submitStep2()}
-            loading={isSubmitting}
-            disabled={!isOnline}
-          />
-
-          <View className="gap-3">
-            <Button
-              variant="outline"
-              title={t('auth.signUp.resendCode')}
-              onPress={() => void resendCode()}
-              loading={isResending}
-              disabled={!isOnline || isSubmitting}
-            />
-            <Button
-              variant="ghost"
-              title={t('auth.signUp.changePhone')}
-              onPress={goToPhoneStep}
-              disabled={isSubmitting || isResending}
-            />
-          </View>
-        </Card>
-      )}
-
-      {mode === 'profile' ? (
-        <Card>
-          <FieldHint message={t('auth.signIn.hint')} />
-          <View className="gap-3">
-            <Button variant="outline" title={t('common.signIn')} onPress={() => navigateTo('/connexion')} />
-            <Button
-              variant="secondary"
-              title={t('auth.signIn.joinWithInvite')}
-              onPress={() => navigateTo('/rejoindre')}
-            />
-          </View>
-          <FieldHint message={t('auth.signIn.staffOnlyFoot')} />
-        </Card>
-      ) : null}
-    </ScrollView>
+              <Button
+                variant="secondary"
+                icon="users"
+                title={t('auth.signIn.joinWithInvite')}
+                onPress={() => navigateTo('/rejoindre')}
+              />
+            </View>
+            <View className="flex-row items-center justify-center gap-2 pt-1">
+              <BrandIcon name="users" size={15} color="#6E768C" />
+              <FieldHint message={t('auth.signIn.staffOnlyFoot')} />
+            </View>
+          </Card>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 

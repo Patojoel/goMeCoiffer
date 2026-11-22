@@ -1,24 +1,45 @@
 import { t } from '@gomecoiffer/client-core';
 import { ADJUSTABLE_PERMISSIONS, type AdjustablePermission } from '@gomecoiffer/contracts';
 import { FlatList, ScrollView, View } from 'react-native';
-import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { ErrorState } from '@/components/feedback/error-state';
 import { FieldHint } from '@/components/forms/field-hint';
 import { RequirePermission } from '@/components/navigation/require-permission';
 import { Badge } from '@/components/ui/badge';
+import {
+  BrandBackdrop,
+  BrandTopBar,
+  IconTile,
+  PageHero,
+  type BrandIconName,
+  type BrandTone,
+} from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { SegmentedTabs } from '@/components/ui/segmented-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SwitchRow } from '@/components/ui/switch-row';
-import { ThemedText } from '@/components/ui/themed-text';
 import { useOnlineStatus } from '@/lib/platform/setupPlatformListeners';
 import { useSalonRoles } from './use-salon-roles';
 
 export type SalonRolesViewProps = {
   readonly isOnline?: boolean;
 };
+
+function getPermissionVisual(perm: AdjustablePermission): {
+  readonly icon: BrandIconName;
+  readonly tone: BrandTone;
+} {
+  if (perm.startsWith('dashboard:')) return { icon: 'grid', tone: 'navy' };
+  if (perm.startsWith('bookings:')) return { icon: 'calendar', tone: 'terra' };
+  if (perm.startsWith('availability:')) return { icon: 'clock', tone: 'violet' };
+  if (perm.startsWith('services:')) return { icon: 'scissors', tone: 'terra' };
+  if (perm.startsWith('staff:')) return { icon: 'users', tone: 'navy' };
+  if (perm.startsWith('finances:')) return { icon: 'coins', tone: 'green' };
+  if (perm.startsWith('salon-settings:')) return { icon: 'settings', tone: 'violet' };
+  return { icon: 'shop', tone: 'terra' };
+}
 
 function LiveOnlineRoles() {
   const liveOnline = useOnlineStatus();
@@ -30,8 +51,9 @@ function SalonRolesLoading() {
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       className="flex-1"
-      contentContainerClassName="gap-4 p-4"
+      contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
     >
+      <BrandTopBar logoWidth={160} />
       <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
         <Skeleton className="h-6 w-48" />
         <Skeleton className="h-4 w-full" />
@@ -54,8 +76,9 @@ function SalonRolesContent({ isOnline }: { readonly isOnline: boolean }) {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         className="flex-1"
-        contentContainerClassName="gap-4 p-4"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
       >
+        <BrandTopBar logoWidth={160} />
         <ErrorState
           title={t('roles.title')}
           description={state.errorMessage}
@@ -95,26 +118,31 @@ function SalonRolesContent({ isOnline }: { readonly isOnline: boolean }) {
       keyExtractor={(perm) => perm}
       initialNumToRender={ADJUSTABLE_PERMISSIONS.length}
       contentInsetAdjustmentBehavior="automatic"
-      contentContainerClassName="gap-3 p-4"
+      contentContainerClassName="mx-auto w-full max-w-2xl gap-3 px-5 pt-4 pb-12"
       ListHeaderComponent={
         <View className="gap-4 pb-1">
-          <View className="gap-1">
-            <ThemedText accessibilityRole="header" variant="title">
-              {t('roles.title')}
-            </ThemedText>
-            <ThemedText variant="muted">{t('roles.subtitle')}</ThemedText>
-          </View>
+          <BrandTopBar logoWidth={160} />
+
+          <PageHero
+            icon="shield"
+            tone="terra"
+            title={t('roles.title')}
+            subtitle={t('roles.subtitle')}
+          />
 
           <Card>
-            <View className="flex-row flex-wrap items-center justify-between gap-2">
-              <CardTitle>{t('team.role.OWNER')}</CardTitle>
-              <Badge variant="outline" label={t('perm.roles:administer')} />
+            <View className="flex-row items-center gap-3">
+              <IconTile name="crown" tone="navy" size={40} />
+              <View className="flex-1 flex-row flex-wrap items-center justify-between gap-2">
+                <CardTitle>{t('team.role.OWNER')}</CardTitle>
+                <Badge variant="outline" label={t('perm.roles:administer')} />
+              </View>
             </View>
             <CardDescription>{t('roles.ownerNote', { count: owner.members })}</CardDescription>
             <FieldHint message={t('team.members.ownerProtectedHint')} />
           </Card>
 
-          <View className="gap-2">
+          <Card className="gap-2.5 p-4">
             <SegmentedTabs
               accessibilityLabel={t('roles.title')}
               value={selectedRoleEntry.role}
@@ -124,11 +152,16 @@ function SalonRolesContent({ isOnline }: { readonly isOnline: boolean }) {
                 label: t(`team.role.${entry.role}`),
               }))}
             />
-            <FieldHint message={t(`team.roleDesc.${selectedRoleEntry.role}`)} />
-            <ThemedText variant="caption">
-              {t('team.members.title', { count: selectedRoleEntry.members })}
-            </ThemedText>
-          </View>
+            <View className="flex-row flex-wrap items-center justify-between gap-2 pt-0.5">
+              <View className="flex-1">
+                <FieldHint message={t(`team.roleDesc.${selectedRoleEntry.role}`)} />
+              </View>
+              <Badge
+                variant="secondary"
+                label={t('team.members.title', { count: selectedRoleEntry.members })}
+              />
+            </View>
+          </Card>
 
           {autoChanged.length > 0 ? (
             <InlineAlert
@@ -160,17 +193,23 @@ function SalonRolesContent({ isOnline }: { readonly isOnline: boolean }) {
           {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
         </View>
       }
-      renderItem={({ item: perm }) => (
-        <SwitchRow
-          label={t(`perm.${perm}`)}
-          value={draftPermissions.includes(perm)}
-          disabled={isBusy}
-          onValueChange={(enabled) => togglePermission(perm, enabled)}
-        />
-      )}
+      renderItem={({ item: perm }) => {
+        const visual = getPermissionVisual(perm);
+        return (
+          <SwitchRow
+            label={t(`perm.${perm}`)}
+            icon={visual.icon}
+            iconTone={visual.tone}
+            value={draftPermissions.includes(perm)}
+            disabled={isBusy}
+            onValueChange={(enabled) => togglePermission(perm, enabled)}
+          />
+        );
+      }}
       ListFooterComponent={
         <View className="gap-3 pt-2">
           <Button
+            icon="shield"
             title={t('roles.saveAction')}
             loading={isSaving}
             disabled={!isOnline || isBusy}
@@ -192,6 +231,7 @@ function SalonRolesContent({ isOnline }: { readonly isOnline: boolean }) {
 function SalonRolesGuarded({ isOnline }: { readonly isOnline: boolean }) {
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      <BrandBackdrop />
       <RequirePermission permission="roles:administer">
         <SalonRolesContent isOnline={isOnline} />
       </RequirePermission>

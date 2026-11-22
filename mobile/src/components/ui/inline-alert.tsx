@@ -2,15 +2,16 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { cn } from '@/lib/ui/cn';
+import { BrandIcon, type BrandIconName } from './brand';
 import { ThemedText } from './themed-text';
 
-const alertVariants = cva('gap-1.5 rounded-xl border p-4', {
+const alertVariants = cva('flex-row items-start gap-2.5 rounded-[15px] border p-3.5', {
   variants: {
     variant: {
-      info: 'border-border bg-secondary',
-      success: 'border-success/30 bg-success/10',
+      info: 'border-white/95 bg-secondary/80',
+      success: 'border-success/25 bg-success/10',
       error: 'border-destructive/30 bg-destructive/10',
-      warning: 'border-accent/40 bg-accent/10',
+      warning: 'border-accent/30 bg-accent/10',
     },
   },
   defaultVariants: {
@@ -18,7 +19,7 @@ const alertVariants = cva('gap-1.5 rounded-xl border p-4', {
   },
 });
 
-const titleVariants = cva('text-sm font-semibold', {
+const titleVariants = cva('text-xs font-bold', {
   variants: {
     variant: {
       info: 'text-foreground',
@@ -32,6 +33,16 @@ const titleVariants = cva('text-sm font-semibold', {
   },
 });
 
+const alertIcons: Record<
+  NonNullable<VariantProps<typeof alertVariants>['variant']>,
+  { readonly icon: BrandIconName; readonly color: string }
+> = {
+  info: { icon: 'shield', color: '#3B64A1' },
+  success: { icon: 'sparkle', color: '#167C37' },
+  error: { icon: 'shield', color: '#C23B2B' },
+  warning: { icon: 'clock', color: '#D2603A' },
+};
+
 export type InlineAlertProps = VariantProps<typeof alertVariants> & {
   readonly title?: string;
   readonly message: string;
@@ -40,21 +51,30 @@ export type InlineAlertProps = VariantProps<typeof alertVariants> & {
 };
 
 export function InlineAlert({ variant = 'info', title, message, action, className }: InlineAlertProps) {
-  const isError = variant === 'error';
+  const resolvedVariant = variant ?? 'info';
+  const isError = resolvedVariant === 'error';
+  const { icon, color } = alertIcons[resolvedVariant];
 
   return (
     <View
       accessible
       role={isError ? 'alert' : 'status'}
       accessibilityLiveRegion="polite"
-      className={cn(alertVariants({ variant }), className)}
+      className={cn(alertVariants({ variant: resolvedVariant }), className)}
       style={{ borderCurve: 'continuous' }}
     >
-      {title ? <ThemedText className={titleVariants({ variant })}>{title}</ThemedText> : null}
-      <ThemedText selectable={isError} className="text-sm leading-5 text-foreground">
-        {message}
-      </ThemedText>
-      {action}
+      <View className="pt-0.5">
+        <BrandIcon name={icon} size={17} color={color} />
+      </View>
+      <View className="flex-1 gap-1">
+        {title ? (
+          <ThemedText className={titleVariants({ variant: resolvedVariant })}>{title}</ThemedText>
+        ) : null}
+        <ThemedText selectable={isError} className="text-xs leading-5 text-foreground">
+          {message}
+        </ThemedText>
+        {action}
+      </View>
     </View>
   );
 }

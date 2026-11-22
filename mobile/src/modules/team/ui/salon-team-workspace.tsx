@@ -2,9 +2,9 @@ import { can, selectSession, t } from '@gomecoiffer/client-core';
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { RequirePermission } from '@/components/navigation/require-permission';
+import { BrandBackdrop, BrandTopBar, PageHero } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { SegmentedTabs, type SegmentedTabItem } from '@/components/ui/segmented-tabs';
-import { ThemedText } from '@/components/ui/themed-text';
 import { useOnlineStatus } from '@/lib/platform/setupPlatformListeners';
 import { useAppSelector } from '@/lib/store/hooks';
 import { InviteCollaboratorView } from './invite/invite-collaborator-view';
@@ -47,47 +47,57 @@ function SalonTeamWorkspaceContent({
 
   return (
     <View className="flex-1 bg-background">
-      <View className="gap-3 px-4 pt-4 pb-2">
-        <View className="gap-1">
-          <ThemedText variant="title">{t('team.section.title')}</ThemedText>
-          <ThemedText variant="muted">{t('team.section.subtitle')}</ThemedText>
-        </View>
+      <BrandBackdrop />
+      <View className="mx-auto w-full max-w-2xl flex-1">
+        <View className="gap-3 px-5 pt-4 pb-2">
+          <BrandTopBar logoWidth={154} />
 
-        {canInvite ? (
-          <>
+          <PageHero
+            icon="users"
+            tone="terra"
+            title={t('team.section.title')}
+            subtitle={t('team.section.subtitle')}
+            right={
+              canInvite ? (
+                <Button
+                  variant={isInviteOpen ? 'outline' : 'accent'}
+                  size="sm"
+                  icon="userplus"
+                  title={t('team.invite.openAction')}
+                  accessibilityState={{ expanded: isInviteOpen }}
+                  onPress={() => setIsInviteOpen((open) => !open)}
+                />
+              ) : null
+            }
+          />
+
+          {canInvite ? (
             <SegmentedTabs
               value={effectiveTab}
               items={TAB_ITEMS}
               onChange={setActiveTab}
               accessibilityLabel={t('team.section.title')}
             />
-            <Button
-              variant={isInviteOpen ? 'outline' : 'accent'}
-              title={t('team.invite.openAction')}
-              accessibilityState={{ expanded: isInviteOpen }}
-              onPress={() => setIsInviteOpen((open) => !open)}
-              className="self-start"
-            />
-          </>
+          ) : null}
+        </View>
+
+        {canInvite && isInviteOpen ? (
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            className="shrink-0 px-5 pb-2"
+            style={{ maxHeight: '58%' }}
+          >
+            <InviteCollaboratorView isOnline={isOnline} onOpenExternalUrl={onOpenExternalUrl} />
+          </ScrollView>
         ) : null}
-      </View>
 
-      {canInvite && isInviteOpen ? (
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          className="shrink-0 px-4 pb-2"
-          style={{ maxHeight: '55%' }}
-        >
-          <InviteCollaboratorView isOnline={isOnline} onOpenExternalUrl={onOpenExternalUrl} />
-        </ScrollView>
-      ) : null}
-
-      <View className="flex-1">
-        {effectiveTab === 'members' ? (
-          <TeamListView isOnline={isOnline} />
-        ) : (
-          <InvitationsListView isOnline={isOnline} />
-        )}
+        <View className="flex-1">
+          {effectiveTab === 'members' ? (
+            <TeamListView isOnline={isOnline} />
+          ) : (
+            <InvitationsListView isOnline={isOnline} />
+          )}
+        </View>
       </View>
     </View>
   );

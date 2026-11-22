@@ -14,11 +14,12 @@ import {
 } from '@gomecoiffer/client-core';
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { Badge } from '@/components/ui/badge';
+import { BrandBackdrop, BrandTopBar, IconTile, PageHero } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { SelectField, type SelectOption } from '@/components/ui/select-field';
 import { SwitchRow } from '@/components/ui/switch-row';
 import { ThemedText } from '@/components/ui/themed-text';
@@ -64,7 +65,12 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
   return (
     <Card testID={`schedule-day-${item.day}`}>
       <View className="flex-row items-center justify-between gap-2">
-        <CardTitle>{WEEK_DAY_LABELS[item.day].full}</CardTitle>
+        <View className="flex-row items-center gap-2.5">
+          <IconTile name="clock" tone={item.isOpen ? 'green' : 'navy'} size={34} />
+          <ThemedText accessibilityRole="header" variant="headline" className="text-base font-bold">
+            {WEEK_DAY_LABELS[item.day].full}
+          </ThemedText>
+        </View>
         <Badge
           variant={item.isOpen ? 'success' : 'secondary'}
           label={item.isOpen ? t('salons.hours.openLabel') : t('salons.hours.closedLabel')}
@@ -81,6 +87,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
         <View className="gap-3">
           <SelectField
             label={t('salons.hours.startLabel')}
+            leadingIcon="clock"
             value={item.openTime}
             options={TIME_SLOT_OPTIONS}
             searchable
@@ -88,6 +95,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
           />
           <SelectField
             label={t('salons.hours.endLabel')}
+            leadingIcon="clock"
             value={item.closeTime}
             options={TIME_SLOT_OPTIONS}
             searchable
@@ -108,6 +116,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
             <View className="gap-3">
               <SelectField
                 label={t('salons.hours.breakStart')}
+                leadingIcon="clock"
                 value={item.breakStart}
                 options={TIME_SLOT_OPTIONS}
                 searchable
@@ -115,6 +124,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
               />
               <SelectField
                 label={t('salons.hours.breakEnd')}
+                leadingIcon="clock"
                 value={item.breakEnd}
                 options={TIME_SLOT_OPTIONS}
                 searchable
@@ -126,7 +136,7 @@ function DayScheduleCard({ item, errorMessage, onUpdate }: DayScheduleCardProps)
       ) : null}
 
       {errorMessage ? (
-        <ThemedText variant="error" accessibilityRole="alert" className="text-sm">
+        <ThemedText variant="error" accessibilityRole="alert" className="text-xs">
           {errorMessage}
         </ThemedText>
       ) : null}
@@ -178,18 +188,31 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply }: WeeklySchedul
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      <BrandBackdrop />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         className="flex-1"
-        contentContainerClassName="gap-4 p-4"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
       >
+        <BrandTopBar logoWidth={160} />
+
+        <PageHero
+          icon="clock"
+          tone="terra"
+          title={t('salons.hours.title')}
+          subtitle={t('salons.hours.subtitle')}
+        />
+
         <InlineAlert variant="info" message={t('salons.hours.draftNotice')} />
 
         <Card>
-          <CardTitle>{t('salons.hours.title')}</CardTitle>
-          <CardDescription>{t('salons.hours.subtitle')}</CardDescription>
-          <ThemedText variant="headline">{summary}</ThemedText>
+          <View className="flex-row items-center gap-3">
+            <IconTile name="clock" tone="green" size={38} />
+            <ThemedText variant="headline" className="flex-1 text-sm font-bold">
+              {summary}
+            </ThemedText>
+          </View>
           <View className="flex-row flex-wrap gap-2">
             <Button
               variant="outline"
@@ -220,6 +243,7 @@ export function WeeklyScheduleEditor({ initialSchedule, onApply }: WeeklySchedul
         ) : null}
 
         <Button
+          icon="clock"
           title={t('salons.hours.saveAction')}
           disabled={hasErrors}
           onPress={handleApply}

@@ -1,11 +1,13 @@
 import { t } from '@gomecoiffer/client-core';
 import { Controller } from 'react-hook-form';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { View } from 'react-native';
+import { PhoneField } from '@/components/forms/phone-field';
+import { IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { SelectField } from '@/components/ui/select-field';
 import { TextField } from '@/components/ui/text-field';
-import { PhoneField } from '@/components/forms/phone-field';
 import { useOnlineStatus } from '@/lib/platform/setupPlatformListeners';
 import { TEAM_ROLE_OPTIONS } from '../team-list/use-team-list';
 import { useInviteCollaborator } from './use-invite-collaborator';
@@ -35,8 +37,13 @@ function InviteCollaboratorContent({
 
   return (
     <Card>
-      <CardTitle>{t('team.invite.title')}</CardTitle>
-      <CardDescription>{t('team.invite.subtitle')}</CardDescription>
+      <View className="flex-row items-center gap-3">
+        <IconTile name="userplus" tone="terra" size={40} />
+        <View className="flex-1 gap-0.5">
+          <CardTitle>{t('team.invite.title')}</CardTitle>
+          <CardDescription>{t('team.invite.subtitle')}</CardDescription>
+        </View>
+      </View>
 
       {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
       {formError ? <InlineAlert variant="error" message={formError} /> : null}
@@ -63,6 +70,7 @@ function InviteCollaboratorContent({
           <TextField
             label={t('team.invite.nameLabel')}
             placeholder={t('team.invite.namePlaceholder')}
+            leadingIcon="userplus"
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -93,6 +101,7 @@ function InviteCollaboratorContent({
         render={({ field: { onChange, value } }) => (
           <SelectField
             label={t('team.invite.roleLabel')}
+            leadingIcon="users"
             value={value}
             options={TEAM_ROLE_OPTIONS}
             hint={selectedRole ? t(`team.roleDesc.${selectedRole}`) : undefined}
@@ -104,6 +113,7 @@ function InviteCollaboratorContent({
       />
 
       <Button
+        icon="userplus"
         title={t('team.invite.submit')}
         onPress={() => void onSubmit()}
         loading={isSubmitting}

@@ -36,7 +36,10 @@ export function SegmentedTabs<T extends string>({
     <View
       role="tablist"
       accessibilityLabel={accessibilityLabel}
-      className={cn('flex-row flex-wrap gap-1.5 rounded-xl bg-muted p-1', className)}
+      className={cn(
+        'flex-row flex-wrap gap-1.5 rounded-2xl border border-white/90 bg-secondary/70 p-1.5',
+        className,
+      )}
       style={{ borderCurve: 'continuous' }}
     >
       {items.map((item) => {
@@ -50,16 +53,19 @@ export function SegmentedTabs<T extends string>({
             disabled={item.disabled}
             onPress={() => handleSelect(item)}
             className={cn(
-              'min-h-11 flex-1 items-center justify-center rounded-lg px-3 py-2',
-              selected ? 'bg-primary' : 'bg-transparent',
+              'min-h-11 flex-1 items-center justify-center rounded-xl px-3.5 py-2',
+              selected ? 'bg-primary' : 'border border-white/80 bg-card/75',
               item.disabled && 'opacity-45',
             )}
-            style={{ borderCurve: 'continuous' }}
+            style={{
+              borderCurve: 'continuous',
+              boxShadow: selected ? '0 6px 14px rgba(23, 33, 59, 0.16)' : undefined,
+            }}
           >
             <ThemedText
               className={cn(
-                'text-center text-sm font-semibold',
-                selected ? 'text-primary-foreground' : 'text-foreground',
+                'text-center text-xs font-bold',
+                selected ? 'text-primary-foreground' : 'text-muted-foreground',
               )}
             >
               {item.label}

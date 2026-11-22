@@ -4,6 +4,7 @@ import { FlatList, View } from 'react-native';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { ErrorState } from '@/components/feedback/error-state';
 import { Badge } from '@/components/ui/badge';
+import { AvatarInitials } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -35,12 +36,19 @@ function InvitationRow({
   const phone = invitation.phone ?? '';
 
   return (
-    <Card>
-      <View className="flex-row flex-wrap items-start justify-between gap-2">
+    <Card className="p-4">
+      <View className="flex-row items-center gap-3">
+        <AvatarInitials
+          name={invitation.name ?? 'GM'}
+          tone={invitation.status === 'PENDING' ? 'terra' : 'navy'}
+          size={40}
+        />
         <View className="flex-1 gap-0.5">
-          <ThemedText variant="headline">{invitation.name ?? '—'}</ThemedText>
+          <ThemedText variant="headline" className="text-sm font-bold">
+            {invitation.name ?? '—'}
+          </ThemedText>
           {phone.length > 0 ? (
-            <ThemedText selectable variant="muted">
+            <ThemedText selectable variant="muted" className="text-xs">
               {phone}
             </ThemedText>
           ) : null}
@@ -50,7 +58,7 @@ function InvitationRow({
         <View className="flex-row flex-wrap items-center gap-1.5">
           <Badge variant="outline" label={t(`team.role.${invitation.role}`)} />
           <Badge
-            variant={invitation.status === 'PENDING' ? 'success' : 'secondary'}
+            variant={invitation.status === 'PENDING' ? 'accent' : 'secondary'}
             label={t(`team.invitations.status.${invitation.status}`)}
           />
         </View>
@@ -87,7 +95,7 @@ function InvitationsListHeader({
       {showOfflineHint ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
       {isLimitReached ? <InlineAlert variant="warning" message={t('team.invitations.limitHint')} /> : null}
       {cancelError ? <InlineAlert variant="error" message={cancelError} /> : null}
-      <ThemedText variant="muted" className="font-semibold">
+      <ThemedText variant="muted" className="text-xs font-bold">
         {t('team.invitations.title', { count })}
       </ThemedText>
     </View>
@@ -110,7 +118,7 @@ function InvitationsListContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'error') {
     return (
-      <View className="flex-1 px-4 py-2">
+      <View className="flex-1 px-5 py-2">
         <ErrorState
           title={t('team.tabs.invitations')}
           description={errorMessage ?? t('errors.generic')}
@@ -123,7 +131,7 @@ function InvitationsListContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'loading') {
     return (
-      <View className="flex-1 gap-3 px-4 py-2">
+      <View className="flex-1 gap-3 px-5 py-2">
         <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
           <Skeleton className="h-5 w-44" />
           <Skeleton className="h-4 w-32" />
@@ -139,7 +147,7 @@ function InvitationsListContent({ isOnline }: { readonly isOnline: boolean }) {
       keyExtractor={(item) => item.id}
       contentInsetAdjustmentBehavior="automatic"
       className="flex-1"
-      contentContainerClassName="gap-3 px-4 pt-2 pb-8"
+      contentContainerClassName="gap-3 px-5 pt-2 pb-10"
       ListHeaderComponent={
         <InvitationsListHeader
           count={invitations.length}
@@ -150,6 +158,7 @@ function InvitationsListContent({ isOnline }: { readonly isOnline: boolean }) {
       }
       ListEmptyComponent={
         <EmptyState
+          icon="userplus"
           title={t('team.invitations.title', { count: 0 })}
           description={t('team.invitations.empty')}
         />

@@ -1,4 +1,6 @@
 import { t } from '@gomecoiffer/client-core';
+import { View } from 'react-native';
+import { IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 
@@ -19,10 +21,15 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <Card accessibilityLiveRegion="polite">
-      <CardTitle role="alert" className="text-destructive">
-        {title}
-      </CardTitle>
-      <CardDescription>{description}</CardDescription>
+      <View className="flex-row items-center gap-3">
+        <IconTile name="shield" tone="terra" size={42} />
+        <View className="flex-1 gap-0.5">
+          <CardTitle role="alert" className="text-destructive">
+            {title}
+          </CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </View>
+      </View>
       {onRetry ? (
         <Button
           variant="outline"

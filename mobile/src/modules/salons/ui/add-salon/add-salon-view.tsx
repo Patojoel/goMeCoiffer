@@ -1,7 +1,8 @@
 import { t } from '@gomecoiffer/client-core';
 import { ScrollView } from 'react-native';
+import { BrandBackdrop, BrandTopBar, PageHero } from '@/components/ui/brand';
+import { Card } from '@/components/ui/card';
 import { SafeAreaView } from '@/components/ui/safe-area-view';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { SalonForm } from '../shared/salon-form';
 import { WithScreenContext } from '../shared/screen-bridge';
 import { useAddSalon } from './use-add-salon';
@@ -25,15 +26,23 @@ function AddSalonContent({
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      <BrandBackdrop />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         className="flex-1"
-        contentContainerClassName="gap-4 p-4"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
       >
+        <BrandTopBar logoWidth={160} />
+
+        <PageHero
+          icon="shop"
+          tone="terra"
+          title={t('salons.add.title')}
+          subtitle={t('salons.add.subtitle')}
+        />
+
         <Card>
-          <CardTitle>{t('salons.add.title')}</CardTitle>
-          <CardDescription>{t('salons.add.subtitle')}</CardDescription>
           <SalonForm
             submitLabel={t('salons.form.submitAdd')}
             isSubmitting={isSubmitting}

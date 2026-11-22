@@ -4,15 +4,15 @@ import { View, type ViewProps } from 'react-native';
 import { cn } from '@/lib/ui/cn';
 import { ThemedText } from './themed-text';
 
-const badgeVariants = cva('self-start rounded-lg px-2.5 py-1', {
+const badgeVariants = cva('self-start flex-row items-center gap-1.5 rounded-full px-3 py-1', {
   variants: {
     variant: {
       default: 'bg-primary',
-      accent: 'bg-accent',
-      secondary: 'bg-secondary',
-      success: 'border border-success/30 bg-success/15',
-      destructive: 'border border-destructive/30 bg-destructive/15',
-      outline: 'border border-border bg-card',
+      accent: 'bg-accent/15 border border-accent/25',
+      secondary: 'bg-secondary border border-white/90',
+      success: 'border border-success/25 bg-success/15',
+      destructive: 'border border-destructive/25 bg-destructive/15',
+      outline: 'border border-white/95 bg-card/85',
     },
   },
   defaultVariants: {
@@ -20,11 +20,11 @@ const badgeVariants = cva('self-start rounded-lg px-2.5 py-1', {
   },
 });
 
-const badgeTextVariants = cva('text-xs font-semibold', {
+const badgeTextVariants = cva('text-[11px] font-bold', {
   variants: {
     variant: {
       default: 'text-primary-foreground',
-      accent: 'text-accent-foreground',
+      accent: 'text-accent',
       secondary: 'text-secondary-foreground',
       success: 'text-success',
       destructive: 'text-destructive',

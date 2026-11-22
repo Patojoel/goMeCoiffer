@@ -48,25 +48,29 @@ export function CheckboxField({
         accessibilityHint={error ?? hint}
         disabled={disabled}
         onPress={handlePress}
-        className={cn('min-h-11 flex-row items-start gap-3 py-2', disabled && 'opacity-50')}
+        className={cn('min-h-11 flex-row items-start gap-3 py-1.5', disabled && 'opacity-50')}
       >
         <View
           className={cn(
-            'mt-0.5 h-6 w-6 items-center justify-center rounded-md border',
-            checked ? 'border-primary bg-primary' : error ? 'border-destructive bg-card' : 'border-border bg-card',
+            'mt-0.5 h-5 w-5 items-center justify-center rounded-md border',
+            checked
+              ? 'border-accent bg-accent'
+              : error
+                ? 'border-destructive bg-card'
+                : 'border-border bg-card/90',
           )}
           style={{ borderCurve: 'continuous' }}
         >
           {checked ? (
-            <ThemedText className="text-xs font-bold text-primary-foreground">✓</ThemedText>
+            <ThemedText className="text-xs font-bold text-accent-foreground">✓</ThemedText>
           ) : null}
         </View>
-        <ThemedText className="flex-1 text-sm leading-5">{label}</ThemedText>
+        <ThemedText className="flex-1 text-xs leading-5 text-foreground">{label}</ThemedText>
       </Pressable>
 
       {hint ? <FieldHint nativeID={hintId} message={hint} /> : null}
       {error ? (
-        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-sm">
+        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-xs">
           {error}
         </ThemedText>
       ) : null}

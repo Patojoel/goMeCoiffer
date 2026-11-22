@@ -65,6 +65,7 @@ export function SalonForm({
           <TextField
             label={t('salons.form.nameLabel')}
             placeholder={t('salons.form.namePlaceholder')}
+            leadingIcon="shop"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -81,6 +82,7 @@ export function SalonForm({
         render={({ field, fieldState }) => (
           <SelectField
             label={t('salons.form.typeLabel')}
+            leadingIcon="scissors"
             value={field.value}
             options={SALON_TYPE_OPTIONS}
             onChange={field.onChange}
@@ -96,6 +98,7 @@ export function SalonForm({
         render={({ field, fieldState }) => (
           <SelectField
             label={t('salons.form.cityLabel')}
+            leadingIcon="grid"
             value={field.value}
             options={CITY_OPTIONS}
             searchable
@@ -113,6 +116,7 @@ export function SalonForm({
           <TextField
             label={t('salons.form.districtLabel')}
             placeholder={t('salons.form.districtPlaceholder')}
+            leadingIcon="shop"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -131,6 +135,7 @@ export function SalonForm({
             label={t('salons.form.landmarkLabel')}
             placeholder={t('salons.form.landmarkPlaceholder')}
             hint={t('salons.form.landmarkHint')}
+            leadingIcon="sparkle"
             value={field.value}
             onChangeText={field.onChange}
             onBlur={field.onBlur}
@@ -160,6 +165,7 @@ export function SalonForm({
       {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
 
       <Button
+        icon="shop"
         title={submitLabel}
         loading={isSubmitting}
         disabled={!isOnline}

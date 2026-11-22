@@ -5,6 +5,7 @@ import { EmptyState } from '@/components/feedback/empty-state';
 import { ErrorState } from '@/components/feedback/error-state';
 import { FieldHint } from '@/components/forms/field-hint';
 import { Badge } from '@/components/ui/badge';
+import { AvatarInitials } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -44,17 +45,33 @@ function TeamMemberRow({
   readonly onConfirmRemove: (member: SalonTeamMember) => void;
 }) {
   const isManageable = member.role !== 'OWNER' && !member.isCurrentUser && canManageStaff;
+  const avatarTone =
+    member.role === 'OWNER'
+      ? 'terra'
+      : member.role === 'SALON_ADMIN'
+        ? 'navy'
+        : member.role === 'PRACTITIONER'
+          ? 'violet'
+          : 'green';
 
   return (
-    <Card>
-      <View className="flex-row flex-wrap items-center justify-between gap-2">
+    <Card className="p-4">
+      <View className="flex-row items-center gap-3">
+        <AvatarInitials name={member.name} tone={avatarTone} size={42} />
         <View className="flex-1 gap-0.5">
-          <ThemedText variant="headline">{member.name}</ThemedText>
-          <ThemedText variant="muted">{formatDateFr(member.joinedAt)}</ThemedText>
+          <ThemedText variant="headline" className="text-sm font-bold">
+            {member.name}
+          </ThemedText>
+          <ThemedText variant="muted" className="text-xs">
+            {formatDateFr(member.joinedAt)}
+          </ThemedText>
         </View>
 
         <View className="flex-row flex-wrap items-center gap-1.5">
-          <Badge variant={member.role === 'OWNER' ? 'default' : 'outline'} label={t(`team.role.${member.role}`)} />
+          <Badge
+            variant={member.role === 'OWNER' ? 'default' : 'outline'}
+            label={t(`team.role.${member.role}`)}
+          />
           {member.isCurrentUser ? (
             <Badge variant="secondary" label={t('team.members.currentUserBadge')} />
           ) : null}
@@ -66,9 +83,10 @@ function TeamMemberRow({
       {rowError ? <InlineAlert variant="error" message={rowError} /> : null}
 
       {isManageable && member.role !== 'OWNER' ? (
-        <View className="gap-3">
+        <View className="gap-3 pt-1">
           <SelectField
             label={t('team.members.changeRole')}
+            leadingIcon="users"
             value={member.role}
             options={TEAM_ROLE_OPTIONS}
             hint={t(`team.roleDesc.${member.role}`)}
@@ -78,10 +96,10 @@ function TeamMemberRow({
 
           {isConfirmingRemoval ? (
             <View
-              className="gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3"
+              className="gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-3.5"
               style={{ borderCurve: 'continuous' }}
             >
-              <ThemedText variant="headline" className="text-sm text-destructive">
+              <ThemedText variant="headline" className="text-xs font-bold text-destructive">
                 {t('team.members.removeConfirmTitle')}
               </ThemedText>
               <FieldHint message={t('team.members.removeConfirmHint', { name: member.name })} />
@@ -106,6 +124,7 @@ function TeamMemberRow({
           ) : (
             <Button
               variant="outline"
+              size="sm"
               title={t('team.members.removeAction')}
               disabled={!isOnline || isBusy}
               onPress={() => onRequestRemove(member.membershipId)}
@@ -131,7 +150,7 @@ function TeamListHeader({
     <View className="gap-2">
       {showOfflineHint ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
       {orphanError ? <InlineAlert variant="error" message={orphanError.message} /> : null}
-      <ThemedText variant="muted" className="font-semibold">
+      <ThemedText variant="muted" className="text-xs font-bold">
         {t('team.members.title', { count })}
       </ThemedText>
     </View>
@@ -158,7 +177,7 @@ function TeamListContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'error') {
     return (
-      <View className="flex-1 px-4 py-2">
+      <View className="flex-1 px-5 py-2">
         <ErrorState
           title={t('team.section.title')}
           description={errorMessage ?? t('errors.generic')}
@@ -171,7 +190,7 @@ function TeamListContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'loading') {
     return (
-      <View className="flex-1 gap-3 px-4 py-2">
+      <View className="flex-1 gap-3 px-5 py-2">
         <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
           <Skeleton className="h-5 w-44" />
           <Skeleton className="h-4 w-32" />
@@ -192,7 +211,7 @@ function TeamListContent({ isOnline }: { readonly isOnline: boolean }) {
       keyExtractor={(item) => item.membershipId}
       contentInsetAdjustmentBehavior="automatic"
       className="flex-1"
-      contentContainerClassName="gap-3 px-4 pt-2 pb-8"
+      contentContainerClassName="gap-3 px-5 pt-2 pb-10"
       ListHeaderComponent={
         <TeamListHeader
           count={members.length}
@@ -202,6 +221,7 @@ function TeamListContent({ isOnline }: { readonly isOnline: boolean }) {
       }
       ListEmptyComponent={
         <EmptyState
+          icon="users"
           title={t('team.members.title', { count: 0 })}
           description={t('team.members.empty')}
         />

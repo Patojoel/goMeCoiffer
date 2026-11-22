@@ -8,6 +8,13 @@ import { FieldHint } from '@/components/forms/field-hint';
 import { PhoneField } from '@/components/forms/phone-field';
 import { RequireSystemRole } from '@/components/navigation/require-system-role';
 import { Badge } from '@/components/ui/badge';
+import {
+  AvatarInitials,
+  BrandBackdrop,
+  BrandTopBar,
+  IconTile,
+  PageHero,
+} from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardTitle } from '@/components/ui/card';
 import { InlineAlert } from '@/components/ui/inline-alert';
@@ -53,15 +60,22 @@ function PlatformAdminsHeader({
 }) {
   return (
     <View className="gap-4">
-      <View className="gap-1">
-        <ThemedText variant="title">{t('platform.title')}</ThemedText>
-        <ThemedText variant="muted">{t('platform.subtitle', { count: superAdminCount })}</ThemedText>
-      </View>
+      <BrandTopBar logoWidth={154} />
+
+      <PageHero
+        icon="shield"
+        tone="terra"
+        title={t('platform.title')}
+        subtitle={t('platform.subtitle', { count: superAdminCount })}
+      />
 
       {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
 
       <Card>
-        <CardTitle>{t('platform.grantTitle')}</CardTitle>
+        <View className="flex-row items-center gap-3">
+          <IconTile name="crown" tone="navy" size={38} />
+          <CardTitle className="flex-1">{t('platform.grantTitle')}</CardTitle>
+        </View>
         {grantError ? <InlineAlert variant="error" message={grantError} /> : null}
 
         <Controller
@@ -85,6 +99,7 @@ function PlatformAdminsHeader({
           render={({ field: { onChange, value } }) => (
             <SelectField
               label={t('platform.roleLabel')}
+              leadingIcon="shield"
               value={value}
               options={SYSTEM_ROLE_OPTIONS}
               hint={t('platform.grantHint')}
@@ -96,6 +111,7 @@ function PlatformAdminsHeader({
         />
 
         <Button
+          icon="shield"
           title={t('platform.grantSubmit')}
           onPress={onGrantSubmit}
           loading={isGranting}
@@ -105,7 +121,7 @@ function PlatformAdminsHeader({
 
       {orphanRevokeError ? <InlineAlert variant="error" message={orphanRevokeError.message} /> : null}
 
-      <ThemedText variant="muted" className="font-semibold">
+      <ThemedText variant="muted" className="text-xs font-bold">
         {t('platform.adminsTitle', { count: adminCount })}
       </ThemedText>
     </View>
@@ -137,11 +153,16 @@ function PlatformAdminRow({
 
   return (
     <Card>
-      <View className="gap-0.5">
-        <ThemedText variant="headline">{admin.name}</ThemedText>
-        <ThemedText selectable variant="muted">
-          {admin.maskedPhone}
-        </ThemedText>
+      <View className="flex-row items-center gap-3">
+        <AvatarInitials name={admin.name} tone="navy" size={42} />
+        <View className="flex-1 gap-0.5">
+          <ThemedText variant="headline" className="font-bold">
+            {admin.name}
+          </ThemedText>
+          <ThemedText selectable variant="muted" className="text-xs">
+            {admin.maskedPhone}
+          </ThemedText>
+        </View>
       </View>
 
       <View className="gap-3">
@@ -154,7 +175,7 @@ function PlatformAdminRow({
           return (
             <View
               key={entry.role}
-              className="gap-2 rounded-xl border border-border bg-background p-3"
+              className="gap-2 rounded-2xl border border-white/95 bg-secondary/40 p-3"
               style={{ borderCurve: 'continuous' }}
             >
               <View className="flex-row flex-wrap items-center justify-between gap-2">
@@ -181,10 +202,10 @@ function PlatformAdminRow({
 
               {isConfirming ? (
                 <View
-                  className="gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3"
+                  className="gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-3"
                   style={{ borderCurve: 'continuous' }}
                 >
-                  <ThemedText variant="headline" className="text-sm text-destructive">
+                  <ThemedText variant="headline" className="text-xs font-bold text-destructive">
                     {t('platform.revokeConfirmTitle')}
                   </ThemedText>
                   <FieldHint message={t('platform.revokeConfirmHint', { name: admin.name })} />
@@ -239,7 +260,8 @@ function PlatformAdminsContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'error') {
     return (
-      <View className="flex-1 bg-background p-4">
+      <View className="flex-1 bg-background p-5">
+        <BrandBackdrop />
         <ErrorState
           title={t('platform.title')}
           description={errorMessage ?? t('errors.generic')}
@@ -252,7 +274,8 @@ function PlatformAdminsContent({ isOnline }: { readonly isOnline: boolean }) {
 
   if (viewState === 'loading') {
     return (
-      <View className="flex-1 gap-3 bg-background p-4">
+      <View className="flex-1 gap-3 bg-background p-5">
+        <BrandBackdrop />
         <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
           <Skeleton className="h-6 w-52" />
           <Skeleton className="h-4 w-full" />
@@ -273,46 +296,50 @@ function PlatformAdminsContent({ isOnline }: { readonly isOnline: boolean }) {
       : null;
 
   return (
-    <FlatList
-      data={[...admins]}
-      keyExtractor={(item) => item.userId}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-3 p-4 pb-8"
-      ListHeaderComponent={
-        <PlatformAdminsHeader
-          superAdminCount={superAdminCount}
-          adminCount={admins.length}
-          isOnline={isOnline}
-          control={control}
-          errors={errors}
-          isGranting={isGranting}
-          grantError={grantError}
-          orphanRevokeError={orphanRevokeError}
-          onGrantSubmit={() => void onGrantSubmit()}
-        />
-      }
-      ListEmptyComponent={
-        <EmptyState
-          title={t('platform.adminsTitle', { count: 0 })}
-          description={t('platform.emptyAdmins')}
-        />
-      }
-      renderItem={({ item }) => (
-        <PlatformAdminRow
-          admin={item}
-          isOnline={isOnline}
-          confirmingTarget={confirmingTarget}
-          revokingTarget={revokingTarget}
-          revokeError={revokeError}
-          getRevokeDisabledReason={getRevokeDisabledReason}
-          onRequestRevoke={requestRevoke}
-          onCancelRevoke={cancelRevoke}
-          onConfirmRevoke={(target) => void confirmRevoke(target)}
-        />
-      )}
-    />
+    <View className="flex-1 bg-background">
+      <BrandBackdrop />
+      <FlatList
+        data={[...admins]}
+        keyExtractor={(item) => item.userId}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        className="flex-1"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-3.5 px-5 pt-4 pb-12"
+        ListHeaderComponent={
+          <PlatformAdminsHeader
+            superAdminCount={superAdminCount}
+            adminCount={admins.length}
+            isOnline={isOnline}
+            control={control}
+            errors={errors}
+            isGranting={isGranting}
+            grantError={grantError}
+            orphanRevokeError={orphanRevokeError}
+            onGrantSubmit={() => void onGrantSubmit()}
+          />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="shield"
+            title={t('platform.adminsTitle', { count: 0 })}
+            description={t('platform.emptyAdmins')}
+          />
+        }
+        renderItem={({ item }) => (
+          <PlatformAdminRow
+            admin={item}
+            isOnline={isOnline}
+            confirmingTarget={confirmingTarget}
+            revokingTarget={revokingTarget}
+            revokeError={revokeError}
+            getRevokeDisabledReason={getRevokeDisabledReason}
+            onRequestRevoke={requestRevoke}
+            onCancelRevoke={cancelRevoke}
+            onConfirmRevoke={(target) => void confirmRevoke(target)}
+          />
+        )}
+      />
+    </View>
   );
 }
 

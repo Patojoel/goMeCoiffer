@@ -12,17 +12,21 @@ export function OtpCodeField({
   label = t('auth.signUp.codeLabel'),
   autoCapitalize = 'none',
   autoCorrect = false,
+  className,
   ...props
 }: OtpCodeFieldProps) {
   return (
     <TextField
       label={label}
+      leadingIcon="shield"
+      placeholder="• • • • • •"
       keyboardType="number-pad"
       textContentType="oneTimeCode"
       autoComplete="sms-otp"
       maxLength={6}
       autoCapitalize={autoCapitalize}
       autoCorrect={autoCorrect}
+      className={className ?? 'min-h-14 text-center text-xl font-bold tracking-[6px]'}
       {...props}
     />
   );

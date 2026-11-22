@@ -8,6 +8,7 @@ import { FieldHint } from '@/components/forms/field-hint';
 import { OtpCodeField } from '@/components/forms/otp-code-field';
 import { PhoneField } from '@/components/forms/phone-field';
 import { Badge } from '@/components/ui/badge';
+import { BrandBackdrop, BrandLogo, IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { CheckboxField } from '@/components/ui/checkbox-field';
@@ -42,49 +43,68 @@ function InvitationOptionCard({
       accessibilityState={{ selected: isSelected }}
       onPress={onSelect}
       className={cn(
-        'min-h-11 gap-2 rounded-2xl border p-4',
-        isSelected ? 'border-primary bg-secondary' : 'border-border bg-card',
+        'min-h-14 flex-row items-center gap-3.5 rounded-[20px] border p-4',
+        isSelected ? 'border-accent/60 bg-accent/10' : 'border-white/95 bg-card/90',
       )}
-      style={{ borderCurve: 'continuous' }}
+      style={{
+        borderCurve: 'continuous',
+        boxShadow: '0 8px 22px rgba(32, 38, 73, 0.06)',
+      }}
     >
-      <View className="flex-row items-center justify-between gap-2">
-        <ThemedText variant="headline" className="flex-1">
-          {item.salonName}
+      <IconTile name="shop" tone={isSelected ? 'terra' : 'navy'} size={42} />
+      <View className="flex-1 gap-1">
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <ThemedText variant="headline" className="flex-1 font-bold">
+            {item.salonName}
+          </ThemedText>
+          <Badge variant={isSelected ? 'default' : 'secondary'} label={t(`team.role.${item.role}`)} />
+        </View>
+        <ThemedText variant="muted" className="text-xs">
+          {`${item.city} — ${item.district}`}
         </ThemedText>
-        <Badge variant={isSelected ? 'default' : 'secondary'} label={t(`team.role.${item.role}`)} />
+        <ThemedText variant="caption">
+          {t('auth.join.expiresAtLabel', { date: formatDateFr(item.expiresAt) })}
+        </ThemedText>
       </View>
-      <ThemedText variant="muted">{`${item.city} — ${item.district}`}</ThemedText>
-      <ThemedText variant="caption">
-        {t('auth.join.expiresAtLabel', { date: formatDateFr(item.expiresAt) })}
-      </ThemedText>
     </Pressable>
   );
 }
 
 function JoinSalonHeaderCard() {
   return (
-    <Card>
-      <Badge variant="secondary" label={t('auth.hero.eyebrow')} />
-      <CardTitle>{t('auth.join.headline')}</CardTitle>
-      <CardDescription>{t('auth.join.subline')}</CardDescription>
-    </Card>
+    <View className="gap-3">
+      <BrandLogo width={180} />
+      <Card>
+        <View className="flex-row items-center gap-3.5">
+          <IconTile name="users" tone="terra" size={48} />
+          <View className="flex-1 gap-1">
+            <Badge variant="accent" label={t('auth.hero.eyebrow')} />
+            <CardTitle className="text-xl">{t('auth.join.headline')}</CardTitle>
+            <CardDescription>{t('auth.join.subline')}</CardDescription>
+          </View>
+        </View>
+      </Card>
+    </View>
   );
 }
 
 function JoinSalonLoadingView() {
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-4 p-4"
-    >
-      <JoinSalonHeaderCard />
-      <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </Card>
-    </ScrollView>
+    <View className="flex-1 bg-background">
+      <BrandBackdrop />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        className="flex-1"
+        contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+      >
+        <JoinSalonHeaderCard />
+        <Card accessible role="status" aria-busy aria-label={t('common.loading')}>
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </Card>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -122,124 +142,154 @@ function JoinSalonViewContent({
 
   if (step === 'phone') {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <JoinSalonHeaderCard />
-        <Card>
-          {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
-          {formError ? <InlineAlert variant="error" message={formError} /> : null}
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        >
+          <JoinSalonHeaderCard />
+          <Card>
+            {!isOnline ? (
+              <InlineAlert variant="warning" message={t('common.offlineActionHint')} />
+            ) : null}
+            {formError ? <InlineAlert variant="error" message={formError} /> : null}
 
-          <Controller
-            control={step1Form.control}
-            name="phone"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <PhoneField
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={step1Form.formState.errors.phone?.message}
-                editable={!isSubmitting}
-              />
-            )}
-          />
+            <Controller
+              control={step1Form.control}
+              name="phone"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PhoneField
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={step1Form.formState.errors.phone?.message}
+                  editable={!isSubmitting}
+                />
+              )}
+            />
 
-          <Button
-            title={t('auth.join.sendCode')}
-            onPress={() => void submitStep1()}
-            loading={isSubmitting}
-            disabled={!isOnline}
-          />
-          <Button variant="outline" title={t('common.signIn')} onPress={() => navigateTo('/connexion')} />
-        </Card>
-      </ScrollView>
+            <Button
+              icon="shield"
+              title={t('auth.join.sendCode')}
+              onPress={() => void submitStep1()}
+              loading={isSubmitting}
+              disabled={!isOnline}
+            />
+            <Button
+              variant="outline"
+              icon="lock"
+              title={t('common.signIn')}
+              onPress={() => navigateTo('/connexion')}
+            />
+          </Card>
+        </ScrollView>
+      </View>
     );
   }
 
   if (step === 'prove') {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        keyboardShouldPersistTaps="handled"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <JoinSalonHeaderCard />
-        <Card>
-          {sentInfo ? (
-            <View className="gap-1.5">
-              <InlineAlert
-                variant="info"
-                message={t('auth.signUp.codeSentHint', {
-                  maskedPhone: sentInfo.maskedPhone,
-                  minutes: sentInfo.minutes,
-                })}
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        >
+          <JoinSalonHeaderCard />
+          <Card>
+            {sentInfo ? (
+              <View className="gap-1.5">
+                <InlineAlert
+                  variant="info"
+                  message={t('auth.signUp.codeSentHint', {
+                    maskedPhone: sentInfo.maskedPhone,
+                    minutes: sentInfo.minutes,
+                  })}
+                />
+                <FieldHint message={t('auth.reset.noSmsHint')} />
+              </View>
+            ) : null}
+            {!isOnline ? (
+              <InlineAlert variant="warning" message={t('common.offlineActionHint')} />
+            ) : null}
+            {formError ? <InlineAlert variant="error" message={formError} /> : null}
+
+            <Controller
+              control={step2Form.control}
+              name="code"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <OtpCodeField
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  error={step2Form.formState.errors.code?.message}
+                  editable={!isSubmitting}
+                />
+              )}
+            />
+
+            <Button
+              icon="shield"
+              title={t('auth.join.verifyPhone')}
+              onPress={() => void submitStep2()}
+              loading={isSubmitting}
+              disabled={!isOnline}
+            />
+
+            <View className="gap-2.5">
+              <Button
+                variant="outline"
+                title={t('auth.signUp.resendCode')}
+                onPress={() => void resendCode()}
+                loading={isResending}
+                disabled={!isOnline || isSubmitting}
               />
-              <FieldHint message={t('auth.reset.noSmsHint')} />
+              <Button
+                variant="ghost"
+                title={t('auth.signUp.changePhone')}
+                onPress={goToPhoneStep}
+                disabled={isSubmitting || isResending}
+              />
             </View>
-          ) : null}
-          {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
-          {formError ? <InlineAlert variant="error" message={formError} /> : null}
-
-          <Controller
-            control={step2Form.control}
-            name="code"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <OtpCodeField
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                error={step2Form.formState.errors.code?.message}
-                editable={!isSubmitting}
-              />
-            )}
-          />
-
-          <Button
-            title={t('auth.join.verifyPhone')}
-            onPress={() => void submitStep2()}
-            loading={isSubmitting}
-            disabled={!isOnline}
-          />
-
-          <View className="gap-3">
-            <Button
-              variant="outline"
-              title={t('auth.signUp.resendCode')}
-              onPress={() => void resendCode()}
-              loading={isResending}
-              disabled={!isOnline || isSubmitting}
-            />
-            <Button
-              variant="ghost"
-              title={t('auth.signUp.changePhone')}
-              onPress={goToPhoneStep}
-              disabled={isSubmitting || isResending}
-            />
-          </View>
-        </Card>
-      </ScrollView>
+          </Card>
+        </ScrollView>
+      </View>
     );
   }
 
   if (signInRequiredSalonName !== null) {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <Card>
-          <CardTitle>{t('auth.join.signInRequiredTitle')}</CardTitle>
-          <CardDescription>
-            {t('auth.join.signInRequiredHint', { salonName: signInRequiredSalonName })}
-          </CardDescription>
-          <Button title={t('common.signIn')} onPress={() => navigateTo('/connexion')} />
-        </Card>
-      </ScrollView>
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        >
+          <BrandLogo width={180} />
+          <Card>
+            <View className="flex-row items-center gap-3">
+              <IconTile name="sparkle" tone="green" size={44} />
+              <View className="flex-1 gap-0.5">
+                <CardTitle>{t('auth.join.signInRequiredTitle')}</CardTitle>
+                <CardDescription>
+                  {t('auth.join.signInRequiredHint', { salonName: signInRequiredSalonName })}
+                </CardDescription>
+              </View>
+            </View>
+            <Button
+              icon="lock"
+              title={t('common.signIn')}
+              onPress={() => navigateTo('/connexion')}
+            />
+          </Card>
+        </ScrollView>
+      </View>
     );
   }
 
@@ -249,20 +299,23 @@ function JoinSalonViewContent({
 
   if (invitationsQuery.isError) {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <JoinSalonHeaderCard />
-        <ErrorState
-          title={t('auth.join.headline')}
-          description={resolveApiErrorMessage(invitationsQuery.error)}
-          onRetry={() => void invitationsQuery.refetch()}
-          isRetrying={invitationsQuery.isFetching}
-        />
-        <Button variant="ghost" title={t('auth.signUp.changePhone')} onPress={goToPhoneStep} />
-      </ScrollView>
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        >
+          <JoinSalonHeaderCard />
+          <ErrorState
+            title={t('auth.join.headline')}
+            description={resolveApiErrorMessage(invitationsQuery.error)}
+            onRetry={() => void invitationsQuery.refetch()}
+            isRetrying={invitationsQuery.isFetching}
+          />
+          <Button variant="ghost" title={t('auth.signUp.changePhone')} onPress={goToPhoneStep} />
+        </ScrollView>
+      </View>
     );
   }
 
@@ -272,25 +325,29 @@ function JoinSalonViewContent({
 
   if (invitations.length === 0) {
     return (
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        className="flex-1 bg-background"
-        contentContainerClassName="gap-4 p-4"
-      >
-        <JoinSalonHeaderCard />
-        <EmptyState
-          title={t('auth.join.emptyTitle')}
-          description={t('auth.join.emptyHint')}
-          action={
-            <Button
-              variant="outline"
-              title={t('auth.signUp.changePhone')}
-              onPress={goToPhoneStep}
-              className="self-start"
-            />
-          }
-        />
-      </ScrollView>
+      <View className="flex-1 bg-background">
+        <BrandBackdrop />
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          className="flex-1"
+          contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        >
+          <JoinSalonHeaderCard />
+          <EmptyState
+            icon="users"
+            title={t('auth.join.emptyTitle')}
+            description={t('auth.join.emptyHint')}
+            action={
+              <Button
+                variant="outline"
+                title={t('auth.signUp.changePhone')}
+                onPress={goToPhoneStep}
+                className="self-start"
+              />
+            }
+          />
+        </ScrollView>
+      </View>
     );
   }
 
@@ -307,6 +364,7 @@ function JoinSalonViewContent({
 
       {account === 'EXISTING' ? (
         <Button
+          icon="users"
           title={t('auth.join.acceptAction')}
           onPress={() => void acceptExistingAccount()}
           loading={isSubmitting}
@@ -321,6 +379,7 @@ function JoinSalonViewContent({
               <TextField
                 label={t('auth.signUp.nameLabel')}
                 placeholder={t('auth.signUp.namePlaceholder')}
+                leadingIcon="userplus"
                 value={value}
                 onChangeText={(next) => {
                   markNameModified();
@@ -343,6 +402,7 @@ function JoinSalonViewContent({
                 label={t('auth.signIn.passwordLabel')}
                 placeholder={t('auth.signIn.passwordPlaceholder')}
                 hint={t('auth.signUp.passwordHint')}
+                leadingIcon="lock"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -364,6 +424,7 @@ function JoinSalonViewContent({
               <TextField
                 label={t('auth.signUp.confirmPasswordLabel')}
                 placeholder={t('auth.signUp.confirmPasswordPlaceholder')}
+                leadingIcon="lock"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
@@ -394,6 +455,7 @@ function JoinSalonViewContent({
           />
 
           <Button
+            icon="userplus"
             title={t('auth.join.acceptAction')}
             onPress={() => void submitNewAccountAcceptance()}
             loading={isSubmitting}
@@ -412,23 +474,26 @@ function JoinSalonViewContent({
   );
 
   return (
-    <FlatList
-      data={invitations}
-      keyExtractor={(item) => item.invitationId}
-      contentInsetAdjustmentBehavior="automatic"
-      keyboardShouldPersistTaps="handled"
-      className="flex-1 bg-background"
-      contentContainerClassName="gap-4 p-4"
-      ListHeaderComponent={<JoinSalonHeaderCard />}
-      renderItem={({ item }) => (
-        <InvitationOptionCard
-          item={item}
-          isSelected={item.invitationId === selectedInvitation?.invitationId}
-          onSelect={() => selectInvitation(item.invitationId)}
-        />
-      )}
-      ListFooterComponent={footerContent}
-    />
+    <View className="flex-1 bg-background">
+      <BrandBackdrop />
+      <FlatList
+        data={invitations}
+        keyExtractor={(item) => item.invitationId}
+        contentInsetAdjustmentBehavior="automatic"
+        keyboardShouldPersistTaps="handled"
+        className="flex-1"
+        contentContainerClassName="mx-auto w-full max-w-xl gap-4 px-5 pt-6 pb-12"
+        ListHeaderComponent={<JoinSalonHeaderCard />}
+        renderItem={({ item }) => (
+          <InvitationOptionCard
+            item={item}
+            isSelected={item.invitationId === selectedInvitation?.invitationId}
+            onSelect={() => selectInvitation(item.invitationId)}
+          />
+        )}
+        ListFooterComponent={footerContent}
+      />
+    </View>
   );
 }
 

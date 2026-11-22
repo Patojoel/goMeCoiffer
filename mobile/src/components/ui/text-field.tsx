@@ -3,6 +3,7 @@ import { useId, useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
 import { FieldHint } from '@/components/forms/field-hint';
 import { cn } from '@/lib/ui/cn';
+import { BrandIcon, type BrandIconName } from './brand';
 import { ThemedText } from './themed-text';
 
 export type TextFieldProps = Omit<TextInputProps, 'style'> & {
@@ -10,6 +11,7 @@ export type TextFieldProps = Omit<TextInputProps, 'style'> & {
   readonly requirementHint?: string;
   readonly hint?: string;
   readonly error?: string;
+  readonly leadingIcon?: BrandIconName;
   readonly leadingAdornment?: ReactNode;
   readonly containerClassName?: string;
   readonly className?: string;
@@ -21,6 +23,7 @@ export function TextField({
   requirementHint,
   hint,
   error,
+  leadingIcon,
   leadingAdornment,
   containerClassName,
   className,
@@ -38,12 +41,13 @@ export function TextField({
   const [revealed, setRevealed] = useState(false);
 
   const isPassword = Boolean(secureTextEntry);
+  const resolvedIcon: BrandIconName | undefined = leadingIcon ?? (isPassword ? 'lock' : undefined);
   const describedBy = [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') || undefined;
 
   return (
     <View className={cn('gap-1.5', containerClassName)}>
-      <View className="flex-row items-center justify-between gap-2">
-        <ThemedText nativeID={labelId} variant="headline" className="text-sm">
+      <View className="flex-row items-center justify-between gap-2 px-0.5">
+        <ThemedText nativeID={labelId} variant="headline" className="text-xs font-bold text-foreground">
           {label}
         </ThemedText>
         {requirementHint ? <ThemedText variant="caption">{requirementHint}</ThemedText> : null}
@@ -51,13 +55,21 @@ export function TextField({
 
       <View
         className={cn(
-          'flex-row items-center rounded-xl border bg-card',
-          error ? 'border-destructive' : 'border-border',
+          'min-h-12 flex-row items-center rounded-[14px] border bg-card/85',
+          error ? 'border-destructive' : 'border-white/95',
           !editable && 'bg-muted opacity-60',
         )}
-        style={{ borderCurve: 'continuous' }}
+        style={{
+          borderCurve: 'continuous',
+          boxShadow: '0 4px 13px rgba(39, 40, 67, 0.04)',
+        }}
       >
         {leadingAdornment}
+        {resolvedIcon ? (
+          <View className="pl-3.5 pr-1">
+            <BrandIcon name={resolvedIcon} size={18} color="#727A90" />
+          </View>
+        ) : null}
         <TextInput
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={accessibilityHint ?? error ?? hint}
@@ -67,7 +79,8 @@ export function TextField({
           editable={editable}
           secureTextEntry={isPassword ? !revealed : false}
           className={cn(
-            'min-h-11 flex-1 px-3.5 py-2.5 text-base text-foreground placeholder:text-muted-foreground',
+            'min-h-12 flex-1 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground',
+            resolvedIcon && 'pl-2',
             className,
           )}
           style={[{ borderCurve: 'continuous' }, style]}
@@ -78,9 +91,10 @@ export function TextField({
             accessibilityRole="button"
             accessibilityLabel={revealed ? t('ui.input.hidePassword') : t('ui.input.showPassword')}
             onPress={() => setRevealed((prev) => !prev)}
-            className="min-h-11 min-w-11 items-center justify-center px-3"
+            className="min-h-11 min-w-11 flex-row items-center justify-center gap-1.5 px-3"
           >
-            <ThemedText variant="caption" className="font-semibold text-primary">
+            <BrandIcon name="eye" size={16} color="#D2603A" />
+            <ThemedText variant="caption" className="font-bold text-accent">
               {revealed ? t('ui.input.hide') : t('ui.input.show')}
             </ThemedText>
           </Pressable>
@@ -89,7 +103,7 @@ export function TextField({
 
       {hint ? <FieldHint nativeID={hintId} message={hint} /> : null}
       {error ? (
-        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-sm">
+        <ThemedText nativeID={errorId} variant="error" accessibilityRole="alert" className="text-xs">
           {error}
         </ThemedText>
       ) : null}

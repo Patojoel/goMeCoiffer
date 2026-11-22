@@ -2,11 +2,12 @@ import { t, type SessionSalon } from '@gomecoiffer/client-core';
 import { SalonRoleSchema } from '@gomecoiffer/contracts';
 import * as Haptics from 'expo-haptics';
 import { ActivityIndicator, FlatList, Platform, Pressable, ScrollView, View } from 'react-native';
-import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { Badge } from '@/components/ui/badge';
+import { BrandBackdrop, BrandTopBar, IconTile, PageHero } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
 import { InlineAlert } from '@/components/ui/inline-alert';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { ThemedText } from '@/components/ui/themed-text';
 import { cn } from '@/lib/ui/cn';
 import { WithScreenContext } from '../shared/screen-bridge';
@@ -55,32 +56,39 @@ function SalonOptionCard({
       disabled={isDisabled}
       onPress={handlePress}
       className={cn(
-        'min-h-11 gap-2 rounded-2xl border p-5',
-        isActive ? 'border-primary bg-secondary' : 'border-border bg-card',
+        'min-h-14 flex-row items-center gap-3.5 rounded-[22px] border p-4',
+        isActive ? 'border-accent/60 bg-accent/10' : 'border-white/95 bg-card/90',
       )}
       style={({ pressed }) => ({
         borderCurve: 'continuous',
+        boxShadow: '0 10px 26px rgba(32, 38, 73, 0.075)',
         opacity: isDisabled ? 0.55 : pressed ? 0.8 : 1,
       })}
     >
-      <View className="flex-row flex-wrap items-center justify-between gap-2">
-        <ThemedText variant="headline" className="flex-1">
-          {item.name}
+      <IconTile name="shop" tone={isActive ? 'terra' : 'navy'} size={44} />
+
+      <View className="flex-1 gap-1">
+        <View className="flex-row flex-wrap items-center justify-between gap-2">
+          <ThemedText variant="headline" className="flex-1 font-bold">
+            {item.name}
+          </ThemedText>
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            {roleLabel ? <Badge variant="outline" label={roleLabel} /> : null}
+            {isActive ? <Badge variant="success" label={t('salons.switch.activeBadge')} /> : null}
+          </View>
+        </View>
+
+        <ThemedText variant="muted" className="text-xs">
+          {`${item.city} · ${item.district}`}
         </ThemedText>
-        <View className="flex-row flex-wrap items-center gap-1.5">
-          {roleLabel ? <Badge variant="outline" label={roleLabel} /> : null}
-          {isActive ? <Badge variant="success" label={t('salons.switch.activeBadge')} /> : null}
-        </View>
+
+        {isSwitchingThis ? (
+          <View className="flex-row items-center gap-2 pt-1">
+            <ActivityIndicator size="small" />
+            <ThemedText variant="caption">{t('salons.switch.switching')}</ThemedText>
+          </View>
+        ) : null}
       </View>
-
-      <ThemedText variant="muted">{`${item.city} · ${item.district}`}</ThemedText>
-
-      {isSwitchingThis ? (
-        <View className="flex-row items-center gap-2 pt-1">
-          <ActivityIndicator size="small" />
-          <ThemedText variant="caption">{t('salons.switch.switching')}</ThemedText>
-        </View>
-      ) : null}
     </Pressable>
   );
 }
@@ -98,16 +106,21 @@ function ChooseSalonContent({
   if (salons.length === 0) {
     return (
       <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+        <BrandBackdrop />
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
           className="flex-1"
-          contentContainerClassName="gap-4 p-4"
+          contentContainerClassName="mx-auto w-full max-w-2xl gap-4 px-5 pt-4 pb-12"
         >
+          <BrandTopBar logoWidth={160} />
           <EmptyState
+            icon="shop"
+            tone="terra"
             title={t('salons.guard.selectTitle')}
             description={t('salons.guard.selectHint')}
             action={
               <Button
+                icon="shop"
                 title={t('salons.guard.createAction')}
                 onPress={() => onNavigate('/(salon)/creer-organisation')}
                 className="self-start"
@@ -121,20 +134,22 @@ function ChooseSalonContent({
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      <BrandBackdrop />
       <FlatList
         data={[...salons]}
         extraData={{ activeSalonId, switchingSalonId, isSwitching, isOnline }}
         keyExtractor={(item) => item.id}
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerClassName="gap-3 p-4"
+        contentContainerClassName="mx-auto w-full max-w-2xl gap-3.5 px-5 pt-4 pb-12"
         ListHeaderComponent={
-          <View className="gap-3 pb-1">
-            <View className="gap-1">
-              <ThemedText accessibilityRole="header" variant="title">
-                {t('salons.switch.title')}
-              </ThemedText>
-              <ThemedText variant="muted">{t('salons.switch.subtitle')}</ThemedText>
-            </View>
+          <View className="gap-3.5 pb-1">
+            <BrandTopBar logoWidth={160} />
+            <PageHero
+              icon="shop"
+              tone="terra"
+              title={t('salons.switch.title')}
+              subtitle={t('salons.switch.subtitle')}
+            />
             {!isOnline ? <InlineAlert variant="warning" message={t('common.offlineActionHint')} /> : null}
             {errorMessage ? <InlineAlert variant="error" message={errorMessage} /> : null}
           </View>

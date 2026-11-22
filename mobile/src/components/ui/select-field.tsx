@@ -5,6 +5,7 @@ import { FlatList, Modal, Platform, Pressable, TextInput, View } from 'react-nat
 import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { FieldHint } from '@/components/forms/field-hint';
 import { cn } from '@/lib/ui/cn';
+import { BrandBackdrop, BrandIcon, type BrandIconName } from './brand';
 import { Button } from './button';
 import { ThemedText } from './themed-text';
 
@@ -21,6 +22,7 @@ export type SelectFieldProps<T extends string> = {
   readonly options: ReadonlyArray<SelectOption<T>>;
   readonly onChange: (value: T) => void;
   readonly placeholder?: string;
+  readonly leadingIcon?: BrandIconName;
   readonly searchable?: boolean;
   readonly hint?: string;
   readonly error?: string;
@@ -42,6 +44,7 @@ export function SelectField<T extends string>({
   options,
   onChange,
   placeholder,
+  leadingIcon,
   searchable = false,
   hint,
   error,
@@ -79,7 +82,7 @@ export function SelectField<T extends string>({
 
   return (
     <View className="gap-1.5">
-      <ThemedText nativeID={`${id}-label`} variant="headline" className="text-sm">
+      <ThemedText nativeID={`${id}-label`} variant="headline" className="px-0.5 text-xs font-bold">
         {label}
       </ThemedText>
 
@@ -92,23 +95,27 @@ export function SelectField<T extends string>({
         disabled={disabled}
         onPress={() => setOpen(true)}
         className={cn(
-          'min-h-11 flex-row items-center justify-between gap-2 rounded-xl border bg-card px-3.5 py-2.5',
-          error ? 'border-destructive' : 'border-border',
+          'min-h-12 flex-row items-center justify-between gap-2.5 rounded-[14px] border bg-card/85 px-3.5 py-2.5',
+          error ? 'border-destructive' : 'border-white/95',
           disabled && 'bg-muted opacity-60',
         )}
-        style={{ borderCurve: 'continuous' }}
+        style={{
+          borderCurve: 'continuous',
+          boxShadow: '0 4px 13px rgba(39, 40, 67, 0.04)',
+        }}
       >
-        <ThemedText className={cn('flex-1 text-base', !selectedOption && 'text-muted-foreground')}>
+        {leadingIcon ? <BrandIcon name={leadingIcon} size={18} color="#727A90" /> : null}
+        <ThemedText className={cn('flex-1 text-sm', !selectedOption && 'text-muted-foreground')}>
           {selectedOption ? selectedOption.label : (placeholder ?? t('ui.select.placeholder'))}
         </ThemedText>
-        <ThemedText variant="muted" className="text-xs font-semibold">
+        <ThemedText variant="muted" className="text-xs font-bold">
           ▾
         </ThemedText>
       </Pressable>
 
       {hint ? <FieldHint nativeID={`${id}-hint`} message={hint} /> : null}
       {error ? (
-        <ThemedText nativeID={`${id}-error`} variant="error" accessibilityRole="alert" className="text-sm">
+        <ThemedText nativeID={`${id}-error`} variant="error" accessibilityRole="alert" className="text-xs">
           {error}
         </ThemedText>
       ) : null}
@@ -120,15 +127,16 @@ export function SelectField<T extends string>({
         onRequestClose={handleClose}
       >
         <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
-          <View className="flex-row items-center justify-between gap-3 border-b border-border bg-card px-4 py-3">
-            <ThemedText variant="subtitle" className="flex-1">
+          <BrandBackdrop />
+          <View className="flex-row items-center justify-between gap-3 border-b border-white/90 bg-card/90 px-4 py-3">
+            <ThemedText variant="subtitle" className="flex-1 font-bold">
               {label}
             </ThemedText>
             <Button variant="outline" size="sm" title={t('ui.select.close')} onPress={handleClose} />
           </View>
 
           {searchable ? (
-            <View className="border-b border-border bg-card px-4 py-3">
+            <View className="border-b border-white/80 bg-card/80 px-4 py-3">
               <TextInput
                 value={query}
                 onChangeText={setQuery}
@@ -136,7 +144,7 @@ export function SelectField<T extends string>({
                 accessibilityLabel={t('ui.select.searchPlaceholder')}
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="min-h-11 rounded-xl border border-border bg-background px-3.5 py-2.5 text-base text-foreground placeholder:text-muted-foreground"
+                className="min-h-12 rounded-[14px] border border-white/95 bg-card/90 px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground"
                 style={{ borderCurve: 'continuous' }}
               />
             </View>
@@ -146,7 +154,7 @@ export function SelectField<T extends string>({
             data={[...filteredOptions]}
             keyExtractor={(item) => item.value}
             keyboardShouldPersistTaps="handled"
-            contentContainerClassName="gap-2 p-4"
+            contentContainerClassName="gap-2.5 p-4"
             ListEmptyComponent={
               <ThemedText variant="muted" className="py-6 text-center">
                 {t('ui.select.empty')}
@@ -161,19 +169,19 @@ export function SelectField<T extends string>({
                   disabled={item.disabled}
                   onPress={() => handleSelect(item.value)}
                   className={cn(
-                    'min-h-11 flex-row items-center justify-between gap-3 rounded-xl border px-4 py-3',
-                    isSelected ? 'border-primary bg-secondary' : 'border-border bg-card',
+                    'min-h-12 flex-row items-center justify-between gap-3 rounded-2xl border px-4 py-3',
+                    isSelected ? 'border-accent/60 bg-accent/10' : 'border-white/95 bg-card/90',
                     item.disabled && 'opacity-45',
                   )}
                   style={{ borderCurve: 'continuous' }}
                 >
                   <View className="flex-1 gap-0.5">
-                    <ThemedText variant="headline" className="text-sm">
+                    <ThemedText variant="headline" className="text-sm font-bold">
                       {item.label}
                     </ThemedText>
                     {item.description ? <ThemedText variant="caption">{item.description}</ThemedText> : null}
                   </View>
-                  {isSelected ? <ThemedText className="text-sm font-bold text-primary">✓</ThemedText> : null}
+                  {isSelected ? <ThemedText className="text-sm font-bold text-accent">✓</ThemedText> : null}
                 </Pressable>
               );
             }}

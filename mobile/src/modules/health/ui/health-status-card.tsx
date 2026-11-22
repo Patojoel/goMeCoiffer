@@ -1,5 +1,8 @@
 import { t } from '@gomecoiffer/client-core';
+import { View } from 'react-native';
 import { ErrorState } from '@/components/feedback/error-state';
+import { Badge } from '@/components/ui/badge';
+import { IconTile } from '@/components/ui/brand';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useApiHealth } from './use-api-health';
@@ -19,8 +22,14 @@ export function HealthStatusCard() {
   if (view === 'ok') {
     return (
       <Card accessible role="status" aria-busy={isRetrying}>
-        <CardTitle className="text-success">{t('health.ok')}</CardTitle>
-        <CardDescription>{t('health.okHint')}</CardDescription>
+        <View className="flex-row items-center gap-3">
+          <IconTile name="sparkle" tone="green" size={40} />
+          <View className="flex-1 gap-0.5">
+            <CardTitle className="text-success">{t('health.ok')}</CardTitle>
+            <CardDescription>{t('health.okHint')}</CardDescription>
+          </View>
+          <Badge variant="success" label="En ligne" />
+        </View>
       </Card>
     );
   }

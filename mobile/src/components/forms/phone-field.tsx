@@ -27,8 +27,8 @@ export function PhoneField({
       autoCapitalize={autoCapitalize}
       autoCorrect={autoCorrect}
       leadingAdornment={
-        <View className="min-h-11 items-center justify-center border-r border-border bg-secondary px-3">
-          <ThemedText variant="headline" className="text-sm text-secondary-foreground">
+        <View className="min-h-12 flex-row items-center justify-center border-r border-border/80 bg-secondary/80 px-3.5">
+          <ThemedText variant="headline" className="text-xs font-bold text-secondary-foreground">
             +237
           </ThemedText>
         </View>

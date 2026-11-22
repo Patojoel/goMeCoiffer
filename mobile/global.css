@@ -2,22 +2,22 @@
 @import 'nativewind/theme';
 
 :root {
-  --background: #f6efe6;
-  --foreground: #17213b;
-  --card: #ffffff;
-  --card-foreground: #17213b;
+  --background: #f5f2f7;
+  --foreground: #121b33;
+  --card: #fcfafc;
+  --card-foreground: #121b33;
   --primary: #17213b;
-  --primary-foreground: #f6efe6;
-  --secondary: #eae0d2;
+  --primary-foreground: #ffffff;
+  --secondary: #e9ebf6;
   --secondary-foreground: #17213b;
-  --muted: #efe6da;
-  --muted-foreground: #4c566e;
+  --muted: #edeff5;
+  --muted-foreground: #6e768c;
   --accent: #d2603a;
   --accent-foreground: #ffffff;
-  --border: #ddd2c3;
+  --border: #e3e0ee;
   --ring: #d2603a;
   --destructive: #c23b2b;
-  --success: #1e7a4a;
+  --success: #167c37;
 }
 
 @media (prefers-color-scheme: dark) {

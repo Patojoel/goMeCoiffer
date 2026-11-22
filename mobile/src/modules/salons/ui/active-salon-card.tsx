@@ -3,6 +3,7 @@ import { SalonRoleSchema } from '@gomecoiffer/contracts';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 import { Badge } from '@/components/ui/badge';
+import { IconTile } from '@/components/ui/brand';
 import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { ThemedText } from '@/components/ui/themed-text';
 import { useAppSelector } from '@/lib/store/hooks';
@@ -19,15 +20,18 @@ export function ActiveSalonCard({ action }: ActiveSalonCardProps) {
   const roleLabel = parsedRole.success ? t(`team.role.${parsedRole.data}`) : null;
 
   return (
-    <Card>
-      <View className="flex-row flex-wrap items-center justify-between gap-2">
-        <ThemedText variant="caption" className="font-semibold uppercase tracking-wide">
-          {t('salons.more.activeSalonLabel')}
-        </ThemedText>
+    <Card className="p-4">
+      <View className="flex-row items-center gap-3.5">
+        <IconTile name="shop" tone="terra" size={42} />
+        <View className="flex-1 gap-0.5">
+          <ThemedText variant="caption" className="text-[10px] font-bold uppercase tracking-wider">
+            {t('salons.more.activeSalonLabel')}
+          </ThemedText>
+          <CardTitle className="text-base">{activeSalon.name}</CardTitle>
+          <CardDescription>{`${activeSalon.city} — ${activeSalon.district}`}</CardDescription>
+        </View>
         {roleLabel ? <Badge variant="secondary" label={roleLabel} /> : null}
       </View>
-      <CardTitle>{activeSalon.name}</CardTitle>
-      <CardDescription>{`${activeSalon.city} — ${activeSalon.district}`}</CardDescription>
       {action}
     </Card>
   );
