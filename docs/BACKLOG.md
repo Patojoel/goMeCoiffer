@@ -246,32 +246,26 @@ Chaque décision prise va dans `docs/DECISIONS.md`.
 - Config : `WEB_ORIGIN` validé comme URL (https hors local) ; OpenAPI protégé en preprod.
 - React Compiler par l'option native expérimentale de `@vitejs/plugin-react` (D-014) : surveiller, repli Babel documenté.
 
-## Front partagé et app mobile (D-060, D-061, D-062, 20/11)
+## Front partagé et app mobile (D-060, D-061, D-062, D-063)
 
-Ordre (D-062 : mobile **en parallèle** du web) : 1 et 3a d'abord, puis 2 et 3b ensemble, use case par use case.
+Ordre (D-062 : mobile **en parallèle** du web ; D-063 : Expo universel iOS + Android + Web) :
 
-1. **Créer `packages/client-core`** (avant le front du lot 1) : y déplacer `lib/store` (store, `createAppAsyncThunk`,
-   `appApi`, actions, listeners), le port `HttpClient`, le routage temps réel, la logique rbac, `format` et les
-   dictionnaires i18n ; le web garde `WebHttpClient`, la source `EventSource`, les composants de garde et le rendu.
-   Règles `pnpm arch` : `client-core` n'importe ni `react-dom`, ni `react-native`, ni `fetch`, ni stockage ; un
-   `*HttpGateway` n'est instancié que dans `lib/store/dependencies/` de chaque app. Mettre à jour `docs/checklists.md`.
-2. **Front du lot 1** (web) sur cette base, module `auth` en premier (`docs/frontend-modules.md`).
-3. **App mobile `mobile/`** (`docs/mobile.md`) :
-   - 3a, avant les écrans : **backend de UC-013** (session mobile par jeton porteur, prêt pour dev, D-062) avec revue
-     sécurité, et `archi-reviewer` conseillé sur l'intergiciel qui touche toutes les routes ; **rédiger UC-014**
-     (inscription, mot de passe oublié et acceptation d'invitation depuis l'app) ; socle mobile : Expo SDK 58, Expo
-     Router, NativeWind v5 + React Native Reusables, Expo UI, `createMobileStore`, `MobileHttpClient`,
-     `react-native-sse`, `expo-secure-store`, jest-expo, EAS (profils, dev client) ; pnpm : dépendances isolées
-     (repli `nodeLinker: hoisted`), `allowBuilds`, politique d'âge ;
-   - 3b : les écrans mobiles **en même temps que les écrans web** de chaque use case (lot 1 d'abord).
-- **Skills des agents à installer par le user** (refusé à l'agent par le garde-fou de Claude Code) :
-  `claude plugin install expo@claude-plugins-official --scope project` (puis `/mcp`) et
-  `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`. Le skill projet
-  `mobile-stack` et l'agent `mobile-builder` existent (20/11) et chargent ces skills externes s'ils sont installés.
-- À prévoir : étendre `front-reviewer` (ou créer un `mobile-reviewer`) à `mobile/` avant les premiers écrans mobiles.
-- **Décisions à prendre plus tard** : comptes Apple Developer et Google Play, identifiants de l'app
-  (`bundleIdentifier`, `package`), domaine des liens universels (`/rejoindre`, `/reprogrammation/:token`),
-  notifications push (hors PRD actuel).
+1. ~~**Créer `packages/client-core`**~~ : **fait le 21/11** (`store`, `http`, `storage`, `realtime`, `rbac`, `format`, `i18n`, 8 modules Lot 1 `health`, `auth`, `salons`, `team`, `join-salon`, `roles`, `client-space`, `platform`, exports `.`, `./gateways`, `./testing`, règles `pnpm arch` actives, 65 tests Vitest verts). Restera à y migrer `frontend/` uniquement si `frontend/` reçoit encore des écrans avant son retrait (D-063).
+2. **Front du lot 1** :
+   - ~~**Dans `mobile/` (iOS, Android et Web via Expo)**~~ : **fait le 21/11** (tous les écrans UC-001 à UC-012 + côté app de UC-013, primitives accessibles, routes Expo Router incl. `(admin)/`, `SessionLifecycle` + pont SSE, durcissements sécurité `M-1`..`M-6` vérifiés par contre-revue, 19 suites / 181 tests Jest verts, `expo export --platform web` vert).
+   - Dans `frontend/` (Vite legacy) : non fait, laissé intact en attendant la parité complète et la bascule définitive vers `mobile/` (D-063).
+3. **App mobile `mobile/`** (`docs/mobile.md`) — suites bloquantes avant connexion réelle sur builds natifs iOS/Android (relevées par la revue sécurité du 21/11) :
+   - ~~3a, socle Expo universel & écrans lot 1~~ : **fait le 21/11**.
+   - **C-1 — Backend + Contrats de `UC-013` (bloquant sur natif)** :
+     - Adapter `packages/contracts/` pour la variante `BEARER` sans `csrfToken` obligatoire et avec `sessionToken` / `deviceToken?` ;
+     - Implémenter côté `backend/` la variante `BEARER` (`x-client-channel: mobile`, `Authorization: Bearer`, `x-device-token`, résolution de canal, rotation sans cookie, flux SSE par en-tête) avec `archi-reviewer` + `security-reviewer` ;
+     - Appliquer le **Durcissement 7** relevé au back : ajouter `/api/public/auth/` et `/api/public/sign-up` dans `noStorePrivateRoutes`, restreindre explicitement `allowedHeaders` CORS (`Content-Type`, `Accept`, `x-csrf-token`), redacter `req.headers["x-device-token"]` dans Pino, et émettre un `data: 'ping'` non vide sur `event: heartbeat` (`realtime.controller.ts:27`) pour compatibilité `react-native-sse`.
+   - **C-2 — Spécification + Backend de `UC-014` (bloquant sur `/rejoindre` natif)** :
+     - Rédiger (`use-case-writer`) puis implémenter côté `backend/` `UC-014` (inscription, mot de passe oublié et rejoindre un salon `/rejoindre` depuis l'application native sans cookie `__Host-gmc.join`) ; sur Web, `/rejoindre` fonctionne déjà par cookie `HttpOnly`.
+   - **Simulateurs & UI native avancée** : effectuer les captures iOS et Android sur simulateur/appareil et intégrer `@expo/ui` là où pertinent sur les prochains lots (lots 2+).
+   - À terme (D-063) : retirer `frontend/` une fois la parité Web atteinte sur `mobile/`.
+- À prévoir : étendre `front-reviewer` (ou créer un `mobile-reviewer`) à `mobile/` si le mode `full` est utilisé sur les prochains lots.
+- **Décisions à prendre plus tard** : comptes Apple Developer et Google Play, validation des identifiants (`cm.gomecoiffer.app`) et du domaine des liens universels (`gomecoiffer.cm` en placeholder pour `/rejoindre`, `/reprogrammation/:token`), notifications push (hors PRD actuel).
 
 ## Lots MVP (ordre proposé, cycle Disponibilité → Réservation → Paiement → Prestation terminée)
 

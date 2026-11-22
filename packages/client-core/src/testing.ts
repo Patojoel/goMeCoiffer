@@ -1,0 +1,9 @@
+export { InMemoryAuthGateway } from './modules/auth/__tests__/fakes/InMemoryAuthGateway.js';
+export { InMemoryClientSpaceGateway } from './modules/client-space/__tests__/fakes/InMemoryClientSpaceGateway.js';
+export { InMemoryHealthGateway } from './modules/health/__tests__/fakes/InMemoryHealthGateway.js';
+export { InMemoryJoinSalonGateway } from './modules/join-salon/__tests__/fakes/InMemoryJoinSalonGateway.js';
+export { InMemoryPlatformGateway } from './modules/platform/__tests__/fakes/InMemoryPlatformGateway.js';
+export { InMemoryRolesGateway } from './modules/roles/__tests__/fakes/InMemoryRolesGateway.js';
+export { InMemorySalonsGateway } from './modules/salons/__tests__/fakes/InMemorySalonsGateway.js';
+export { InMemoryTeamGateway } from './modules/team/__tests__/fakes/InMemoryTeamGateway.js';
+export { createTestStore } from './store/testing/createTestStore.js';

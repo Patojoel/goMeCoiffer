@@ -19,6 +19,44 @@ Gabarit d'une entrée :
 
 ---
 
+### 2026-11-21 — Écrans du lot 1 dans `mobile/`, cycle de vie temps réel et remédiation sécurité
+
+- **Quoi** :
+  - Complétion et durcissement de la logique partagée du lot 1 dans `packages/client-core/` (`auth`, `salons` + `weeklySchedule`, `team`, `join-salon`, `roles` + `permissionDependencies`, `client-space`, `platform`, encodage sûr des paramètres d'URL, `resolveApiErrorMessage`, `signOut` résilient, `sessionExpired` avec `expiredKind` RG-013-17, purge de cache sélective préservant les abonnements RTK Query sur simple rafraîchissement des permissions de la même session).
+  - Livraison complète des écrans universels iOS, Android et Web et du routage Expo Router pour tout le lot 1 dans `mobile/` : primitives UI accessibles ≥ 44 pt (`TextField`, `CheckboxField`, `Badge`, `InlineAlert`, `SelectField`, `SwitchRow`, `SegmentedTabs`, `PhoneField`, `OtpCodeField`, `RequirePermission`, `RequireSystemRole`, `resolveHomeHref`), parcours `auth` (UC-001/002/003), `join-salon` (UC-007), `client-space` (UC-009), `salons` (UC-004/005/010, auto-ouverture D-040, récupération `ORGANIZATION_ALREADY_EXISTS`, éditeur d'horaires), `roles` (UC-008), `team` (UC-006/011, lien WhatsApp fixe sans PII D-046), `platform` (`(admin)/`, UC-012) et `SessionLifecycle` (bootstrap `STAFF`/`CLIENT` et flux SSE `/api/salon/realtime/stream` avec écoute de `salon.member_role_changed`).
+  - Remédiation sécurité de l'ensemble des points `À corriger` (`M-1`..`M-6`) et `Durcissements` (`1`..`6`) du périmètre client/mobile : non-rejeu `CSRF_INVALID` sur les routes privées + `sessionEpoch` anti-course 401 dans `WebHttpClient`, sérialisation des mutations de session et des 401 concurrents + persistance `sessionToken`/`deviceToken` dans `MobileHttpClient`, cache `createTokenStorage` mis à jour post-résolution, watchdog heartbeat/EOF natif (nullification préalable à `close()`) et `EventSource.CLOSED` web dans `createRealtimeSource`, défaut `'production'` hors dev/test dans `env.ts` + `eas.json`, verrous `useRef`, masquage de l'onglet Invitations sans `staff:invite`, et réinitialisation des brouillons dans `goToPhoneStep`.
+- **Pourquoi** : livrer l'interface universelle complète du lot 1 (UC-001 à UC-012 + côté app d'UC-013) dans `mobile/` selon les décisions D-061 à D-063 et les principes TDD / SOLID / guidage utilisateur de `CLAUDE.md`, sans modifier `frontend/` ni `backend/` dans cette passe.
+- **Périmètre** : `packages/client-core/src/{http,i18n,modules,rbac,store}/`, `mobile/src/{app,components,lib,modules}/`, `mobile/eas.json`, `docs/{EVOLUTIONS,BACKLOG,mobile}.md` (`frontend/`, `backend/` et `packages/contracts/` laissés intacts).
+- **Vérification** : mode `light`.
+  - Revue + contre-revues `security-reviewer` (2 passes) : **tous les points `M-1`..`M-6` et `Durcissements 1`..`6` du périmètre `client-core`/`mobile/` résolus** et couverts en TDD. Les 2 critiques de parité backend (`C-1` contrats/backend UC-013 et `C-2` parcours natif `/rejoindre` UC-014) et le `Durcissement 7` (+ payload non vide sur `event: heartbeat` SSE) restent reportés au chantier UC-013/UC-014 dans `docs/BACKLOG.md`.
+  - `@gomecoiffer/client-core` (Vitest) : **14 fichiers, 65 tests verts** ; `tsc --noEmit` vert.
+  - `mobile/` (Jest / `jest-expo` + RNTL) : **19 suites, 181 tests verts** (0 snapshot, 0 `jest.mock`) ; `tsc --noEmit` 0 erreur ; `expo export --platform web` vert (**35 bundles web**, 18 assets, 3 fichiers dans `mobile/dist/`).
+  - `frontend/` inchangé et vert : **8 fichiers, 36 tests Vitest verts**, `tsc -b` 0 erreur ; `backend/` : `tsc --noEmit` 0 erreur.
+  - Qualité : `oxlint` 0 erreur sur **789 fichiers** (3 warnings préexistants dans `backend/` et `packages/contracts/`) ; `depcruise` **0 violation** (897 modules, 3 097 dépendances).
+  - Captures iOS / Android : non réalisées (`xcrun simctl` indisponible hors outil développeur complet et `adb` absent).
+- **Suites** (`docs/BACKLOG.md`) : implémenter `UC-013` dans `backend/` & `packages/contracts/` (`C-1`, `Durcissement 7`, heartbeat SSE non vide), rédiger et implémenter `UC-014` (`C-2` `/rejoindre` natif sans cookie), puis réaliser les captures iOS/Android sur simulateurs/appareils.
+
+---
+
+### 2026-11-21 — Socle partagé `packages/client-core` et structure Expo universelle `mobile/`
+
+- **Quoi** :
+  - Création du paquet partagé `@gomecoiffer/client-core` (`packages/client-core/`) regroupant le store Redux Toolkit / RTK Query, les ports `HttpClient` / `TokenStorage` / `RealtimeSource`, le routage temps réel, la logique RBAC (`STAFF` vs `CLIENT`, D-055, D-027), le formatage FCFA / fuseau horaire / normalisation téléphone camerounais, les dictionnaires i18n et le module de référence `health` (exports séparés `.`, `./gateways`, `./testing`).
+  - Mise en place de la structure Expo SDK 58 universelle iOS, Android et Web dans `mobile/` (Expo Router + `NativeTabs` + replis `_layout.web.tsx`, NativeWind v5 / Tailwind v4 avec les jetons de la charte GoMeCoiffer, adaptateurs de plateforme `.ts`/`.web.ts`, composants de base accessibles ≥ 44 pt avec aides de guidage et bandeau hors-ligne, routes `(auth)`, `(client)`, `(salon)`, `reprogrammation/[token]`, module `health`, `eas.json` et assets de marque).
+  - Installation dans `.claude/skills/` des 10 skills officiels `expo/skills` et de `react-native-best-practices` (Callstack) ; `frontend/` et `backend/` laissés intacts pendant la transition (D-063).
+- **Pourquoi** : démarrer le chantier mobile avec Expo universel (iOS + Android + Web) en partageant toute la logique métier/état non visuelle dans `client-core`, selon les principes SOLID/TDD et les décisions D-061, D-062, D-063 et UC-013.
+- **Périmètre** : `packages/client-core/`, `mobile/`, `pnpm-workspace.yaml` (`mobile`, `@parcel/watcher: true`), `package.json`, `.dependency-cruiser.cjs` (5 nouvelles règles d'isolation `client-core` et `mobile`), `.gitignore`, `.claude/skills/` + `skills-lock.json`, `docs/{DECISIONS,mobile,BACKLOG,EVOLUTIONS}.md`.
+- **Vérification** : mode `light`.
+  - Revue `security-reviewer` sur `client-core` et `mobile/` : 0 critique, 5 à corriger et 6 durcissements relevés — tous les 11 points traités et couverts en TDD (validation stricte URL/HTTPS dans `env.ts`, `credentials: 'omit'` + `redirect: 'error'` + mutex `runExclusiveRenewal` + garde `sentToken !== null` + `x-device-token` limité à `/api/public/auth/sign-in` dans `MobileHttpClient`, SSE `pollingInterval: 0` + gestion 401/rotation + course `AppState` + recyclage 25 min dans `createRealtimeSource`, sérialisation + gestion erreur `SecureStore`, purge cache sur `sessionStarted`, masquage `ZodError`/erreurs internes, validation `assertSafeApiPath`, déduplication CSRF dans `WebHttpClient`, règles `depcruise`).
+  - `@gomecoiffer/client-core` (Vitest) : **6 fichiers, 37 tests verts** ; build + typecheck verts.
+  - `mobile/` (Jest / `jest-expo` + RNTL) : **6 suites, 32 tests verts** ; `tsc --noEmit` 0 erreur ; `expo export --platform web` vert (1 034 modules bundlés, React Compiler activé, 28 bundles web, 18 assets exportés dans `mobile/dist/`).
+  - `frontend/` (`web`) inchangé et vert : **8 fichiers, 36 tests Vitest verts**, `tsc -b` 0 erreur ; `backend/` : `tsc --noEmit` 0 erreur.
+  - Qualité : `oxlint` 0 erreur sur 668 fichiers (3 avertissements préexistants hors périmètre), `depcruise` 0 violation (737 modules, 2 594 dépendances), `pnpm why` confirme 1 seule version de React (`19.3.1`) et de React Native (`0.88.1`).
+  - Captures iOS / Android : non réalisées (aucun simulateur iOS démarré et `adb` absent).
+- **Suites** (`docs/BACKLOG.md`) : implémenter le backend de UC-013 (en-têtes `x-client-channel` / `x-device-token`), rédiger UC-014, livrer les écrans du lot 1, vérifier les captures iOS/Android sur simulateurs, et figer les identifiants stores/domaine définitifs.
+
+---
+
 ### 2026-11-20 — UC-010 Ajouter un salon, UC-011 Gérer l'équipe, UC-012 Rôles système (backend)
 
 - **Quoi** :

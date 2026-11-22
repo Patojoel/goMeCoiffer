@@ -1,0 +1,15 @@
+export const commonFr = {
+  'app.name': 'GoMeCoiffer',
+  'common.retry': 'Réessayer',
+  'common.loading': 'Chargement…',
+  'common.backHome': "Retour à l'accueil",
+  'common.signIn': 'Se connecter',
+  'common.signUp': 'Créer un compte',
+  'common.cancel': 'Annuler',
+  'common.confirm': 'Confirmer',
+  'common.save': 'Enregistrer',
+  'common.back': 'Retour',
+  'common.or': 'Ou',
+  'common.offlineBanner': "Pas de connexion internet. Vos données s'afficheront dès le retour du réseau.",
+  'common.offlineActionHint': 'Connexion internet requise pour envoyer cette action.',
+} as const;

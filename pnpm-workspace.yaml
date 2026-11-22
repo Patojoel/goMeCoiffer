@@ -1,8 +1,10 @@
 packages:
   - backend
   - frontend
+  - mobile
   - packages/*
 allowBuilds:
+  '@parcel/watcher': true
   '@scarf/scarf': false
   '@swc/core': true
   cpu-features: false
@@ -16,3 +18,5 @@ minimumReleaseAgeExclude:
   - '@nestjs/terminus@12.2.0'
   - '@nestjs/testing@12.5.1'
   - nestjs-pino@5.3.2
+overrides:
+  '@expo/metro-config>lightningcss': 1.30.1

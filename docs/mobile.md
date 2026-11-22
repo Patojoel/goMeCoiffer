@@ -1,156 +1,118 @@
 # Mobile (`mobile/`, paquet `mobile`)
 
-App **Expo / React Native** de GoMeCoiffer, iOS et Android. Décision D-061 (20/11/2026). Le web reste l'app Vite
-+ React de `frontend/` ; le mobile **partage avec lui toute la logique non visuelle** par le paquet
-`packages/client-core`, pas les écrans.
+App **Expo / React Native universelle (iOS, Android et Web)** de GoMeCoiffer. Décisions D-061 (20/11/2026) et D-063 (21/11/2026). Pendant la transition, `frontend/` (Vite + React) reste intact ; toute la **logique non visuelle** vit dans `packages/client-core` (sans dépendance DOM ni React Native), tandis que `mobile/` porte les écrans universels, les routes Expo Router et les adaptateurs de plateforme (`.ts` natifs vs `.web.ts` navigateur).
 
-## 1. Choix et versions (vérifiés le 20/11/2026)
+## 1. Choix et versions (vérifiés le 21/11/2026)
 
 | Brique | Choix | Notes |
 |---|---|---|
-| Framework | **Expo SDK 58** (React Native **0.88**, React **19.3**) | même version de React que le web : une seule dans le monorepo (obligatoire) |
-| Architecture RN | New Architecture | toujours active, non désactivable depuis SDK 55 |
-| React Compiler | activé | `experiments.reactCompiler: true` dans `app.config.ts` (pas activé par défaut) |
-| Navigation | **Expo Router** (routes fichiers) | ne dépend plus de React Navigation depuis SDK 56 ; native tabs et data loaders stables en SDK 58 |
-| État | **Redux Toolkit + RTK Query** (depuis `client-core`) | même code que le web : gateways, thunks, endpoints, slices, sélecteurs |
-| UI native iOS / Android | **Expo UI** (`@expo/ui` : SwiftUI / Jetpack Compose), `NativeTabs` d'Expo Router, `expo-symbols` (SF Symbols), `expo-glass-effect` | rendu « Apple » : onglets Liquid Glass (iOS 26+), feuilles, menus, sélecteurs, listes |
-| Système de design | **NativeWind v5** (Tailwind v4) + **React Native Reusables** | portage de shadcn/ui : mêmes jetons et mêmes composants de base que le web |
-| Formulaires | `react-hook-form` + `zod` | schémas de `@gomecoiffer/contracts`, comme le web |
-| Stockage sécurisé | `expo-secure-store` | jeton de session (UC-013) ; jamais AsyncStorage pour un secret |
-| Temps réel | `react-native-sse` | en-tête `Authorization` ; même routage par `type` que le web |
-| Builds | **EAS** (Build, Submit, Update) + dev client | Expo Go seulement pour essayer : les modules natifs exigent un dev client |
-| Tests | logique : **Vitest** (dans `client-core`) ; écrans : **jest-expo + React Native Testing Library** | exception nommée à « Vitest partout » (D-061) |
-
-Alternatives écartées ou en réserve : TanStack Query + Zustand (le défaut du marché, mais ne partage rien avec le web) ;
-HeroUI Native, gluestack-ui, Tamagui (versions à vérifier sur leurs sites avant tout changement) ; react-native-web
-pour remplacer le web (point faible sur un back-office dense, D-060 déjà en place).
+| Framework | **Expo SDK 58** (`expo@58.0.26`, React Native **0.88.1**, React **19.3.1**) | même version de React (`19.3.1`) que `frontend/` et `client-core` : une seule dans le monorepo |
+| Architecture RN | New Architecture | imposée par SDK 58 (`newArchEnabled` retiré de `ExpoConfig`) |
+| React Compiler | activé | `experiments.reactCompiler: true` dans `app.config.ts` |
+| Navigation | **Expo Router** (`expo-router@58.0.32`) | `expo-router/native-tabs` sur iOS/Android, replis `_layout.web.tsx` (`WebTabNav`) sur le web ; aucun import `@react-navigation/*` |
+| Web universel | `react-native-web` + `react-dom@19.3.1`, `web.output: 'single'` | évite le défaut `'server'` de SDK 58 pour produire un bundle SPA statique (`expo export --platform web`) |
+| État | **Redux Toolkit 2.14 + RTK Query** (depuis `client-core`) | gateways, slices, RBAC, format, i18n, purge cache à l'ouverture/changement/fermeture de session |
+| UI native iOS / Android | **Expo UI** (`@expo/ui@58.0.29`), `NativeTabs`, `expo-symbols`, `expo-glass-effect`, `expo-haptics` | contrôles système natifs sur mobile |
+| Système de design | **NativeWind v5** (`nativewind@5.0.0-rc.1` + `react-native-css@3.1.0-rc.1` + Tailwind CSS v4.3) | jetons GoMeCoiffer dans `global.css` (`#17213B` bleu nuit, `#D2603A` terre cuite, `#F6EFE6` ivoire) |
+| Formulaires | `react-hook-form` + `zod` | schémas de `@gomecoiffer/contracts` |
+| Stockage sécurisé | `expo-secure-store` (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`) | jeton de session + `deviceToken` sur natif (UC-013) ; no-op sur web (cookies HttpOnly, jamais `localStorage`) |
+| Temps réel | `react-native-sse` (natif) / `EventSource` (web) | `pollingInterval: 0`, watchdog heartbeat/EOF, `Authorization` + `x-client-channel: mobile`, fermeture en `background`, relecture à la reconnexion |
+| Builds | **EAS** (`development` dev client / `preview` / `production`) | `mobile/eas.json` (`EXPO_PUBLIC_APP_ENV` explicite par profil) |
+| Tests | logique : **Vitest** (`client-core`, 65 tests) ; écrans & adaptateurs : **jest-expo + RNTL** (181 tests) | exception nommée à « Vitest partout » (D-061) ; zéro `jest.mock` sur les modules applicatifs |
 
 ## 2. Monorepo
 
 ```
 GoMeCoiffer/
 ├─ backend/                 # API NestJS (inchangé)
-├─ frontend/                # web : écrans React DOM + adaptateurs web
-├─ mobile/                  # app Expo : écrans React Native + adaptateurs natifs
+├─ frontend/                # web Vite (laissé intact jusqu'à parité Web)
+├─ mobile/                  # app Expo universelle (iOS + Android + Web)
 └─ packages/
    ├─ contracts/            # schémas Zod partagés avec l'API (inchangé)
-   └─ client-core/          # logique partagée web + mobile (sans react-dom ni react-native)
+   └─ client-core/          # logique partagée sans dépendance UI/plateforme
 ```
 
-- `pnpm-workspace.yaml` liste `mobile` ; dépendances internes en `workspace:*`.
-- Metro se configure seul en monorepo (`expo/metro-config`) ; ne rien ajouter de `watchFolders` /
-  `extraNodeModules`.
-- pnpm installe en dépendances isolées (supporté depuis SDK 54) ; si une bibliothèque native casse : `nodeLinker:
-  hoisted` dans `pnpm-workspace.yaml`. Vérifier les doublons : `pnpm why --depth=10 react-native` (une seule version
-  de React et de React Native).
-- pnpm 11 : ajouter à `allowBuilds` les scripts d'installation réellement nécessaires aux paquets Expo, et respecter la
-  politique d'âge des versions.
+- `pnpm-workspace.yaml` inclut `mobile` et `packages/*` en dépendances isolées pnpm ; seul `@parcel/watcher: true` a été ajouté à `allowBuilds` pour Expo/Metro/Tailwind.
+- Vérification de l'arbre (`pnpm why --depth=10 react` et `react-native`) : 1 seule version de React (`19.3.1`) et 1 seule de React Native (`0.88.1`).
+- Metro (`metro.config.js`) utilise `withNativewind(getDefaultConfig(__dirname))` sans `watchFolders` ni `extraNodeModules`.
 
-## 3. `packages/client-core` (partagé web + mobile)
+## 3. `packages/client-core` (`@gomecoiffer/client-core`)
 
-Tout ce qui ne dessine rien. Ni `react-dom`, ni `react-native`, ni `fetch` direct, ni stockage : ces détails arrivent
-par injection.
+Exports strictement séparés (`package.json`) :
+- `.` : `store/` (`createCoreStore`, `appApi`, `purgeApiCache`, `invalidateAllReads`, `sessionExpired`, `selectExpiredSessionKind`), `http/` (`HttpClient`, `HttpError`, `parseApiEnvelope`, `assertSafeApiPath`, `encodePathSegment`, `toApiFailure`, `codeToMessage`, `resolveApiErrorMessage`), `storage/` (`TokenStorage`), `realtime/` (`RealtimeSource`, `createRealtimeClient`), `rbac/` (`sessionSlice`, `can`, `canAccessSalonSpace`, `hasSystemRole`, `resolveHomeTarget`), `format/`, `i18n/` (`t`, `fr`), et les 8 modules du lot 1 (`health`, `auth`, `salons` + `weeklySchedule`, `team`, `join-salon`, `roles` + `permissionDependencies`, `client-space`, `platform`).
+- `./gateways` : adaptateurs `*HttpGateway` (importés **uniquement** dans `lib/store/dependencies/` de chaque app, vérifié par `pnpm arch`).
+- `./testing` : `createTestStore`, les 8 `InMemory*Gateway`.
 
-```
-packages/client-core/src/
-├─ store/                   # createAppAsyncThunk, appApi (RTK Query), API_TAGS, actions (sessionCleared,
-│                           # activeSalonChanged), listeners (purge du cache), createCoreStore(deps, plateforme)
-├─ http/                    # port HttpClient (interface), HttpError, toApiFailure, codeToMessage
-├─ realtime/                # port RealtimeSource, routage par type, invalidation à la reconnexion
-├─ rbac/                    # session et droits : can(), étape suivante (D-027)
-├─ format/                  # formatXaf, formatTimeInZone, formatPhone
-├─ i18n/                    # dictionnaires fr/en par module + t() typé (le rendu reste dans chaque app)
-└─ modules/<module>/        # models/gateway (port), usecases/<cas>/, slice/, listeners/, infra/api/, infra/repo/
-                            # (adaptateur HTTP écrit sur le PORT HttpClient : réutilisé par les deux apps)
-```
-
-- Chaque app fournit ses **adaptateurs de plateforme** : `HttpClient` (web : cookies + CSRF ; mobile : jeton porteur),
-  source temps réel (web : `EventSource` ; mobile : `react-native-sse`), stockage, et le branchement du focus et du
-  réseau (web : `window` ; mobile : `AppState` et `@react-native-community/netinfo` via `setupListeners`).
-- Tests : Vitest, gateways fakes (`createTestStore`), comme décrit dans `docs/frontend.md`.
-- Ce paquet remplace, pour la logique, les `modules/<module>/{models,usecases,slice,listeners,infra/api,infra/repo}`
-  et `lib/store` du web : le web garde `infra/ui`, `infra/router`, `infra/validators` si propres à l'UI, et ses
-  adaptateurs (`docs/frontend.md`, `docs/frontend-modules.md`).
+Règles `pnpm arch` (`dependency-cruiser`) : `client-core` n'importe jamais `react-dom`, `react-native`, `react-native-web`, `expo*`, `@expo/*`, `react-native-sse` ni aucune app.
 
 ## 4. Structure de `mobile/`
 
 ```
 mobile/
-├─ app.config.ts            # nom, schéma de liens, liens universels (associatedDomains / intentFilters),
-│                           # experiments.reactCompiler, plugins (expo-router, expo-secure-store…)
-├─ eas.json                 # profils development / preview / production
+├─ app.config.ts            # GoMeCoiffer, cm.gomecoiffer.app, web.output: 'single', reactCompiler: true, liens universels
+├─ eas.json                 # profils development / preview / production (EXPO_PUBLIC_APP_ENV explicite)
+├─ metro.config.js          # withNativewind(getDefaultConfig(__dirname))
+├─ babel.config.js          # babel-preset-expo
+├─ postcss.config.mjs       # @tailwindcss/postcss
+├─ global.css               # Tailwind v4 + nativewind/theme + jetons GoMeCoiffer
+├─ assets/images/           # icon, adaptive-icon, splash-icon, favicon (depuis brand/logo/)
 └─ src/
-   ├─ app/                  # Expo Router : un fichier = une route
-   │  ├─ _layout.tsx        # fournisseurs : store, i18n, thème, zones sûres, garde de session
+   ├─ app/                  # Expo Router : routes uniquement
+   │  ├─ _layout.tsx        # SafeAreaProvider, ThemeProvider, StoreProvider, SessionLifecycle, OfflineBanner, Stack
+   │  ├─ index.tsx          # redirection vers /(client)/(tabs)
    │  ├─ (auth)/            # connexion, inscription, mot-de-passe-oublie, rejoindre
-   │  ├─ (client)/(tabs)/   # NativeTabs : Explorer, Mes réservations, Profil
-   │  ├─ (client)/salon/[salonId].tsx  reserver/…
-   │  ├─ (salon)/(tabs)/    # NativeTabs : Aujourd'hui, Rendez-vous, Équipe, Plus
-   │  ├─ (salon)/…          # écrans du back-office mobile, gardés par permission
+   │  ├─ (client)/(tabs)/   # NativeTabs (_layout.tsx) + repli Web (_layout.web.tsx) : index, reservations, profil
+   │  ├─ (client)/salon/[salonId].tsx
+   │  ├─ (salon)/_layout.tsx            # garde session STAFF (canAccessSalonSpace, D-055) + Stack écrans salon
+   │  ├─ (salon)/           # creer-organisation, choisir-salon, ajouter-salon, roles, horaires
+   │  ├─ (salon)/(tabs)/    # NativeTabs (_layout.tsx) + repli Web (_layout.web.tsx) + RequireActiveSalonNotice : index, rendez-vous, equipe, plus
+   │  ├─ (admin)/           # _layout.tsx (garde RequireSystemRole) + index (PlatformAdminsView)
    │  ├─ reprogrammation/[token].tsx
    │  └─ +not-found.tsx
-   ├─ modules/<module>/
-   │  ├─ ui/<fonctionnalité>/   # écrans + hooks use* (même découpage de modules que le web)
-   │  └─ __tests__/             # jest-expo + React Native Testing Library
-   ├─ components/
-   │  ├─ ui/                # React Native Reusables (NativeWind)
-   │  ├─ native/            # enveloppes Expo UI (SwiftUI / Compose) : Sheet, Menu, DatePicker, List
-   │  ├─ forms/             # PhoneField, OtpField (code SMS auto-rempli), PasswordField, FieldHint
-   │  └─ feedback/          # EmptyState, ErrorState, LoadingButton
+   ├─ modules/              # modules lot 1 : health, auth, client-space, join-salon, salons, roles, team, platform
+   ├─ components/           # ui/ (Button, Card, ThemedText, Skeleton, TextField, CheckboxField, SelectField, SwitchRow, SegmentedTabs, Badge, InlineAlert, SafeAreaView), feedback/, forms/ (FieldHint, PhoneField, OtpCodeField), navigation/ (WebTabNav, RequirePermission, RequireSystemRole)
    └─ lib/
-      ├─ http/              # MobileHttpClient (implémente le port de client-core : jeton porteur)
-      ├─ realtime/          # source react-native-sse
-      ├─ storage/           # expo-secure-store
-      ├─ store/             # createMobileStore(dépendances mobiles)
-      └─ platform/          # setupListeners (AppState, NetInfo), liens profonds
+      ├─ config/env.ts      # validation URL API (HTTPS obligatoire hors dev local, défaut 'production' hors __DEV__/test)
+      ├─ navigation/home-route.ts
+      ├─ storage/           # createTokenStorage.ts (SecureStore WHEN_UNLOCKED_THIS_DEVICE_ONLY) / .web.ts (no-op) / InMemoryTokenStorage.ts
+      ├─ http/              # sessionPaths.ts, MobileHttpClient.ts (Bearer + x-client-channel + mutex + anti-course 401), WebHttpClient.ts (cookies + CSRF D-039 + epoch), createHttpClient(.web).ts
+      ├─ realtime/          # createRealtimeSource.ts (react-native-sse, pollingInterval: 0, heartbeat/EOF, AppState) / .web.ts (EventSource + CLOSED)
+      ├─ platform/          # setupPlatformListeners.ts (AppState + NetInfo) / .web.ts (window focus/online)
+      ├─ store/             # dependencies/dependencies.ts, createMobileStore.ts, StoreProvider.tsx, SessionLifecycle.tsx, hooks.ts
+      └─ ui/cn.ts
 ```
 
 ## 5. Règles
 
-- **Mêmes espaces que le web** (D-055) : une app, deux espaces (client et salon) plus l'authentification ; la session
-  `CLIENT` n'ouvre que l'espace client.
-- **Mêmes chemins que le web** pour les liens partagés (`/rejoindre`, `/reprogrammation/:token`) : un lien reçu par
-  WhatsApp ouvre l'app si elle est installée (liens universels), sinon le web.
-- **Session** : jeton porteur de la même session serveur, rangé dans `expo-secure-store` (UC-013). Jamais en clair dans
-  les logs, jamais dans AsyncStorage.
-- **Rendu natif d'abord** : contrôles système (onglets, feuilles, menus, sélecteurs de date) par Expo UI ou Expo
-  Router ; NativeWind + Reusables pour le reste ; règles HIG d'Apple et Material sur Android.
-- **Accessibilité et confort** : cibles ≥ 44 pt, zones sûres, taille de police dynamique, retour haptique sur les
-  actions importantes, code SMS auto-rempli (`textContentType="oneTimeCode"`, `autoComplete="sms-otp"`).
-- **Réseau mobile camerounais** : état hors ligne visible, relecture au retour du réseau et au retour au premier plan,
-  pas de double envoi (bouton `loading`).
-- **Guidage** (`CLAUDE.md`, tous modes) : mêmes exigences que le web (aide sous les choix, états vides qui disent quoi
-  faire).
-- **i18n, FCFA, fuseau du salon** : depuis `client-core`, comme le web.
+- **Mêmes espaces que le web** (D-055) : une app, deux espaces (client et salon) plus l'authentification ; la session `CLIENT` n'ouvre que l'espace client.
+- **Mêmes chemins que le web** pour les liens partagés (`/rejoindre`, `/reprogrammation/:token`) : liens universels dans `app.config.ts`.
+- **Séparation stricte des canaux (UC-013, D-004, D-063)** : natif = `MobileHttpClient` (`credentials: 'omit'`, `redirect: 'error'`, `x-client-channel: mobile`, `Authorization: Bearer`, `x-device-token` limité à `/api/public/auth/sign-in`, coffre `expo-secure-store` `WHEN_UNLOCKED_THIS_DEVICE_ONLY`) ; web = `WebHttpClient` (`credentials: 'include'`, `x-csrf-token`, aucun jeton en stockage client).
+- **Rendu natif d'abord** : `NativeTabs` sur iOS/Android et replis `_layout.web.tsx` sur navigateur ; cibles ≥ 44 pt (`min-h-11`), zones sûres, haptique légère sur mobile.
+- **Réseau mobile camerounais** : bandeau `OfflineBanner`, relecture au retour du réseau et au premier plan, pas de double envoi (`Button` `loading`).
+- **Guidage, i18n, FCFA, fuseau du salon** : depuis `@gomecoiffer/client-core`.
 
 ## 6. Commandes
 
 ```bash
-pnpm --filter mobile start            # Metro + dev client
-pnpm --filter mobile test             # jest-expo (écrans)
 pnpm --filter @gomecoiffer/client-core test   # Vitest (logique partagée)
-eas build --profile development       # dev client
-eas build --profile preview           # build interne (TestFlight / test interne)
-eas update --branch preview           # mise à jour OTA
+pnpm --filter mobile start                   # Metro (iOS / Android / Web)
+pnpm --filter mobile test                    # jest-expo (écrans & adaptateurs)
+pnpm --filter mobile typecheck               # tsc --noEmit
+pnpm --filter mobile build:web               # expo export --platform web
 ```
 
 ## 7. Skills et agent
 
-- Projet : skill **`mobile-stack`** (`.claude/skills/mobile-stack/`) et agent **`mobile-builder`**
-  (`.claude/agents/mobile-builder.md`), qui charge `mobile-stack`, `front-stack`, `tdd`, `clean-code` et `security`.
+- Projet : skill **`mobile-stack`** (`.claude/skills/mobile-stack/`) et agent **`mobile-builder`** (`.claude/agents/mobile-builder.md`).
+- Skills externes installés dans `.claude/skills/` (`skills-lock.json`) :
+  - `expo/skills` : `expo-overview`, `expo-project-structure`, `expo-router`, `expo-ui`, `expo-native-ui`, `expo-design-system`, `expo-data-fetching`, `expo-dev-client`, `eas-app-stores`, `eas-update` ;
+  - `callstackincubator/agent-skills` : `react-native-best-practices`.
 
-Skills externes, à installer par le user (refusé à l'agent par le garde-fou de Claude Code) :
+## 8. Reste à décider / à faire (voir `docs/BACKLOG.md`)
 
-- Expo officiel (skills `expo-router`, `expo-ui`, `expo-native-ui`, `expo-data-fetching`, `expo-design-system`,
-  `eas-*`… + serveur MCP Expo) : `claude plugin install expo@claude-plugins-official --scope project`, puis `/mcp`.
-- Callstack (performance) : `npx skills@latest add callstackincubator/agent-skills --skill react-native-best-practices`.
-
-## 8. Reste à décider (voir `docs/BACKLOG.md`)
-
-- UC-013 (session mobile par jeton, prêt pour dev, D-062) : prérequis côté API avant toute connexion depuis l'app ;
-  UC-014 (inscription, mot de passe oublié, invitation depuis l'app) à rédiger.
-- Comptes Apple Developer et Google Play, identifiants de l'app (`bundleIdentifier`, `package`), domaine des liens
-  universels.
-- Notifications push (rappels de rendez-vous) : hors PRD actuel.
-- Ordre (D-062, mobile dans le MVP **en parallèle du web**) : `client-core`, backend de UC-013 et socle mobile
-  d'abord ; puis chaque use case livre ses écrans web et mobiles ensemble.
+- **Socle & écrans du lot 1 (`packages/client-core` + `mobile/`)** : livrés le 21/11/2026 (`auth`, `client-space`, `join-salon`, `salons`, `roles`, `team`, `platform`, `SessionLifecycle` SSE, tests unitaires/écrans et export Web verts ; remédiation sécurité validée par `security-reviewer`).
+- **UC-013 (backend + contrats, bloquant C-1 natif)** : adapter `packages/contracts` (`sessionToken`, `deviceToken?`, `csrfToken` web) et implémenter la variante `BEARER` côté API (`x-client-channel: mobile`, `x-device-token`, CORS, `noStorePrivateRoutes`, `data: 'ping'` sur `event: heartbeat`) avant toute connexion réelle sur iOS/Android.
+- **UC-014 (spécification + backend, bloquant C-2 natif)** : rédiger puis implémenter l'inscription, le mot de passe oublié et `/rejoindre` sans cookie `__Host-gmc.join` pour l'application native.
+- **Identifiants & domaine** : valider `cm.gomecoiffer.app`, le domaine des liens universels (`gomecoiffer.cm` en placeholder) et les comptes Apple Developer / Google Play.
+- **Simulateurs & UI native avancée** : effectuer les captures visuelles iOS et Android dès qu'un simulateur Xcode / émulateur Android est lancé, puis adopter `@expo/ui` sur les prochains lots si pertinent.
+- **Bascule Web** : une fois la parité Web atteinte sur `mobile/`, valider la suppression de `frontend/`.

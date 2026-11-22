@@ -1,0 +1,61 @@
+export const salonsFr = {
+  'salons.create.title': 'Créer mon organisation et mon premier salon',
+  'salons.create.subtitle':
+    'Renseignez les informations essentielles de votre premier salon pour démarrer.',
+  'salons.create.alreadyExistsHint':
+    'Votre organisation existe déjà, redirection vers votre espace salon…',
+  'salons.add.title': 'Ajouter un salon à mon organisation',
+  'salons.add.subtitle':
+    'Ajoutez un nouvel établissement à votre groupe sans créer de nouveau compte.',
+  'salons.form.nameLabel': 'Nom commercial du salon',
+  'salons.form.namePlaceholder': 'Ex. : Go Beauty Bastos',
+  'salons.form.typeLabel': 'Type d’établissement',
+  'salons.form.cityLabel': 'Ville',
+  'salons.form.districtLabel': 'Quartier',
+  'salons.form.districtPlaceholder': 'Ex. : Bastos',
+  'salons.form.landmarkLabel': 'Adresse / point de repère',
+  'salons.form.landmarkPlaceholder': 'Ex. : Rue 1.234, face à la pharmacie du carrefour',
+  'salons.form.landmarkHint': 'Donnez un repère clair pour aider vos clients à situer le salon.',
+  'salons.form.phoneLabel': 'Téléphone commercial du salon',
+  'salons.form.phonePlaceholder': 'Ex. : 6 70 00 00 00',
+  'salons.form.submitCreate': 'Créer mon salon',
+  'salons.form.submitAdd': 'Ajouter et ouvrir ce salon',
+
+  'salons.type.HAIR_SALON': 'Salon de coiffure',
+  'salons.type.BARBER_SHOP': 'Barber shop',
+  'salons.type.BEAUTY': 'Esthétique',
+  'salons.type.MIXED': 'Mixte',
+
+  'salons.switch.title': 'Changer de salon actif',
+  'salons.switch.subtitle': 'Choisissez le salon dans lequel vous souhaitez travailler.',
+  'salons.switch.activeBadge': 'Salon actif',
+  'salons.switch.switching': 'Ouverture du salon…',
+
+  'salons.hours.title': 'Horaires d’ouverture du salon',
+  'salons.hours.subtitle': 'Définissez chaque jour d’ouverture, les plages horaires et la pause éventuelle.',
+  'salons.hours.editAction': 'Modifier les horaires',
+  'salons.hours.saveAction': 'Appliquer les horaires',
+  'salons.hours.presetMonSat': 'Appliquer Lun–Sam',
+  'salons.hours.presetMonFri': 'Appliquer Lun–Ven',
+  'salons.hours.openLabel': 'Ouvert',
+  'salons.hours.closedLabel': 'Fermé',
+  'salons.hours.startLabel': 'Ouverture',
+  'salons.hours.endLabel': 'Fermeture',
+  'salons.hours.breakToggle': 'Pause déjeuner',
+  'salons.hours.breakStart': 'Début pause',
+  'salons.hours.breakEnd': 'Fin pause',
+  'salons.hours.draftNotice':
+    'Aperçu interactif validé localement. L’enregistrement serveur des horaires s’activera avec le module Disponibilités.',
+
+  'salons.guard.selectTitle': 'Ouvrez ou créez un salon',
+  'salons.guard.selectHint': 'Choisissez un salon actif pour accéder au planning et à votre équipe.',
+  'salons.guard.createAction': 'Créer mon organisation',
+  'salons.guard.chooseAction': 'Choisir mon salon',
+
+  'salons.more.switchSalon': 'Changer de salon',
+  'salons.more.addSalon': 'Ajouter un salon',
+  'salons.more.roles': 'Rôles et permissions',
+  'salons.more.hours': 'Horaires du salon',
+  'salons.more.platformAdmin': 'Administration GoMeCoiffer',
+  'salons.more.activeSalonLabel': 'Salon actif',
+} as const;

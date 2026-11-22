@@ -7,12 +7,13 @@
     "node": ">=24.11.0"
   },
   "scripts": {
-    "build": "pnpm -r --filter @gomecoiffer/contracts build && pnpm -r --filter api --filter web build",
+    "build": "pnpm --filter @gomecoiffer/contracts build && pnpm --filter @gomecoiffer/client-core build && pnpm -r --filter api --filter web build",
     "dev": "pnpm --filter @gomecoiffer/contracts build && pnpm -r --parallel --filter api --filter web dev",
-    "test": "pnpm --filter @gomecoiffer/contracts build && pnpm -r --workspace-concurrency=1 test:all",
-    "lint": "oxlint backend/src frontend/src packages/contracts/src",
-    "typecheck": "pnpm --filter @gomecoiffer/contracts build && pnpm -r typecheck",
-    "arch": "depcruise backend/src frontend/src --config .dependency-cruiser.cjs",
+    "dev:mobile": "pnpm --filter @gomecoiffer/contracts build && pnpm --filter @gomecoiffer/client-core build && pnpm --filter mobile start",
+    "test": "pnpm --filter @gomecoiffer/contracts build && pnpm --filter @gomecoiffer/client-core build && pnpm -r --workspace-concurrency=1 test:all",
+    "lint": "oxlint backend/src frontend/src packages/contracts/src packages/client-core/src mobile/src",
+    "typecheck": "pnpm --filter @gomecoiffer/contracts build && pnpm --filter @gomecoiffer/client-core build && pnpm -r typecheck",
+    "arch": "depcruise backend/src frontend/src packages/client-core/src mobile/src --config .dependency-cruiser.cjs",
     "format": "prettier --write .",
     "mutation": "pnpm -r mutation"
   },

@@ -1,0 +1,18 @@
+export const componentsFr = {
+  'ui.select.placeholder': 'Choisir une option…',
+  'ui.select.searchPlaceholder': 'Rechercher…',
+  'ui.select.empty': 'Aucun résultat ne correspond à votre recherche.',
+  'ui.select.close': 'Fermer',
+  'ui.datePicker.placeholder': 'Choisir une date…',
+  'ui.datePicker.title': 'Choisir une date',
+  'ui.datePicker.confirm': 'Valider la date',
+  'ui.datePicker.prevMonth': 'Mois précédent',
+  'ui.datePicker.nextMonth': 'Mois suivant',
+  'ui.timePicker.placeholder': 'HH:MM',
+  'ui.timePicker.title': 'Choisir une heure',
+  'ui.input.showPassword': 'Afficher le mot de passe',
+  'ui.input.hidePassword': 'Masquer le mot de passe',
+  'ui.input.show': 'Afficher',
+  'ui.input.hide': 'Masquer',
+  'ui.input.clear': 'Effacer',
+} as const;
