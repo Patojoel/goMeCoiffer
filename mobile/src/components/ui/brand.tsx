@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Image, StyleSheet, View, type ImageStyle } from 'react-native';
+import { Image, StyleSheet, useColorScheme, View, type ImageStyle } from 'react-native';
 import { cn } from '@/lib/ui/cn';
 import { ThemedText } from './themed-text';
 
@@ -76,11 +76,12 @@ export function IconTile({
 }
 
 export function BrandLogo({ width = 176 }: { readonly width?: number }) {
+  const dark = useColorScheme() === 'dark';
   return (
     <Image
       accessibilityLabel="GoMeCoiffer"
       accessible
-      source={require('../../../../brand/logo/png/gomecoiffer-horizontal.png')}
+      source={dark ? require('../../../../brand/logo/png/gomecoiffer-horizontal-reversed.png') : require('../../../../brand/logo/png/gomecoiffer-horizontal.png')}
       resizeMode="contain"
       style={{ width, height: (width * 477) / 1600 }}
     />
@@ -88,13 +89,14 @@ export function BrandLogo({ width = 176 }: { readonly width?: number }) {
 }
 
 export function BrandBackdrop() {
+  const dark = useColorScheme() === 'dark';
   return (
     <View pointerEvents="none" aria-hidden style={StyleSheet.absoluteFill}>
       <Image
         accessible={false}
         source={require('../../../assets/images/pastel-waves.jpg')}
         resizeMode="cover"
-        style={styles.backdrop}
+        style={[styles.backdrop, dark && { opacity: 0.12 }]}
       />
     </View>
   );
@@ -137,7 +139,7 @@ export function PageHero({
       <IconTile name={icon} tone={tone} size={48} />
       <View className="flex-1 gap-0.5">
         {eyebrow ? (
-          <ThemedText className="text-[10px] font-bold uppercase tracking-widest text-accent">
+          <ThemedText className="text-xs font-bold uppercase tracking-widest text-accent">
             {eyebrow}
           </ThemedText>
         ) : null}
@@ -145,7 +147,7 @@ export function PageHero({
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText variant="muted" className="text-xs leading-4">
+          <ThemedText variant="muted" className="text-xs leading-5">
             {subtitle}
           </ThemedText>
         ) : null}

@@ -73,7 +73,7 @@ function SignInViewContent({
                   <IconTile name={item.icon} tone={item.tone} size={36} />
                   <View className="gap-0.5">
                     <ThemedText className="text-xs font-bold">{item.title}</ThemedText>
-                    <ThemedText variant="caption" className="text-[10px] leading-3.5">
+                    <ThemedText variant="caption" className="text-xs leading-5">
                       {item.subtitle}
                     </ThemedText>
                   </View>

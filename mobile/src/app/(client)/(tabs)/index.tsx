@@ -42,15 +42,15 @@ export default function MarketplaceExploreScreen() {
             </View>
           </View>
 
-          <View className="flex-row gap-2.5 pt-1">
+          <View className="gap-2.5 pt-1 sm:flex-row">
             {EXPLORE_PILLARS.map((pillar) => (
               <View
                 key={pillar.title}
-                className="flex-1 gap-1.5 rounded-2xl border border-white/95 bg-secondary/50 p-3"
+                className="gap-1.5 rounded-2xl sm:flex-1 border border-white/95 bg-secondary/50 p-3"
               >
                 <IconTile name={pillar.icon} tone={pillar.tone} size={32} />
                 <ThemedText className="text-xs font-bold">{pillar.title}</ThemedText>
-                <ThemedText variant="caption" className="text-[10px] leading-3.5">
+                <ThemedText variant="caption" className="text-xs leading-5">
                   {pillar.subtitle}
                 </ThemedText>
               </View>

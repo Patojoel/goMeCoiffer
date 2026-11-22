@@ -56,7 +56,7 @@ export default function SalonTodayScreen() {
             <Card key={kpi.label} className="min-w-[140px] flex-1 gap-2 p-3.5">
               <IconTile name={kpi.icon} tone={kpi.tone} size={34} />
               <View className="gap-0.5">
-                <ThemedText variant="caption" className="text-[11px]">
+                <ThemedText variant="caption" className="text-xs">
                   {kpi.label}
                 </ThemedText>
                 <ThemedText className="text-lg font-extrabold tracking-tight">

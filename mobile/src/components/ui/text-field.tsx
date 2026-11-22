@@ -47,7 +47,7 @@ export function TextField({
   return (
     <View className={cn('gap-1.5', containerClassName)}>
       <View className="flex-row items-center justify-between gap-2 px-0.5">
-        <ThemedText nativeID={labelId} variant="headline" className="text-xs font-bold text-foreground">
+        <ThemedText nativeID={labelId} variant="headline" className="text-sm font-bold text-foreground">
           {label}
         </ThemedText>
         {requirementHint ? <ThemedText variant="caption">{requirementHint}</ThemedText> : null}
@@ -56,7 +56,7 @@ export function TextField({
       <View
         className={cn(
           'min-h-12 flex-row items-center rounded-[14px] border bg-card/85',
-          error ? 'border-destructive' : 'border-white/95',
+          error ? 'border-destructive' : 'border-border',
           !editable && 'bg-muted opacity-60',
         )}
         style={{

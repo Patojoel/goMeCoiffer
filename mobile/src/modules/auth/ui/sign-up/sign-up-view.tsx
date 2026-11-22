@@ -1,13 +1,13 @@
 import { t } from '@gomecoiffer/client-core';
+import { type ComponentRef, useEffect, useRef } from 'react';
 import { Controller } from 'react-hook-form';
 import { ScrollView, View } from 'react-native';
 import { FieldHint } from '@/components/forms/field-hint';
 import { OtpCodeField } from '@/components/forms/otp-code-field';
 import { PhoneField } from '@/components/forms/phone-field';
-import { Badge } from '@/components/ui/badge';
 import { BrandBackdrop, BrandIcon, BrandLogo, IconTile } from '@/components/ui/brand';
 import { Button } from '@/components/ui/button';
-import { Card, CardDescription, CardTitle } from '@/components/ui/card';
+import { Card, CardTitle } from '@/components/ui/card';
 import { CheckboxField } from '@/components/ui/checkbox-field';
 import { InlineAlert } from '@/components/ui/inline-alert';
 import { TextField } from '@/components/ui/text-field';
@@ -19,13 +19,6 @@ export type SignUpViewProps = {
   readonly onNavigate?: (path: string) => void;
   readonly isOnline?: boolean;
 };
-
-const ONBOARDING_STEPS = [
-  { icon: 'userplus', tone: 'navy', step: '1. Créez votre compte', hint: 'Vérification SMS rapide.' },
-  { icon: 'shop', tone: 'terra', step: '2. Configurez votre salon', hint: 'Ville, quartier et horaires.' },
-  { icon: 'users', tone: 'violet', step: '3. Invitez votre équipe', hint: 'Rôles et permissions clairs.' },
-  { icon: 'calendar', tone: 'green', step: '4. Recevez vos réservations', hint: 'Planning en temps réel.' },
-] as const;
 
 function SignUpViewContent({
   onNavigate,
@@ -49,10 +42,16 @@ function SignUpViewContent({
     navigateTo,
   } = useSignUp({ onNavigate, isOnline });
 
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [step]);
+
   return (
     <View className="flex-1 bg-background">
       <BrandBackdrop />
       <ScrollView
+        ref={scroll}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         className="flex-1"
@@ -62,32 +61,25 @@ function SignUpViewContent({
           <View className="gap-4 md:flex-1 md:pt-2">
             <BrandLogo width={196} />
 
-            <View className="gap-2">
-              <Badge variant="accent" label={t('auth.hero.eyebrow')} />
-              <ThemedText
-                accessibilityRole="header"
-                variant="title"
-                className="text-3xl font-extrabold leading-tight tracking-tight"
-              >
-                {t('auth.signUp.headline')}
+            <View className={step === 'phone'
+              ? 'gap-3 rounded-3xl bg-[#17213B] p-5'
+              : 'gap-3 rounded-3xl bg-[#81391F] p-5'}>
+              <View className="flex-row items-center justify-between">
+                <ThemedText className="text-sm font-bold text-white">
+                  {step === 'phone' ? 'Étape 1 sur 2' : 'Étape 2 sur 2'}
+                </ThemedText>
+                <IconTile name={step === 'phone' ? 'userplus' : 'shield'} tone={step === 'phone' ? 'navy' : 'terra'} size={40} />
+              </View>
+              <ThemedText accessibilityRole="header" variant="title" className="text-white">
+                {step === 'phone' ? 'Votre numéro de téléphone' : 'Votre profil professionnel'}
               </ThemedText>
-              <ThemedText variant="muted" className="text-sm leading-5">
-                {t('auth.signUp.subline')}
+              <ThemedText className="text-sm leading-6 text-white">
+                {step === 'phone' ? 'Indiquez le numéro sur lequel recevoir votre code de vérification.' : 'Saisissez le code reçu, puis choisissez vos identifiants.'}
               </ThemedText>
-            </View>
-
-            <View className="gap-2.5">
-              {ONBOARDING_STEPS.map((item) => (
-                <Card key={item.step} className="flex-row items-center gap-3 p-3.5">
-                  <IconTile name={item.icon} tone={item.tone} size={40} />
-                  <View className="flex-1 gap-0.5">
-                    <ThemedText className="text-xs font-bold">{item.step}</ThemedText>
-                    <ThemedText variant="caption" className="text-[11px]">
-                      {item.hint}
-                    </ThemedText>
-                  </View>
-                </Card>
-              ))}
+              <View aria-hidden className="flex-row gap-2">
+                <View className="h-1.5 flex-1 rounded-full bg-white" />
+                <View className={step === 'phone' ? 'h-1.5 flex-1 rounded-full bg-white/30' : 'h-1.5 flex-1 rounded-full bg-white'} />
+              </View>
             </View>
           </View>
 
@@ -98,7 +90,6 @@ function SignUpViewContent({
                   <IconTile name="userplus" tone="terra" size={44} />
                   <View className="flex-1 gap-0.5">
                     <CardTitle className="text-xl">{t('auth.signUp.step1Title')}</CardTitle>
-                    <CardDescription>{t('auth.signUp.subline')}</CardDescription>
                   </View>
                 </View>
 
@@ -150,7 +141,6 @@ function SignUpViewContent({
                   <IconTile name="shield" tone="terra" size={48} />
                   <View className="flex-1 gap-0.5">
                     <CardTitle className="text-xl">{t('auth.signUp.step2Title')}</CardTitle>
-                    <CardDescription>{t('auth.signUp.headline')}</CardDescription>
                   </View>
                 </View>
 

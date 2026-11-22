@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as Haptics from 'expo-haptics';
-import { ActivityIndicator, Platform, Pressable, type PressableProps } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, useColorScheme, type PressableProps } from 'react-native';
 import { cn } from '@/lib/ui/cn';
 import { BrandIcon, type BrandIconName } from './brand';
 import { ThemedText } from './themed-text';
@@ -13,7 +13,7 @@ const buttonVariants = cva(
         default: 'bg-primary',
         accent: 'bg-accent',
         secondary: 'border border-white/95 bg-secondary',
-        outline: 'border border-white/95 bg-card/85',
+        outline: 'border border-border bg-card/85',
         ghost: 'bg-transparent',
       },
       size: {
@@ -28,7 +28,7 @@ const buttonVariants = cva(
   },
 );
 
-const labelVariants = cva('text-center text-sm font-bold', {
+const labelVariants = cva('shrink text-center text-sm font-bold', {
   variants: {
     variant: {
       default: 'text-primary-foreground',
@@ -72,8 +72,13 @@ export function Button({
   onPress,
   ...props
 }: ButtonProps) {
+  const dark = useColorScheme() === 'dark';
   const isDisabled = disabled || loading;
   const resolvedVariant = variant ?? 'default';
+
+  const iconColor = dark
+    ? (resolvedVariant === 'default' || resolvedVariant === 'accent' ? '#17213B' : '#F6EFE6')
+    : iconColors[resolvedVariant];
 
   const handlePress: NonNullable<PressableProps['onPress']> = (event) => {
     if (isDisabled) return;
@@ -108,9 +113,9 @@ export function Button({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={iconColors[resolvedVariant]} />
+        <ActivityIndicator size="small" color={iconColor} />
       ) : icon ? (
-        <BrandIcon name={icon} size={18} color={iconColors[resolvedVariant]} />
+        <BrandIcon name={icon} size={18} color={iconColor} />
       ) : null}
       <ThemedText className={labelVariants({ variant: resolvedVariant })}>{title}</ThemedText>
     </Pressable>

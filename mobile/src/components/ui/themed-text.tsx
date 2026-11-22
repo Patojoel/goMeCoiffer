@@ -10,7 +10,7 @@ const textVariants = cva('text-foreground', {
       headline: 'text-base font-semibold',
       body: 'text-base leading-6',
       muted: 'text-sm leading-5 text-muted-foreground',
-      caption: 'text-xs leading-4 text-muted-foreground',
+      caption: 'text-xs leading-5 text-muted-foreground',
       error: 'text-base font-semibold text-destructive',
       success: 'text-base font-semibold text-success',
     },

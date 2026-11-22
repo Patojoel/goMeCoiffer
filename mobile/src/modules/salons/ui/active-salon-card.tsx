@@ -24,7 +24,7 @@ export function ActiveSalonCard({ action }: ActiveSalonCardProps) {
       <View className="flex-row items-center gap-3.5">
         <IconTile name="shop" tone="terra" size={42} />
         <View className="flex-1 gap-0.5">
-          <ThemedText variant="caption" className="text-[10px] font-bold uppercase tracking-wider">
+          <ThemedText variant="caption" className="text-xs font-bold uppercase tracking-wider">
             {t('salons.more.activeSalonLabel')}
           </ThemedText>
           <CardTitle className="text-base">{activeSalon.name}</CardTitle>

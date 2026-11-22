@@ -20,7 +20,7 @@ const badgeVariants = cva('self-start flex-row items-center gap-1.5 rounded-full
   },
 });
 
-const badgeTextVariants = cva('text-[11px] font-bold', {
+const badgeTextVariants = cva('text-xs font-bold', {
   variants: {
     variant: {
       default: 'text-primary-foreground',

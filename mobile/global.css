@@ -1,4 +1,4 @@
-@import 'tailwindcss';
+@import 'tailwindcss' important;
 @import 'nativewind/theme';
 
 :root {
@@ -11,10 +11,10 @@
   --secondary: #e9ebf6;
   --secondary-foreground: #17213b;
   --muted: #edeff5;
-  --muted-foreground: #6e768c;
-  --accent: #d2603a;
+  --muted-foreground: #485269;
+  --accent: #a34123;
   --accent-foreground: #ffffff;
-  --border: #e3e0ee;
+  --border: #8893a7;
   --ring: #d2603a;
   --destructive: #c23b2b;
   --success: #167c37;
@@ -26,19 +26,29 @@
     --foreground: #f6efe6;
     --card: #17213b;
     --card-foreground: #f6efe6;
-    --primary: #d2603a;
-    --primary-foreground: #ffffff;
+    --primary: #f2a387;
+    --primary-foreground: #17213b;
     --secondary: #222f4e;
     --secondary-foreground: #f6efe6;
     --muted: #1d2844;
     --muted-foreground: #b8c0d0;
-    --accent: #d2603a;
-    --accent-foreground: #ffffff;
-    --border: #2c3a5e;
+    --accent: #f2a387;
+    --accent-foreground: #17213b;
+    --border: #76849b;
     --ring: #e47b56;
     --destructive: #f07060;
     --success: #45c486;
   }
+}
+
+@theme {
+  --text-xs: 0.9375rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+  --text-3xl: 2.25rem;
 }
 
 @theme inline {
